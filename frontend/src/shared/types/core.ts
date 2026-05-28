@@ -1,9 +1,11 @@
+export type HumanGateStatus = "open" | "pending" | "blocked";
+
 export type MissionControlSnapshot = {
-  activeAgents: number;
-  activeSessions: number;
+  activeAgentCount: number;
+  activeSessionCount: number;
   currentCheckpoint: string;
-  currentCostUsd: string;
-  humanGateStatus: string;
+  currentCostUsd: number;
+  humanGateStatus: HumanGateStatus;
   model: string;
   provider: string;
 };

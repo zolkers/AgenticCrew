@@ -1,45 +1,48 @@
 import type { MissionControlSnapshot } from "../../shared/types/core";
+import { useTranslation } from "react-i18next";
 
-const defaultSnapshot: MissionControlSnapshot = {
-  activeAgents: 3,
-  activeSessions: 1,
-  currentCheckpoint: "Design approved",
-  currentCostUsd: "$0.00",
-  humanGateStatus: "Human gate pending",
-  model: "gpt-4o",
-  provider: "openai"
-};
+type MissionControlProps = Readonly<{
+  snapshot: MissionControlSnapshot;
+}>;
 
-export function MissionControl() {
+const usdFormatter = new Intl.NumberFormat("en-US", {
+  currency: "USD",
+  style: "currency"
+});
+
+export function MissionControl({ snapshot }: MissionControlProps) {
+  const { t } = useTranslation();
+  const title = t("missionControl.title", { defaultValue: "Mission Control" });
+
   return (
-    <section aria-label="Mission Control">
-      <h1>Mission Control</h1>
+    <section aria-label={title}>
+      <h1>{title}</h1>
       <dl>
         <div>
-          <dt>Active sessions</dt>
-          <dd>{defaultSnapshot.activeSessions}</dd>
+          <dt>{t("missionControl.labels.activeSessionCount", { defaultValue: "Active sessions" })}</dt>
+          <dd>{snapshot.activeSessionCount}</dd>
         </div>
         <div>
-          <dt>Active agents</dt>
-          <dd>{defaultSnapshot.activeAgents}</dd>
+          <dt>{t("missionControl.labels.activeAgentCount", { defaultValue: "Active agents" })}</dt>
+          <dd>{snapshot.activeAgentCount}</dd>
         </div>
         <div>
-          <dt>Current cost</dt>
-          <dd>{defaultSnapshot.currentCostUsd}</dd>
+          <dt>{t("missionControl.labels.currentCostUsd", { defaultValue: "Current cost" })}</dt>
+          <dd>{usdFormatter.format(snapshot.currentCostUsd)}</dd>
         </div>
         <div>
-          <dt>Provider / model</dt>
+          <dt>{t("missionControl.labels.providerModel", { defaultValue: "Provider / model" })}</dt>
           <dd>
-            {defaultSnapshot.provider} / {defaultSnapshot.model}
+            {snapshot.provider} / {snapshot.model}
           </dd>
         </div>
         <div>
-          <dt>Checkpoint</dt>
-          <dd>{defaultSnapshot.currentCheckpoint}</dd>
+          <dt>{t("missionControl.labels.currentCheckpoint", { defaultValue: "Checkpoint" })}</dt>
+          <dd>{snapshot.currentCheckpoint}</dd>
         </div>
         <div>
-          <dt>Human gate</dt>
-          <dd>{defaultSnapshot.humanGateStatus}</dd>
+          <dt>{t("missionControl.labels.humanGateStatus", { defaultValue: "Human gate" })}</dt>
+          <dd>{snapshot.humanGateStatus}</dd>
         </div>
       </dl>
     </section>
