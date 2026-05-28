@@ -13,9 +13,9 @@ pub struct ModelCallEstimate {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ModelPricing {
-    pub input_per_million: f64,
-    pub cached_input_per_million: f64,
-    pub output_per_million: f64,
+    input_per_million: f64,
+    cached_input_per_million: f64,
+    output_per_million: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -81,10 +81,6 @@ impl ModelCallEstimate {
     }
 
     pub fn estimate_cost(&self, pricing: &ModelPricing) -> f64 {
-        if pricing.validate().is_err() {
-            return 0.0;
-        }
-
         let uncached_input_cost =
             self.uncached_input_tokens() as f64 / 1_000_000.0 * pricing.input_per_million;
         let cached_input_cost = self.cached_tokens.min(self.input_tokens) as f64 / 1_000_000.0
@@ -183,36 +179,101 @@ mod tests {
     }
 
     #[test]
-    fn model_pricing_rejects_negative_prices() {
-        assert_eq!(
-            ModelPricing::new(-1.0, 0.5, 8.0),
-            Err(PricingError::NegativePrice {
-                field: "input_per_million",
-                value: -1.0,
-            })
-        );
+    fn model_pricing_rejects_negative_prices_for_all_fields() {
+        let cases = [
+            (
+                "input_per_million",
+                ModelPricing::new(-1.0, 0.5, 8.0),
+                PricingError::NegativePrice {
+                    field: "input_per_million",
+                    value: -1.0,
+                },
+            ),
+            (
+                "cached_input_per_million",
+                ModelPricing::new(2.0, -0.5, 8.0),
+                PricingError::NegativePrice {
+                    field: "cached_input_per_million",
+                    value: -0.5,
+                },
+            ),
+            (
+                "output_per_million",
+                ModelPricing::new(2.0, 0.5, -8.0),
+                PricingError::NegativePrice {
+                    field: "output_per_million",
+                    value: -8.0,
+                },
+            ),
+        ];
+
+        for (field, actual, expected) in cases {
+            assert_eq!(actual, Err(expected), "{field} should reject negatives");
+        }
     }
 
     #[test]
-    fn model_pricing_rejects_non_finite_prices() {
-        assert_eq!(
-            ModelPricing::new(2.0, f64::INFINITY, 8.0),
-            Err(PricingError::NonFinitePrice {
-                field: "cached_input_per_million",
-                value: f64::INFINITY,
-            })
-        );
+    fn model_pricing_rejects_infinity_for_all_fields() {
+        let cases = [
+            (
+                "input_per_million",
+                ModelPricing::new(f64::INFINITY, 0.5, 8.0),
+                PricingError::NonFinitePrice {
+                    field: "input_per_million",
+                    value: f64::INFINITY,
+                },
+            ),
+            (
+                "cached_input_per_million",
+                ModelPricing::new(2.0, f64::INFINITY, 8.0),
+                PricingError::NonFinitePrice {
+                    field: "cached_input_per_million",
+                    value: f64::INFINITY,
+                },
+            ),
+            (
+                "output_per_million",
+                ModelPricing::new(2.0, 0.5, f64::INFINITY),
+                PricingError::NonFinitePrice {
+                    field: "output_per_million",
+                    value: f64::INFINITY,
+                },
+            ),
+        ];
+
+        for (field, actual, expected) in cases {
+            assert_eq!(actual, Err(expected), "{field} should reject infinity");
+        }
     }
 
     #[test]
-    fn estimate_cost_never_returns_negative_for_invalid_public_pricing() {
-        let estimate = estimate(1_000_000, 0, 0);
-        let invalid_pricing = ModelPricing {
-            input_per_million: -2.0,
-            cached_input_per_million: 0.0,
-            output_per_million: 0.0,
-        };
+    fn model_pricing_rejects_nan_for_all_fields() {
+        let cases = [
+            (
+                "input_per_million",
+                ModelPricing::new(f64::NAN, 0.5, 8.0),
+                "input_per_million",
+            ),
+            (
+                "cached_input_per_million",
+                ModelPricing::new(2.0, f64::NAN, 8.0),
+                "cached_input_per_million",
+            ),
+            (
+                "output_per_million",
+                ModelPricing::new(2.0, 0.5, f64::NAN),
+                "output_per_million",
+            ),
+        ];
 
-        assert_cost_close(estimate.estimate_cost(&invalid_pricing), 0.0);
+        for (case_name, actual, expected_field) in cases {
+            match actual {
+                Err(PricingError::NonFinitePrice { field, value }) => {
+                    assert_eq!(field, expected_field, "{case_name} should report field");
+                    assert!(value.is_nan(), "{case_name} should preserve NaN value");
+                }
+                other => panic!("{case_name} should reject NaN, got {other:?}"),
+            }
+        }
     }
 }
