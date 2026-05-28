@@ -1,13 +1,6 @@
-import { useTranslation } from "react-i18next";
+import { MissionControl } from "../features/mission-control/MissionControl";
 import "../i18n";
 
 export function App() {
-  const { t } = useTranslation();
-
-  return (
-    <main>
-      <h1>{t("missionControl.title")}</h1>
-      <p>{t("missionControl.status")}</p>
-    </main>
-  );
+  return <MissionControl />;
 }
