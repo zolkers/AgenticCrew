@@ -137,3 +137,16 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 - Feature sessions can only close after required checkpoints pass.
 - Mission Control is calculated from persisted state instead of static data.
 - Desktop-shell command signatures compile with Tauri enabled.
+
+### 12. External Skill Sources v1
+
+**Goal:** Allow AgenticCrew to discover and install skills from external GitHub repositories, including Superpowers-style repositories such as Obra's.
+
+**Ownership:** `src-tauri/src/core`, `frontend/src/features`, `docs/adr`.
+
+**Acceptance:**
+- Users can register a GitHub repository as a skill source.
+- Skill source metadata records repository URL, selected ref, provenance, and last sync status.
+- Imported skills are validated before activation and never bypass local permission gates.
+- The UI distinguishes bundled, local, and external GitHub skills.
+- Documentation captures trust, update, and pinning rules for third-party skill sources.
