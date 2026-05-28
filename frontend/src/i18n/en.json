@@ -29,6 +29,7 @@
     },
     "labels": {
       "kind": "Kind",
+      "lastSyncStatus": "Last sync",
       "ref": "Ref",
       "repository": "Repository",
       "status": "Status",
@@ -39,6 +40,11 @@
       "rejected": "Rejected",
       "sync_failed": "Sync failed",
       "validated": "Validated"
+    },
+    "lastSyncStatus": {
+      "failed": "Failed",
+      "never_synced": "Never synced",
+      "synced": "Synced"
     },
     "title": "Skill Sources",
     "trustLevel": {

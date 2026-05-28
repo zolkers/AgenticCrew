@@ -20,6 +20,7 @@ const skillSourcesSnapshot: SkillSourcesSnapshot = {
       active: false,
       id: "superpowers",
       kind: "git_hub",
+      lastSyncStatus: "never_synced",
       repositoryUrl: "https://github.com/obra/superpowers",
       selectedRef: "main",
       status: "pending_validation",

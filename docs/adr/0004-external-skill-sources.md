@@ -18,8 +18,9 @@ can use them.
 Rust owns skill source registration in durable state.
 
 GitHub skill sources record the repository URL, selected ref, trust level,
-validation status, and activation state. Newly registered external sources start
-as pending validation and inactive. They cannot bypass local permission gates.
+validation status, last sync status, and activation state. Newly registered
+external sources start as pending validation, never synced, and inactive. They
+cannot bypass local permission gates.
 
 ## Consequences
 
@@ -29,3 +30,4 @@ as pending validation and inactive. They cannot bypass local permission gates.
   they do not activate or trust external skills independently.
 - Future sync and validation work must preserve provenance, trust level, and the
   inactive-by-default rule.
+- Activation is only allowed after Rust marks the source as validated.

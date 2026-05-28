@@ -186,6 +186,36 @@ impl AgentOsState {
 
         Ok(())
     }
+
+    pub fn validate_skill_source(&mut self, source_id: &str) -> Result<(), StateMutationError> {
+        let source = self
+            .skill_sources
+            .iter_mut()
+            .find(|source| source.id == source_id)
+            .ok_or_else(|| StateMutationError::MissingSkillSource {
+                source_id: source_id.to_owned(),
+            })?;
+
+        source.mark_validated();
+
+        Ok(())
+    }
+
+    pub fn activate_skill_source(&mut self, source_id: &str) -> Result<(), StateMutationError> {
+        let source = self
+            .skill_sources
+            .iter_mut()
+            .find(|source| source.id == source_id)
+            .ok_or_else(|| StateMutationError::MissingSkillSource {
+                source_id: source_id.to_owned(),
+            })?;
+
+        source
+            .activate()
+            .map_err(StateMutationError::InvalidSkillSource)?;
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -248,6 +278,9 @@ pub enum StateMutationError {
     DuplicateSkillSource {
         source_id: String,
     },
+    MissingSkillSource {
+        source_id: String,
+    },
     InvalidSkillSource(SkillSourceError),
     CheckpointNotPassed(SessionTransitionError),
 }
@@ -281,6 +314,9 @@ impl fmt::Display for StateMutationError {
             }
             StateMutationError::DuplicateSkillSource { source_id } => {
                 write!(formatter, "skill source '{source_id}' already exists")
+            }
+            StateMutationError::MissingSkillSource { source_id } => {
+                write!(formatter, "skill source '{source_id}' does not exist")
             }
             StateMutationError::InvalidSkillSource(error) => {
                 write!(formatter, "invalid skill source: {error}")
@@ -553,6 +589,72 @@ mod tests {
             error,
             StateMutationError::DuplicateSkillSource {
                 source_id: "superpowers".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn validate_skill_source_marks_source_validated_and_synced() {
+        let mut state = AgentOsState::empty();
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        state
+            .validate_skill_source("superpowers")
+            .expect("skill source should validate");
+
+        assert_eq!(
+            state.skill_sources[0].status,
+            crate::core::skills::SkillSourceActivationStatus::Validated
+        );
+        assert_eq!(
+            state.skill_sources[0].last_sync_status,
+            crate::core::skills::SkillSourceSyncStatus::Synced
+        );
+        assert!(!state.skill_sources[0].active);
+    }
+
+    #[test]
+    fn activate_skill_source_requires_validated_source() {
+        let mut state = AgentOsState::empty();
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        let error = state
+            .activate_skill_source("superpowers")
+            .expect_err("pending skill source should not activate");
+
+        assert_eq!(
+            error,
+            StateMutationError::InvalidSkillSource(
+                crate::core::skills::SkillSourceError::NotValidated
+            )
+        );
+
+        state
+            .validate_skill_source("superpowers")
+            .expect("skill source should validate");
+        state
+            .activate_skill_source("superpowers")
+            .expect("validated source should activate");
+
+        assert!(state.skill_sources[0].active);
+    }
+
+    #[test]
+    fn validate_skill_source_rejects_missing_source() {
+        let mut state = AgentOsState::empty();
+
+        let error = state
+            .validate_skill_source("missing")
+            .expect_err("missing skill source should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::MissingSkillSource {
+                source_id: "missing".to_owned(),
             }
         );
     }

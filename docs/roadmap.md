@@ -148,5 +148,6 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 - Users can register a GitHub repository as a skill source.
 - Skill source metadata records repository URL, selected ref, provenance, and last sync status.
 - Imported skills are validated before activation and never bypass local permission gates.
+- External sources remain inactive until Rust marks them validated.
 - The UI distinguishes bundled, local, and external GitHub skills.
 - Documentation captures trust, update, and pinning rules for third-party skill sources.

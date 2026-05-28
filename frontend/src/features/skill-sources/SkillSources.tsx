@@ -39,6 +39,10 @@ export function SkillSources({ snapshot }: SkillSourcesProps) {
                   <dd>{t(`skillSources.status.${source.status}`)}</dd>
                 </div>
                 <div>
+                  <dt>{t("skillSources.labels.lastSyncStatus", { defaultValue: "Last sync" })}</dt>
+                  <dd>{t(`skillSources.lastSyncStatus.${source.lastSyncStatus}`)}</dd>
+                </div>
+                <div>
                   <dt>{t("skillSources.labels.ref", { defaultValue: "Ref" })}</dt>
                   <dd>{source.selectedRef}</dd>
                 </div>

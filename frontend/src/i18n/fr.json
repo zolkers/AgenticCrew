@@ -29,6 +29,7 @@
     },
     "labels": {
       "kind": "Type",
+      "lastSyncStatus": "Derniere sync",
       "ref": "Ref",
       "repository": "Depot",
       "status": "Statut",
@@ -39,6 +40,11 @@
       "rejected": "Rejetee",
       "sync_failed": "Synchronisation echouee",
       "validated": "Validee"
+    },
+    "lastSyncStatus": {
+      "failed": "Echouee",
+      "never_synced": "Jamais synchronisee",
+      "synced": "Synchronisee"
     },
     "title": "Sources de skills",
     "trustLevel": {

@@ -28,6 +28,15 @@ pub enum SkillSourceActivationStatus {
     SyncFailed,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SkillSourceSyncStatus {
+    #[default]
+    NeverSynced,
+    Synced,
+    Failed,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct RegisterGitHubSkillSourceRequest {
     pub id: String,
@@ -44,6 +53,8 @@ pub struct SkillSource {
     pub selected_ref: String,
     pub trust_level: SkillSourceTrustLevel,
     pub status: SkillSourceActivationStatus,
+    #[serde(default)]
+    pub last_sync_status: SkillSourceSyncStatus,
     pub active: bool,
 }
 
@@ -82,8 +93,24 @@ impl SkillSource {
             selected_ref: request.selected_ref,
             trust_level: SkillSourceTrustLevel::External,
             status: SkillSourceActivationStatus::PendingValidation,
+            last_sync_status: SkillSourceSyncStatus::NeverSynced,
             active: false,
         })
+    }
+
+    pub fn mark_validated(&mut self) {
+        self.status = SkillSourceActivationStatus::Validated;
+        self.last_sync_status = SkillSourceSyncStatus::Synced;
+    }
+
+    pub fn activate(&mut self) -> Result<(), SkillSourceError> {
+        if self.status != SkillSourceActivationStatus::Validated {
+            return Err(SkillSourceError::NotValidated);
+        }
+
+        self.active = true;
+
+        Ok(())
     }
 }
 
@@ -91,6 +118,7 @@ impl SkillSource {
 pub enum SkillSourceError {
     NonGitHubRepository,
     EmptySelectedRef,
+    NotValidated,
 }
 
 impl fmt::Display for SkillSourceError {
@@ -102,6 +130,12 @@ impl fmt::Display for SkillSourceError {
             SkillSourceError::EmptySelectedRef => {
                 write!(formatter, "skill source ref must not be empty")
             }
+            SkillSourceError::NotValidated => {
+                write!(
+                    formatter,
+                    "skill source must be validated before activation"
+                )
+            }
         }
     }
 }
@@ -112,7 +146,7 @@ impl std::error::Error for SkillSourceError {}
 mod tests {
     use super::{
         skill_sources_snapshot_from_state, RegisterGitHubSkillSourceRequest, SkillSource,
-        SkillSourceActivationStatus, SkillSourceKind, SkillSourceTrustLevel,
+        SkillSourceActivationStatus, SkillSourceKind, SkillSourceSyncStatus, SkillSourceTrustLevel,
     };
     use crate::core::state::AgentOsState;
 
@@ -134,7 +168,40 @@ mod tests {
             source.status,
             SkillSourceActivationStatus::PendingValidation
         );
+        assert_eq!(source.last_sync_status, SkillSourceSyncStatus::NeverSynced);
         assert!(!source.active);
+    }
+
+    #[test]
+    fn validated_github_skill_source_records_successful_sync() {
+        let mut source = github_skill_source();
+
+        source.mark_validated();
+
+        assert_eq!(source.status, SkillSourceActivationStatus::Validated);
+        assert_eq!(source.last_sync_status, SkillSourceSyncStatus::Synced);
+        assert!(!source.active);
+    }
+
+    #[test]
+    fn only_validated_skill_sources_can_activate() {
+        let mut pending_source = github_skill_source();
+
+        let error = pending_source
+            .activate()
+            .expect_err("pending source should not activate");
+
+        assert_eq!(
+            error.to_string(),
+            "skill source must be validated before activation"
+        );
+
+        pending_source.mark_validated();
+        pending_source
+            .activate()
+            .expect("validated source should activate");
+
+        assert!(pending_source.active);
     }
 
     #[test]
@@ -184,6 +251,10 @@ mod tests {
             snapshot.sources[0].status,
             SkillSourceActivationStatus::PendingValidation
         );
+        assert_eq!(
+            snapshot.sources[0].last_sync_status,
+            SkillSourceSyncStatus::NeverSynced
+        );
         assert_eq!(snapshot.active_source_count, 0);
     }
 
@@ -199,5 +270,14 @@ mod tests {
                 "sources": []
             })
         );
+    }
+
+    fn github_skill_source() -> SkillSource {
+        SkillSource::github(RegisterGitHubSkillSourceRequest {
+            id: "superpowers".to_owned(),
+            repository_url: "https://github.com/obra/superpowers".to_owned(),
+            selected_ref: "main".to_owned(),
+        })
+        .expect("github skill source should be accepted")
     }
 }

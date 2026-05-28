@@ -119,6 +119,20 @@ pub fn register_github_skill_source_at_path(
     mutate_state_at_path(path, |state| state.register_github_skill_source(request))
 }
 
+pub fn validate_skill_source_at_path(
+    path: impl AsRef<Path>,
+    source_id: &str,
+) -> Result<AgentOsState, DesktopCommandError> {
+    mutate_state_at_path(path, |state| state.validate_skill_source(source_id))
+}
+
+pub fn activate_skill_source_at_path(
+    path: impl AsRef<Path>,
+    source_id: &str,
+) -> Result<AgentOsState, DesktopCommandError> {
+    mutate_state_at_path(path, |state| state.activate_skill_source(source_id))
+}
+
 fn mutate_state_at_path(
     path: impl AsRef<Path>,
     mutate: impl FnOnce(&mut AgentOsState) -> Result<(), StateMutationError>,
@@ -138,14 +152,14 @@ mod commands {
     use tauri::Manager;
 
     use crate::{
-        add_checkpoint_at_path, close_feature_session_at_path,
+        activate_skill_source_at_path, add_checkpoint_at_path, close_feature_session_at_path,
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
         create_feature_session_at_path, durable_state_snapshot_at_path,
         mission_control_snapshot_at_path, record_command_evidence_at_path,
         register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
-        CreateCheckpointRequest, CreateFeatureSessionRequest, DesktopCommandError,
-        MissionControlSnapshot, RecordCommandEvidenceRequest,
+        validate_skill_source_at_path, CreateCheckpointRequest, CreateFeatureSessionRequest,
+        DesktopCommandError, MissionControlSnapshot, RecordCommandEvidenceRequest,
     };
 
     #[tauri::command]
@@ -210,6 +224,22 @@ mod commands {
         register_github_skill_source_at_path(app_state_path(&app)?, request)
     }
 
+    #[tauri::command]
+    pub fn validate_skill_source(
+        app: tauri::AppHandle,
+        source_id: String,
+    ) -> Result<AgentOsState, DesktopCommandError> {
+        validate_skill_source_at_path(app_state_path(&app)?, &source_id)
+    }
+
+    #[tauri::command]
+    pub fn activate_skill_source(
+        app: tauri::AppHandle,
+        source_id: String,
+    ) -> Result<AgentOsState, DesktopCommandError> {
+        activate_skill_source_at_path(app_state_path(&app)?, &source_id)
+    }
+
     fn app_state_path(app: &tauri::AppHandle) -> Result<PathBuf, DesktopCommandError> {
         app.path()
             .app_data_dir()
@@ -229,7 +259,9 @@ pub fn run() {
             commands::add_checkpoint,
             commands::record_command_evidence,
             commands::close_feature_session,
-            commands::register_github_skill_source
+            commands::register_github_skill_source,
+            commands::validate_skill_source,
+            commands::activate_skill_source
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AgenticCrew desktop shell");
@@ -249,10 +281,11 @@ mod tests {
     };
 
     use super::{
-        add_checkpoint_at_path, app_name, close_feature_session_at_path,
-        create_feature_session_at_path, durable_state_snapshot_at_path,
-        mission_control_snapshot_at_path, record_command_evidence_at_path,
-        register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
+        activate_skill_source_at_path, add_checkpoint_at_path, app_name,
+        close_feature_session_at_path, create_feature_session_at_path,
+        durable_state_snapshot_at_path, mission_control_snapshot_at_path,
+        record_command_evidence_at_path, register_github_skill_source_at_path,
+        skill_sources_snapshot_at_path, state_file_path, validate_skill_source_at_path,
         STATE_FILE_NAME,
     };
     use crate::core::{
@@ -391,6 +424,32 @@ mod tests {
         assert_eq!(snapshot.sources.len(), 1);
         assert_eq!(snapshot.sources[0].id, "superpowers");
         assert_eq!(snapshot.active_source_count, 0);
+    }
+
+    #[test]
+    fn validate_and_activate_skill_source_commands_persist_to_disk() {
+        let path = test_path(
+            "validate_and_activate_skill_source_commands_persist_to_disk",
+            "state.json",
+        );
+        register_github_skill_source_at_path(&path, github_skill_source_request())
+            .expect("github skill source should save");
+
+        let validated = validate_skill_source_at_path(&path, "superpowers")
+            .expect("skill source should validate");
+
+        assert_eq!(
+            validated.skill_sources[0].status,
+            crate::core::skills::SkillSourceActivationStatus::Validated
+        );
+        assert!(!validated.skill_sources[0].active);
+
+        let activated = activate_skill_source_at_path(&path, "superpowers")
+            .expect("skill source should activate");
+        let loaded = durable_state_snapshot_at_path(&path).expect("state should load");
+
+        assert_eq!(activated, loaded);
+        assert!(loaded.skill_sources[0].active);
     }
 
     fn create_session_request() -> CreateFeatureSessionRequest {
