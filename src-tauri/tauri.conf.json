@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "AgentOS",
+  "version": "0.1.0",
+  "identifier": "dev.agentos.app",
+  "build": {
+    "beforeDevCommand": "npm run dev -w frontend",
+    "beforeBuildCommand": "npm run build -w frontend",
+    "devUrl": "http://127.0.0.1:5173",
+    "frontendDist": "../frontend/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "AgentOS",
+        "width": 1280,
+        "height": 800
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all"
+  }
+}

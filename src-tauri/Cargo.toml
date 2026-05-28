@@ -1,0 +1,14 @@
+[package]
+name = "agentos"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "agentos_desktop"
+path = "src/lib.rs"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
