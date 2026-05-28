@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    fmt,
-    fs,
-    io,
+    fmt, fs, io,
     path::{Path, PathBuf},
 };
 
@@ -39,7 +37,10 @@ impl AgentOsState {
 
 #[derive(Debug)]
 pub enum StateStoreError {
-    Io { path: PathBuf, source: io::Error },
+    Io {
+        path: PathBuf,
+        source: io::Error,
+    },
     Json {
         path: PathBuf,
         source: serde_json::Error,
@@ -50,7 +51,11 @@ impl fmt::Display for StateStoreError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StateStoreError::Io { path, source } => {
-                write!(formatter, "state store io error at {}: {source}", path.display())
+                write!(
+                    formatter,
+                    "state store io error at {}: {source}",
+                    path.display()
+                )
             }
             StateStoreError::Json { path, source } => {
                 write!(
@@ -107,10 +112,11 @@ impl JsonStateStore {
         }
 
         let temp_path = temp_path_for(&self.path);
-        let content = serde_json::to_string_pretty(state).map_err(|source| StateStoreError::Json {
-            path: self.path.clone(),
-            source,
-        })?;
+        let content =
+            serde_json::to_string_pretty(state).map_err(|source| StateStoreError::Json {
+                path: self.path.clone(),
+                source,
+            })?;
 
         fs::write(&temp_path, content).map_err(|source| StateStoreError::Io {
             path: temp_path.clone(),
@@ -219,7 +225,9 @@ mod tests {
         let temp_path = temp_path_for(&path);
         let store = JsonStateStore::new(&path);
 
-        store.save(&AgentOsState::empty()).expect("state should save");
+        store
+            .save(&AgentOsState::empty())
+            .expect("state should save");
 
         assert!(path.exists());
         assert!(!temp_path.exists());
