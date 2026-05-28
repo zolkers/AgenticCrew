@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: python -m pip install -e "backend[dev]"
+
+      - name: Frontend quality
+        run: npm run quality
+
+      - name: Backend tests
+        working-directory: backend
+        run: python -m pytest tests -q
+
+      - name: Backend lint
+        working-directory: backend
+        run: python -m ruff check .
+
+      - name: Backend typecheck
+        working-directory: backend
+        run: python -m mypy agentos_core
+
+      - name: Desktop tests
+        working-directory: src-tauri
+        run: cargo test
