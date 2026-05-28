@@ -18,10 +18,15 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::app_name;
+    use super::{app_name, mission_control_snapshot};
 
     #[test]
     fn app_name_is_agentos() {
         assert_eq!(app_name(), "AgentOS");
+    }
+
+    #[test]
+    fn mission_control_command_delegates_to_initial_snapshot() {
+        assert_eq!(mission_control_snapshot().active_session_count, 0);
     }
 }
