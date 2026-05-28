@@ -123,3 +123,17 @@ AgentOS is a local-first desktop product with a Rust-owned core, a React UI, and
 - Invalid JSON fails with a typed store error.
 - Saves create parent directories and use a temporary file before rename.
 - Tauri exposes a read-only durable state snapshot command.
+
+### 11. State-Backed Sessions v1
+
+**Goal:** Mutate feature sessions through Rust-owned durable state commands.
+
+**Ownership:** `src-tauri/src/core/state.rs`, `src-tauri/src/core/mission_control.rs`, `src-tauri/src/lib.rs`.
+
+**Acceptance:**
+- Feature sessions can be created through a state-backed command path.
+- Checkpoints can be appended to existing sessions.
+- Command evidence is recorded and can mark required command-exit-code checkpoints as passed.
+- Feature sessions can only close after required checkpoints pass.
+- Mission Control is calculated from persisted state instead of static data.
+- Desktop-shell command signatures compile with Tauri enabled.
