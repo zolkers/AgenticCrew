@@ -1,17 +1,12 @@
 [project]
-name = "agentos-core"
+name = "agentos-python-worker"
 version = "0.1.0"
-description = "Local AgentOS core API"
+description = "Optional Python worker adapters for AgentOS"
 requires-python = ">=3.12"
-dependencies = [
-  "fastapi>=0.124.2",
-  "pydantic>=2.12.5",
-  "uvicorn>=0.38.0"
-]
+dependencies = []
 
 [project.optional-dependencies]
 dev = [
-  "httpx>=0.28.1",
   "mypy>=1.19.1",
   "pytest>=9.0.2",
   "pytest-cov>=7.0.0",
@@ -19,7 +14,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cov=agentos_core --cov-report=term-missing --cov-report=xml --cov-fail-under=100"
+addopts = "--cov=agentos_worker --cov-report=term-missing --cov-report=xml --cov-fail-under=100"
 testpaths = ["tests"]
 
 [tool.ruff]
@@ -28,13 +23,13 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D100", "D101", "D102", "D103", "D104", "D107", "D203", "D213"]
+ignore = ["D100", "D103", "D104", "D203", "D213"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["PLR2004", "S101"]
+"tests/**/*.py" = ["S101"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
-warn_unused_ignores = true
 warn_return_any = true
+warn_unused_ignores = true

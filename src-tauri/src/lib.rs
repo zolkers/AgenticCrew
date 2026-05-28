@@ -1,3 +1,5 @@
+pub mod core;
+
 pub fn app_name() -> &'static str {
     "AgentOS"
 }

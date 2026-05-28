@@ -47,14 +47,14 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Install backend dependencies
-        run: npm run backend:install
+      - name: Install Python worker dependencies
+        run: npm run worker:install
 
       - name: Frontend quality
         run: npm run frontend:quality
 
-      - name: Backend quality
-        run: npm run backend:quality
+      - name: Python worker quality
+        run: npm run worker:quality
 
       - name: Desktop tests
         run: npm run desktop:test

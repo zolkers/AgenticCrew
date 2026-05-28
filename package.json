@@ -5,17 +5,17 @@
     "frontend"
   ],
   "scripts": {
-    "backend:install": "python -m pip install -e \"backend[dev]\"",
-    "backend:lint": "cd backend && python -m ruff check .",
-    "backend:test": "cd backend && python -m pytest tests -q",
-    "backend:typecheck": "cd backend && python -m mypy agentos_core",
-    "backend:quality": "npm run backend:test && npm run backend:lint && npm run backend:typecheck",
     "desktop:test": "cd src-tauri && cargo test",
     "lint": "npm run lint -w frontend",
     "typecheck": "npm run typecheck -w frontend",
     "test": "npm run test -w frontend",
     "coverage": "npm run coverage -w frontend",
     "frontend:quality": "npm run lint && npm run typecheck && npm run coverage",
-    "quality": "npm run frontend:quality && npm run backend:quality"
+    "quality": "npm run frontend:quality && npm run worker:quality",
+    "worker:install": "python -m pip install -e \"workers/python[dev]\"",
+    "worker:lint": "cd workers/python && python -m ruff check .",
+    "worker:test": "cd workers/python && python -m pytest tests -q",
+    "worker:typecheck": "cd workers/python && python -m mypy agentos_worker",
+    "worker:quality": "npm run worker:test && npm run worker:lint && npm run worker:typecheck"
   }
 }
