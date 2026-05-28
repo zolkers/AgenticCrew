@@ -13,23 +13,34 @@ The current slice includes:
 
 ## Local Evidence Commands
 
-```powershell
+Install dependencies:
+
+```bash
+npm ci
+python -m pip install -e "backend[dev]"
+```
+
+Run quality gates:
+
+```bash
 npm run quality
+npm run desktop:test
 ```
 
-```powershell
-& "C:\Users\riege\Documents\perso\agentos\backend\.venv\Scripts\python.exe" -m pytest tests -q
-& "C:\Users\riege\Documents\perso\agentos\backend\.venv\Scripts\python.exe" -m ruff check .
-& "C:\Users\riege\Documents\perso\agentos\backend\.venv\Scripts\python.exe" -m mypy agentos_core
+Run specific gates:
+
+```bash
+npm run frontend:quality
+npm run backend:quality
+npm run backend:test
+npm run backend:lint
+npm run backend:typecheck
 ```
 
-```powershell
-cd src-tauri
-cargo test
-```
-
-## Windows Tooling Notes
+## Platform Tooling Notes
 
 - Python 3.12 is required for the backend.
 - Rust/Tauri on Windows requires Visual Studio Build Tools with the C++ workload so `link.exe` is available.
+- Rust/Tauri on Linux requires WebKitGTK/GTK system packages. The GitHub Actions workflow installs the Ubuntu packages before running `cargo test`.
+- Rust/Tauri on macOS requires Xcode command line tools.
 - SonarLint for VS Code is recommended through `.vscode/extensions.json`.

@@ -7,47 +7,54 @@ on:
 
 jobs:
   quality:
-    runs-on: windows-latest
+    name: Quality (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
 
       - name: Setup Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
       - name: Install frontend dependencies
         run: npm ci
 
       - name: Install backend dependencies
-        run: python -m pip install -e "backend[dev]"
+        run: npm run backend:install
 
       - name: Frontend quality
-        run: npm run quality
+        run: npm run frontend:quality
 
-      - name: Backend tests
-        working-directory: backend
-        run: python -m pytest tests -q
-
-      - name: Backend lint
-        working-directory: backend
-        run: python -m ruff check .
-
-      - name: Backend typecheck
-        working-directory: backend
-        run: python -m mypy agentos_core
+      - name: Backend quality
+        run: npm run backend:quality
 
       - name: Desktop tests
-        working-directory: src-tauri
-        run: cargo test
+        run: npm run desktop:test
