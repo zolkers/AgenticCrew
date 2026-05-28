@@ -1,30 +1,37 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MissionControl } from "../features/mission-control/MissionControl";
+import { SkillSources } from "../features/skill-sources/SkillSources";
 import { loadMissionControlSnapshot, type InvokeMissionControl } from "../shared/api/missionControlApi";
-import type { MissionControlSnapshot } from "../shared/types/core";
+import { loadSkillSourcesSnapshot, type InvokeSkillSources } from "../shared/api/skillSourcesApi";
+import type { MissionControlSnapshot, SkillSourcesSnapshot } from "../shared/types/core";
 import "../i18n";
 
 type AppProps = Readonly<{
   missionControlInvoke: InvokeMissionControl;
+  skillSourcesInvoke: InvokeSkillSources;
 }>;
 
-type MissionControlLoadState =
+type AppLoadState =
   | Readonly<{ status: "error" }>
-  | Readonly<{ snapshot: MissionControlSnapshot; status: "ready" }>
+  | Readonly<{
+      missionControlSnapshot: MissionControlSnapshot;
+      skillSourcesSnapshot: SkillSourcesSnapshot;
+      status: "ready";
+    }>
   | Readonly<{ status: "loading" }>;
 
-export function App({ missionControlInvoke }: AppProps) {
-  const [loadState, setLoadState] = useState<MissionControlLoadState>({ status: "loading" });
+export function App({ missionControlInvoke, skillSourcesInvoke }: AppProps) {
+  const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
   const { t } = useTranslation();
 
   useEffect(() => {
     let isCurrent = true;
 
-    void loadMissionControlSnapshot(missionControlInvoke)
-      .then((nextSnapshot) => {
+    void Promise.all([loadMissionControlSnapshot(missionControlInvoke), loadSkillSourcesSnapshot(skillSourcesInvoke)])
+      .then(([missionControlSnapshot, skillSourcesSnapshot]) => {
         if (isCurrent) {
-          setLoadState({ snapshot: nextSnapshot, status: "ready" });
+          setLoadState({ missionControlSnapshot, skillSourcesSnapshot, status: "ready" });
         }
       })
       .catch(() => {
@@ -36,7 +43,7 @@ export function App({ missionControlInvoke }: AppProps) {
     return () => {
       isCurrent = false;
     };
-  }, [missionControlInvoke]);
+  }, [missionControlInvoke, skillSourcesInvoke]);
 
   if (loadState.status === "error") {
     return <p role="alert">{t("missionControl.loadError", { defaultValue: "Mission Control unavailable" })}</p>;
@@ -46,5 +53,10 @@ export function App({ missionControlInvoke }: AppProps) {
     return <p>{t("missionControl.loading", { defaultValue: "Loading Mission Control" })}</p>;
   }
 
-  return <MissionControl snapshot={loadState.snapshot} />;
+  return (
+    <>
+      <MissionControl snapshot={loadState.missionControlSnapshot} />
+      <SkillSources snapshot={loadState.skillSourcesSnapshot} />
+    </>
+  );
 }

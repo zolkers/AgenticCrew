@@ -17,5 +17,34 @@
     "loading": "Loading Mission Control",
     "status": "No active feature session",
     "title": "Mission Control"
+  },
+  "skillSources": {
+    "activeCount_one": "{{count}} active source",
+    "activeCount_other": "{{count}} active sources",
+    "empty": "No external skill source registered",
+    "kind": {
+      "bundled": "Bundled",
+      "git_hub": "GitHub",
+      "local": "Local"
+    },
+    "labels": {
+      "kind": "Kind",
+      "ref": "Ref",
+      "repository": "Repository",
+      "status": "Status",
+      "trustLevel": "Trust"
+    },
+    "status": {
+      "pending_validation": "Pending validation",
+      "rejected": "Rejected",
+      "sync_failed": "Sync failed",
+      "validated": "Validated"
+    },
+    "title": "Skill Sources",
+    "trustLevel": {
+      "built_in": "Built-in",
+      "external": "External",
+      "local": "Local"
+    }
   }
 }

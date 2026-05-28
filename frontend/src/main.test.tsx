@@ -2,12 +2,14 @@ import { StrictMode, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./app/App";
 import { tauriMissionControlInvoke } from "./shared/api/tauriMissionControlInvoke";
+import { tauriSkillSourcesInvoke } from "./shared/api/tauriSkillSourcesInvoke";
 
 const mocks = vi.hoisted(() => ({
   app: vi.fn(() => null),
   createRoot: vi.fn(),
   render: vi.fn(),
-  tauriMissionControlInvoke: vi.fn()
+  tauriMissionControlInvoke: vi.fn(),
+  tauriSkillSourcesInvoke: vi.fn()
 }));
 
 vi.mock("react-dom/client", () => ({
@@ -22,6 +24,10 @@ vi.mock("./shared/api/tauriMissionControlInvoke", () => ({
   tauriMissionControlInvoke: mocks.tauriMissionControlInvoke
 }));
 
+vi.mock("./shared/api/tauriSkillSourcesInvoke", () => ({
+  tauriSkillSourcesInvoke: mocks.tauriSkillSourcesInvoke
+}));
+
 describe("main", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -33,7 +39,7 @@ describe("main", () => {
     vi.clearAllMocks();
   });
 
-  it("renders App with the Tauri Mission Control command when the root exists", async () => {
+  it("renders App with the Tauri commands when the root exists", async () => {
     document.body.innerHTML = '<div id="root"></div>';
 
     await import("./main");
@@ -42,11 +48,12 @@ describe("main", () => {
     expect(mocks.render).toHaveBeenCalledTimes(1);
 
     const renderedElement = mocks.render.mock.calls[0]?.[0] as ReactElement<{
-      children: ReactElement<{ missionControlInvoke: unknown }>;
+      children: ReactElement<{ missionControlInvoke: unknown; skillSourcesInvoke: unknown }>;
     }>;
     expect(renderedElement.type).toBe(StrictMode);
     expect(renderedElement.props.children.type).toBe(App);
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(tauriMissionControlInvoke);
+    expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(tauriSkillSourcesInvoke);
   });
 
   it("does not render when the root is absent", async () => {

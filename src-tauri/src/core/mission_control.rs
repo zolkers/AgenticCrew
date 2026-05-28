@@ -227,6 +227,7 @@ mod tests {
             feature_sessions: vec![session],
             evidence: Vec::new(),
             model_call_estimates: Vec::new(),
+            skill_sources: Vec::new(),
         }
     }
 

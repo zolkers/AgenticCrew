@@ -11,6 +11,7 @@ use super::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
         SessionTransitionError,
     },
+    skills::{RegisterGitHubSkillSourceRequest, SkillSource, SkillSourceError},
 };
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
@@ -23,6 +24,8 @@ pub struct AgentOsState {
     pub feature_sessions: Vec<FeatureSession>,
     pub evidence: Vec<Evidence>,
     pub model_call_estimates: Vec<ModelCallEstimate>,
+    #[serde(default)]
+    pub skill_sources: Vec<SkillSource>,
 }
 
 impl AgentOsState {
@@ -34,6 +37,7 @@ impl AgentOsState {
             feature_sessions: Vec::new(),
             evidence: Vec::new(),
             model_call_estimates: Vec::new(),
+            skill_sources: Vec::new(),
         }
     }
 
@@ -162,6 +166,26 @@ impl AgentOsState {
 
         Ok(())
     }
+
+    pub fn register_github_skill_source(
+        &mut self,
+        request: RegisterGitHubSkillSourceRequest,
+    ) -> Result<(), StateMutationError> {
+        if self
+            .skill_sources
+            .iter()
+            .any(|source| source.id == request.id)
+        {
+            return Err(StateMutationError::DuplicateSkillSource {
+                source_id: request.id,
+            });
+        }
+
+        self.skill_sources
+            .push(SkillSource::github(request).map_err(StateMutationError::InvalidSkillSource)?);
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -221,6 +245,10 @@ pub enum StateMutationError {
         session_id: String,
         checkpoint_id: String,
     },
+    DuplicateSkillSource {
+        source_id: String,
+    },
+    InvalidSkillSource(SkillSourceError),
     CheckpointNotPassed(SessionTransitionError),
 }
 
@@ -250,6 +278,12 @@ impl fmt::Display for StateMutationError {
                     formatter,
                     "checkpoint '{checkpoint_id}' does not exist in feature session '{session_id}'"
                 )
+            }
+            StateMutationError::DuplicateSkillSource { source_id } => {
+                write!(formatter, "skill source '{source_id}' already exists")
+            }
+            StateMutationError::InvalidSkillSource(error) => {
+                write!(formatter, "invalid skill source: {error}")
             }
             StateMutationError::CheckpointNotPassed(error) => {
                 write!(formatter, "feature session cannot close: {error:?}")
@@ -419,6 +453,7 @@ mod tests {
             Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
             SessionTransitionError,
         },
+        skills::RegisterGitHubSkillSourceRequest,
     };
 
     #[test]
@@ -482,6 +517,42 @@ mod tests {
             error,
             StateMutationError::DuplicateFeatureSession {
                 session_id: "feat_state_v1".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn register_github_skill_source_adds_pending_external_source() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        assert_eq!(state.skill_sources.len(), 1);
+        assert_eq!(state.skill_sources[0].id, "superpowers");
+        assert_eq!(
+            state.skill_sources[0].repository_url,
+            "https://github.com/obra/superpowers"
+        );
+        assert!(!state.skill_sources[0].active);
+    }
+
+    #[test]
+    fn register_github_skill_source_rejects_duplicate_source_id() {
+        let mut state = AgentOsState::empty();
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        let error = state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect_err("duplicate source id should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::DuplicateSkillSource {
+                source_id: "superpowers".to_owned(),
             }
         );
     }
@@ -778,6 +849,7 @@ mod tests {
             feature_sessions: vec![feature_session],
             evidence: vec![evidence],
             model_call_estimates: vec![model_call_estimate],
+            skill_sources: Vec::new(),
         }
     }
 
@@ -818,6 +890,14 @@ mod tests {
             exit_code,
             created_at: "2026-05-28T19:30:00Z".to_owned(),
             created_by: "qa".to_owned(),
+        }
+    }
+
+    fn github_skill_source_request(source_id: &str) -> RegisterGitHubSkillSourceRequest {
+        RegisterGitHubSkillSourceRequest {
+            id: source_id.to_owned(),
+            repository_url: "https://github.com/obra/superpowers".to_owned(),
+            selected_ref: "main".to_owned(),
         }
     }
 

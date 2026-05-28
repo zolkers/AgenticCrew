@@ -17,5 +17,34 @@
     "loading": "Chargement de Mission Control",
     "status": "Aucune session de fonctionnalite active",
     "title": "Mission Control"
+  },
+  "skillSources": {
+    "activeCount_one": "{{count}} source active",
+    "activeCount_other": "{{count}} sources actives",
+    "empty": "Aucune source de skills externe enregistree",
+    "kind": {
+      "bundled": "Integree",
+      "git_hub": "GitHub",
+      "local": "Locale"
+    },
+    "labels": {
+      "kind": "Type",
+      "ref": "Ref",
+      "repository": "Depot",
+      "status": "Statut",
+      "trustLevel": "Confiance"
+    },
+    "status": {
+      "pending_validation": "Validation en attente",
+      "rejected": "Rejetee",
+      "sync_failed": "Synchronisation echouee",
+      "validated": "Validee"
+    },
+    "title": "Sources de skills",
+    "trustLevel": {
+      "built_in": "Integree",
+      "external": "Externe",
+      "local": "Locale"
+    }
   }
 }

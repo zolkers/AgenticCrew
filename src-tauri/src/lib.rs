@@ -9,6 +9,9 @@ use serde::Serialize;
 
 use core::{
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
+    skills::{
+        skill_sources_snapshot_from_state, RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot,
+    },
     state::{
         AgentOsState, CreateCheckpointRequest, CreateFeatureSessionRequest, JsonStateStore,
         RecordCommandEvidenceRequest, StateMutationError, StateStoreError,
@@ -72,6 +75,14 @@ pub fn mission_control_snapshot_at_path(
     Ok(mission_control_snapshot_from_state(&state))
 }
 
+pub fn skill_sources_snapshot_at_path(
+    path: impl Into<PathBuf>,
+) -> Result<SkillSourcesSnapshot, DesktopCommandError> {
+    let state = durable_state_snapshot_at_path(path)?;
+
+    Ok(skill_sources_snapshot_from_state(&state))
+}
+
 pub fn create_feature_session_at_path(
     path: impl AsRef<Path>,
     request: CreateFeatureSessionRequest,
@@ -101,6 +112,13 @@ pub fn close_feature_session_at_path(
     mutate_state_at_path(path, |state| state.close_feature_session(session_id))
 }
 
+pub fn register_github_skill_source_at_path(
+    path: impl AsRef<Path>,
+    request: RegisterGitHubSkillSourceRequest,
+) -> Result<AgentOsState, DesktopCommandError> {
+    mutate_state_at_path(path, |state| state.register_github_skill_source(request))
+}
+
 fn mutate_state_at_path(
     path: impl AsRef<Path>,
     mutate: impl FnOnce(&mut AgentOsState) -> Result<(), StateMutationError>,
@@ -120,9 +138,12 @@ mod commands {
     use tauri::Manager;
 
     use crate::{
-        add_checkpoint_at_path, close_feature_session_at_path, core::state::AgentOsState,
+        add_checkpoint_at_path, close_feature_session_at_path,
+        core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
+        core::state::AgentOsState,
         create_feature_session_at_path, durable_state_snapshot_at_path,
-        mission_control_snapshot_at_path, record_command_evidence_at_path, state_file_path,
+        mission_control_snapshot_at_path, record_command_evidence_at_path,
+        register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
         CreateCheckpointRequest, CreateFeatureSessionRequest, DesktopCommandError,
         MissionControlSnapshot, RecordCommandEvidenceRequest,
     };
@@ -139,6 +160,13 @@ mod commands {
         app: tauri::AppHandle,
     ) -> Result<AgentOsState, DesktopCommandError> {
         durable_state_snapshot_at_path(app_state_path(&app)?)
+    }
+
+    #[tauri::command]
+    pub fn skill_sources_snapshot(
+        app: tauri::AppHandle,
+    ) -> Result<SkillSourcesSnapshot, DesktopCommandError> {
+        skill_sources_snapshot_at_path(app_state_path(&app)?)
     }
 
     #[tauri::command]
@@ -174,6 +202,14 @@ mod commands {
         close_feature_session_at_path(app_state_path(&app)?, &session_id)
     }
 
+    #[tauri::command]
+    pub fn register_github_skill_source(
+        app: tauri::AppHandle,
+        request: RegisterGitHubSkillSourceRequest,
+    ) -> Result<AgentOsState, DesktopCommandError> {
+        register_github_skill_source_at_path(app_state_path(&app)?, request)
+    }
+
     fn app_state_path(app: &tauri::AppHandle) -> Result<PathBuf, DesktopCommandError> {
         app.path()
             .app_data_dir()
@@ -188,10 +224,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::mission_control_snapshot,
             commands::durable_state_snapshot,
+            commands::skill_sources_snapshot,
             commands::create_feature_session,
             commands::add_checkpoint,
             commands::record_command_evidence,
-            commands::close_feature_session
+            commands::close_feature_session,
+            commands::register_github_skill_source
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AgenticCrew desktop shell");
@@ -213,11 +251,13 @@ mod tests {
     use super::{
         add_checkpoint_at_path, app_name, close_feature_session_at_path,
         create_feature_session_at_path, durable_state_snapshot_at_path,
-        mission_control_snapshot_at_path, record_command_evidence_at_path, state_file_path,
+        mission_control_snapshot_at_path, record_command_evidence_at_path,
+        register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
         STATE_FILE_NAME,
     };
     use crate::core::{
         sessions::GoalObject,
+        skills::RegisterGitHubSkillSourceRequest,
         state::{
             CreateCheckpointRequest, CreateFeatureSessionRequest, RecordCommandEvidenceRequest,
         },
@@ -317,6 +357,42 @@ mod tests {
         assert_eq!(snapshot.current_checkpoint, "State tests");
     }
 
+    #[test]
+    fn register_github_skill_source_command_persists_to_disk() {
+        let path = test_path(
+            "register_github_skill_source_command_persists_to_disk",
+            "state.json",
+        );
+
+        let state = register_github_skill_source_at_path(&path, github_skill_source_request())
+            .expect("github skill source should save");
+        let loaded = durable_state_snapshot_at_path(&path).expect("state should load");
+
+        assert_eq!(state, loaded);
+        assert_eq!(loaded.skill_sources[0].id, "superpowers");
+        assert_eq!(
+            loaded.skill_sources[0].repository_url,
+            "https://github.com/obra/superpowers"
+        );
+        assert!(!loaded.skill_sources[0].active);
+    }
+
+    #[test]
+    fn skill_sources_snapshot_command_reads_persisted_sources() {
+        let path = test_path(
+            "skill_sources_snapshot_command_reads_persisted_sources",
+            "state.json",
+        );
+        register_github_skill_source_at_path(&path, github_skill_source_request())
+            .expect("github skill source should save");
+
+        let snapshot = skill_sources_snapshot_at_path(&path).expect("skill sources should load");
+
+        assert_eq!(snapshot.sources.len(), 1);
+        assert_eq!(snapshot.sources[0].id, "superpowers");
+        assert_eq!(snapshot.active_source_count, 0);
+    }
+
     fn create_session_request() -> CreateFeatureSessionRequest {
         CreateFeatureSessionRequest {
             session_id: "feat_state_v1".to_owned(),
@@ -348,6 +424,14 @@ mod tests {
             exit_code: 0,
             created_at: "2026-05-28T20:00:00Z".to_owned(),
             created_by: "qa".to_owned(),
+        }
+    }
+
+    fn github_skill_source_request() -> RegisterGitHubSkillSourceRequest {
+        RegisterGitHubSkillSourceRequest {
+            id: "superpowers".to_owned(),
+            repository_url: "https://github.com/obra/superpowers".to_owned(),
+            selected_ref: "main".to_owned(),
         }
     }
 
