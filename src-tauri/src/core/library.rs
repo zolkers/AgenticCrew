@@ -1,5 +1,4 @@
-pub const PI_EXECUTION_DISCIPLINE: &str =
-    include_str!("library/pi_execution_discipline.md");
+pub const PI_EXECUTION_DISCIPLINE: &str = include_str!("library/pi_execution_discipline.md");
 
 #[cfg(test)]
 mod tests {
