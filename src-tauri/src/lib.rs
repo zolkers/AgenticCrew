@@ -18,7 +18,9 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{app_name, mission_control_snapshot};
+    use super::{
+        app_name, core::mission_control::initial_mission_control_snapshot, mission_control_snapshot,
+    };
 
     #[test]
     fn app_name_is_agentos() {
@@ -27,6 +29,9 @@ mod tests {
 
     #[test]
     fn mission_control_command_delegates_to_initial_snapshot() {
-        assert_eq!(mission_control_snapshot().active_session_count, 0);
+        assert_eq!(
+            mission_control_snapshot(),
+            initial_mission_control_snapshot()
+        );
     }
 }
