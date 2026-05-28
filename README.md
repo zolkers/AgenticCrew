@@ -42,7 +42,7 @@ npm run worker:typecheck
 - AgentOS Core state is owned by Rust under `src-tauri/src/core`.
 - Python lives under `workers/python` and must not own sessions, checkpoints, audit, costs, or gates.
 - Python 3.12 is required for optional workers.
-- Rust/Tauri on Windows requires Visual Studio Build Tools with the C++ workload so `link.exe` is available.
+- Rust/Tauri on Windows requires Microsoft C++ Build Tools and the Windows SDK. Install the Visual Studio Build Tools "Desktop development with C++" workload, including MSVC v143 x64/x86 build tools and a Windows 10 or Windows 11 SDK, so `link.exe` and Windows import libraries such as `kernel32.lib` are available. `rust-lld` alone is not enough for the MSVC target in this workspace because it still needs those SDK import libraries.
 - Rust/Tauri on Linux requires WebKitGTK/GTK system packages. The GitHub Actions workflow installs the Ubuntu packages before running `cargo test`.
 - Rust/Tauri on macOS requires Xcode command line tools.
 - SonarLint for VS Code is recommended through `.vscode/extensions.json`.
