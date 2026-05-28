@@ -1,5 +1,5 @@
 [package]
-name = "agentos"
+name = "agenticcrew"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,7 +8,7 @@ default = ["desktop-shell"]
 desktop-shell = ["tauri", "tauri-build"]
 
 [lib]
-name = "agentos_desktop"
+name = "agenticcrew_desktop"
 path = "src/lib.rs"
 
 [dependencies]

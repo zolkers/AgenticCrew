@@ -1,3 +1,3 @@
 fn main() {
-    agentos_desktop::run();
+    agenticcrew_desktop::run();
 }

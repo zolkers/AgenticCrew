@@ -1,5 +1,5 @@
 {
-  "name": "agentos",
+  "name": "agenticcrew",
   "private": true,
   "workspaces": [
     "frontend"
@@ -15,7 +15,7 @@
     "worker:install": "python -m pip install -e \"workers/python[dev]\"",
     "worker:lint": "cd workers/python && python -m ruff check .",
     "worker:test": "cd workers/python && python -m pytest tests -q",
-    "worker:typecheck": "cd workers/python && python -m mypy agentos_worker",
+    "worker:typecheck": "cd workers/python && python -m mypy agenticcrew_worker",
     "worker:quality": "npm run worker:test && npm run worker:lint && npm run worker:typecheck"
   }
 }
