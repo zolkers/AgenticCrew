@@ -8,12 +8,12 @@ Accepted
 
 ## Context
 
-AgentOS is a local-first desktop product. The product truth must remain deterministic,
+AgenticCrew is a local-first desktop product. The product truth must remain deterministic,
 typed, testable, and available without a worker runtime.
 
 ## Decision
 
-Rust owns the AgentOS core state under `src-tauri/src/core`.
+Rust owns the AgenticCrew core state under `src-tauri/src/core`.
 
 This includes sessions, checkpoints, evidence, audit records, costs, permissions,
 policy gates, and compiled library state. Other runtimes may request snapshots or

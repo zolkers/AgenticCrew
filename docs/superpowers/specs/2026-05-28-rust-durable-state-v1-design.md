@@ -4,7 +4,7 @@ Date: 2026-05-28
 
 ## Goal
 
-Persist AgentOS core truth locally in Rust so sessions, checkpoints, evidence, and cost records can survive process restarts without Python or React owning product state.
+Persist AgenticCrew core truth locally in Rust so sessions, checkpoints, evidence, and cost records can survive process restarts without Python or React owning product state.
 
 ## Scope
 

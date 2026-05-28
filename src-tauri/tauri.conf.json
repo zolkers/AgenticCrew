@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "AgentOS",
+  "productName": "AgenticCrew",
   "version": "0.1.0",
-  "identifier": "dev.agentos.app",
+  "identifier": "dev.agenticcrew.app",
   "build": {
     "beforeDevCommand": "npm run dev -w frontend",
     "beforeBuildCommand": "npm run build -w frontend",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "AgentOS",
+        "title": "AgenticCrew",
         "width": 1280,
         "height": 800
       }

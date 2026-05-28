@@ -1,1 +1,1 @@
-"""Optional Python worker adapters for AgentOS."""
+"""Optional Python worker adapters for AgenticCrew."""

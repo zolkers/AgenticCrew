@@ -1,8 +1,8 @@
-# AgentOS Engineering Roadmap
+# AgenticCrew Engineering Roadmap
 
 ## Architecture North Star
 
-AgentOS is a local-first desktop product with a Rust-owned core, a React UI, and optional Python workers. Rust owns durable state, session lifecycle, checkpoints, evidence, audit, cost records, permissions, Git/Docker orchestration, and Markdown library compilation. Python workers may execute AI/tool adapters, but they never own product truth.
+AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI, and optional Python workers. Rust owns durable state, session lifecycle, checkpoints, evidence, audit, cost records, permissions, Git/Docker orchestration, and Markdown library compilation. Python workers may execute AI/tool adapters, but they never own product truth.
 
 ## Task Roadmap
 

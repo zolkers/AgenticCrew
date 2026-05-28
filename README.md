@@ -1,4 +1,4 @@
-# AgentOS
+# AgenticCrew
 
 Local-first desktop cockpit for designing, running, validating, and reviewing agentic feature sessions.
 
@@ -39,7 +39,7 @@ npm run worker:typecheck
 
 ## Platform Tooling Notes
 
-- AgentOS Core state is owned by Rust under `src-tauri/src/core`.
+- AgenticCrew Core state is owned by Rust under `src-tauri/src/core`.
 - Python lives under `workers/python` and must not own sessions, checkpoints, audit, costs, or gates.
 - Python 3.12 is required for optional workers.
 - Rust/Tauri on Windows requires Microsoft C++ Build Tools and the Windows SDK. Install the Visual Studio Build Tools "Desktop development with C++" workload, including MSVC v143 x64/x86 build tools and a Windows 10 or Windows 11 SDK, so `link.exe` and Windows import libraries such as `kernel32.lib` are available. `rust-lld` alone is not enough for the MSVC target in this workspace because it still needs those SDK import libraries.

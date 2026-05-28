@@ -1,7 +1,7 @@
 [project]
 name = "agentos-python-worker"
 version = "0.1.0"
-description = "Optional Python worker adapters for AgentOS"
+description = "Optional Python worker adapters for AgenticCrew"
 requires-python = ">=3.12"
 dependencies = []
 

@@ -824,7 +824,7 @@ mod tests {
     fn sample_goal() -> GoalObject {
         GoalObject {
             id: "goal_agentos".to_owned(),
-            title: "Persist AgentOS state".to_owned(),
+            title: "Persist AgenticCrew state".to_owned(),
             definition_of_done: vec!["State round trip passes".to_owned()],
             constraints: vec!["Rust owns state".to_owned()],
             out_of_scope: vec!["Cloud sync".to_owned()],

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move AgentOS to a professional desktop architecture where Rust owns core state and Python is limited to optional worker/adapters.
+**Goal:** Move AgenticCrew to a professional desktop architecture where Rust owns core state and Python is limited to optional worker/adapters.
 
 **Architecture:** `src-tauri` contains `agentos_core`, the local state machine, domain models, evidence, costs, and Markdown library seeds. Python moves out of the critical path into `workers/python`, reserved for future model/tool adapters and never owning sessions, checkpoints, audit, costs, or gates. React remains UI-only and talks to the Rust core through Tauri commands/events.
 

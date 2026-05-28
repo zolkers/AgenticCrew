@@ -15,10 +15,10 @@ use core::{
     },
 };
 
-pub const STATE_FILE_NAME: &str = "agentos-state.json";
+pub const STATE_FILE_NAME: &str = "agenticcrew-state.json";
 
 pub fn app_name() -> &'static str {
-    "AgentOS"
+    "AgenticCrew"
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -194,12 +194,12 @@ pub fn run() {
             commands::close_feature_session
         ])
         .run(tauri::generate_context!())
-        .expect("failed to run AgentOS desktop shell");
+        .expect("failed to run AgenticCrew desktop shell");
 }
 
 #[cfg(not(feature = "desktop-shell"))]
 pub fn run() {
-    panic!("AgentOS desktop shell requires the desktop-shell Cargo feature");
+    panic!("AgenticCrew desktop shell requires the desktop-shell Cargo feature");
 }
 
 #[cfg(test)]
@@ -224,8 +224,8 @@ mod tests {
     };
 
     #[test]
-    fn app_name_is_agentos() {
-        assert_eq!(app_name(), "AgentOS");
+    fn app_name_is_agenticcrew() {
+        assert_eq!(app_name(), "AgenticCrew");
     }
 
     #[test]
@@ -241,8 +241,8 @@ mod tests {
     }
 
     #[test]
-    fn state_file_path_uses_agentos_state_file_name() {
-        let app_data_dir = Path::new("data").join("dev.agentos.app");
+    fn state_file_path_uses_agenticcrew_state_file_name() {
+        let app_data_dir = Path::new("data").join("dev.agenticcrew.app");
 
         assert_eq!(
             state_file_path(&app_data_dir),
@@ -358,7 +358,7 @@ mod tests {
             .as_nanos();
         env::temp_dir()
             .join(format!(
-                "agentos_desktop_command_tests_{}_{}_{}",
+                "agenticcrew_desktop_command_tests_{}_{}_{}",
                 std::process::id(),
                 test_name,
                 unique

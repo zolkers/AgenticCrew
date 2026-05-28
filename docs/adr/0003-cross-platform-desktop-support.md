@@ -8,13 +8,13 @@ Accepted
 
 ## Context
 
-AgentOS is a desktop app built with Tauri, Rust, React, and optional Python workers.
+AgenticCrew is a desktop app built with Tauri, Rust, React, and optional Python workers.
 The project should stay viable on common developer machines without adding platform
 specific shortcuts that break another operating system.
 
 ## Decision
 
-AgentOS supports Windows, Linux, and macOS as first-class desktop development
+AgenticCrew supports Windows, Linux, and macOS as first-class desktop development
 targets.
 
 Platform-specific prerequisites are allowed when required by Tauri or Rust toolchains,
