@@ -6,7 +6,7 @@ import type { MissionControlSnapshot } from "../shared/types/core";
 import "../i18n";
 
 type AppProps = Readonly<{
-  missionControlInvoke?: InvokeMissionControl;
+  missionControlInvoke: InvokeMissionControl;
 }>;
 
 type MissionControlLoadState =

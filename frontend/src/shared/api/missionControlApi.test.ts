@@ -24,17 +24,4 @@ describe("loadMissionControlSnapshot", () => {
     expect(snapshot).toEqual(rustSnapshot);
   });
 
-  it("returns a browser fallback snapshot when no invoke dependency is provided", async () => {
-    const snapshot = await loadMissionControlSnapshot();
-
-    expect(snapshot).toEqual({
-      activeAgentCount: 3,
-      activeSessionCount: 1,
-      currentCheckpoint: "Design approved",
-      currentCostUsd: 0,
-      humanGateStatus: "pending",
-      model: "gpt-4o",
-      provider: "openai"
-    });
-  });
 });
