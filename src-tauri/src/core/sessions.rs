@@ -32,6 +32,14 @@ pub enum FeatureSessionStatus {
     Archived,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SessionTransitionError {
+    CheckpointNotPassed {
+        checkpoint_id: String,
+        status: CheckpointStatus,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct GoalObject {
     pub id: String,
@@ -122,13 +130,29 @@ impl FeatureSession {
             status: FeatureSessionStatus::Draft,
         }
     }
+
+    pub fn close(mut self) -> Result<Self, SessionTransitionError> {
+        if let Some(checkpoint) = self
+            .checkpoints
+            .iter()
+            .find(|checkpoint| checkpoint.status != CheckpointStatus::Passed)
+        {
+            return Err(SessionTransitionError::CheckpointNotPassed {
+                checkpoint_id: checkpoint.id.clone(),
+                status: checkpoint.status,
+            });
+        }
+
+        self.status = FeatureSessionStatus::Closed;
+        Ok(self)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         Checkpoint, CheckpointStatus, DesignSession, DesignSessionStatus, FeatureSession,
-        FeatureSessionStatus, GoalObject,
+        FeatureSessionStatus, GoalObject, SessionTransitionError,
     };
 
     #[test]
@@ -150,6 +174,97 @@ mod tests {
 
         assert_eq!(session.status, FeatureSessionStatus::Draft);
         assert_eq!(session.checkpoints[0].status, CheckpointStatus::Pending);
+    }
+
+    #[test]
+    fn feature_session_closes_when_all_checkpoints_passed() {
+        let mut checkpoint = Checkpoint::new(
+            "tests_passing",
+            "Tests passing",
+            "qa",
+            vec!["command_exit_code"],
+        );
+        checkpoint.status = CheckpointStatus::Passed;
+        let session = FeatureSession::new(
+            "feat_todo_api",
+            "Build TODO API",
+            "goal_todo_api",
+            "coding_team",
+            "feat/todo-api",
+            vec![checkpoint],
+        );
+
+        let closed = session.close().expect("all checkpoints passed");
+
+        assert_eq!(closed.status, FeatureSessionStatus::Closed);
+    }
+
+    #[test]
+    fn feature_session_rejects_closing_with_pending_checkpoint() {
+        let checkpoint = Checkpoint::new(
+            "tests_passing",
+            "Tests passing",
+            "qa",
+            vec!["command_exit_code"],
+        );
+        let session = FeatureSession::new(
+            "feat_todo_api",
+            "Build TODO API",
+            "goal_todo_api",
+            "coding_team",
+            "feat/todo-api",
+            vec![checkpoint],
+        );
+
+        let error = session
+            .close()
+            .expect_err("pending checkpoint blocks close");
+
+        assert_eq!(
+            error,
+            SessionTransitionError::CheckpointNotPassed {
+                checkpoint_id: "tests_passing".to_owned(),
+                status: CheckpointStatus::Pending,
+            }
+        );
+    }
+
+    #[test]
+    fn feature_session_rejects_closing_for_each_unpassed_checkpoint_status() {
+        for status in [
+            CheckpointStatus::Pending,
+            CheckpointStatus::Running,
+            CheckpointStatus::Failed,
+            CheckpointStatus::Blocked,
+        ] {
+            let mut checkpoint = Checkpoint::new(
+                "tests_passing",
+                "Tests passing",
+                "qa",
+                vec!["command_exit_code"],
+            );
+            checkpoint.status = status;
+            let session = FeatureSession::new(
+                "feat_todo_api",
+                "Build TODO API",
+                "goal_todo_api",
+                "coding_team",
+                "feat/todo-api",
+                vec![checkpoint],
+            );
+
+            let error = session
+                .close()
+                .expect_err("unpassed checkpoint blocks close");
+
+            assert_eq!(
+                error,
+                SessionTransitionError::CheckpointNotPassed {
+                    checkpoint_id: "tests_passing".to_owned(),
+                    status,
+                }
+            );
+        }
     }
 
     #[test]
