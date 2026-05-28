@@ -5,7 +5,7 @@
     "frontend"
   ],
   "scripts": {
-    "desktop:test": "cd src-tauri && cargo test",
+    "desktop:test": "node scripts/desktop-test.mjs",
     "lint": "npm run lint -w frontend",
     "typecheck": "npm run typecheck -w frontend",
     "test": "npm run test -w frontend",

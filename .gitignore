@@ -9,5 +9,6 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 target/
+src-tauri/gen/
 *.log
 *.egg-info/

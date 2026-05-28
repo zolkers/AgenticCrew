@@ -43,6 +43,7 @@ npm run worker:typecheck
 - Python lives under `workers/python` and must not own sessions, checkpoints, audit, costs, or gates.
 - Python 3.12 is required for optional workers.
 - Rust/Tauri on Windows requires Microsoft C++ Build Tools and the Windows SDK. Install the Visual Studio Build Tools "Desktop development with C++" workload, including MSVC v143 x64/x86 build tools and a Windows 10 or Windows 11 SDK, so `link.exe` and Windows import libraries such as `kernel32.lib` are available. `rust-lld` alone is not enough for the MSVC target in this workspace because it still needs those SDK import libraries.
+- If MSVC is not available on Windows, `npm run desktop:test` falls back to the Rust GNU toolchain for core tests. Install it with `rustup toolchain install stable-x86_64-pc-windows-gnu`; MinGW binutils must also be available on `PATH` or through CLion's bundled MinGW.
 - Rust/Tauri on Linux requires WebKitGTK/GTK system packages. The GitHub Actions workflow installs the Ubuntu packages before running `cargo test`.
 - Rust/Tauri on macOS requires Xcode command line tools.
 - SonarLint for VS Code is recommended through `.vscode/extensions.json`.
