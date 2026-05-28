@@ -6,8 +6,11 @@ use std::{
 
 use super::{
     costs::ModelCallEstimate,
-    evidence::Evidence,
-    sessions::{DesignSession, FeatureSession, GoalObject},
+    evidence::{CommandExitCodeEvidence, Evidence},
+    sessions::{
+        Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
+        SessionTransitionError,
+    },
 };
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
@@ -33,7 +36,225 @@ impl AgentOsState {
             model_call_estimates: Vec::new(),
         }
     }
+
+    pub fn create_feature_session(
+        &mut self,
+        request: CreateFeatureSessionRequest,
+    ) -> Result<(), StateMutationError> {
+        if self
+            .feature_sessions
+            .iter()
+            .any(|session| session.id == request.session_id)
+        {
+            return Err(StateMutationError::DuplicateFeatureSession {
+                session_id: request.session_id,
+            });
+        }
+
+        if !self.goals.iter().any(|goal| goal.id == request.goal.id) {
+            self.goals.push(request.goal.clone());
+        }
+
+        self.feature_sessions.push(FeatureSession {
+            id: request.session_id,
+            title: request.title,
+            goal_object_id: request.goal.id,
+            team_id: request.team_id,
+            branch: request.branch,
+            checkpoints: request.checkpoints.into_iter().map(Checkpoint::from).collect(),
+            status: super::sessions::FeatureSessionStatus::Draft,
+        });
+
+        Ok(())
+    }
+
+    pub fn add_checkpoint(
+        &mut self,
+        session_id: &str,
+        request: CreateCheckpointRequest,
+    ) -> Result<(), StateMutationError> {
+        let session = self
+            .feature_sessions
+            .iter_mut()
+            .find(|session| session.id == session_id)
+            .ok_or_else(|| StateMutationError::MissingFeatureSession {
+                session_id: session_id.to_owned(),
+            })?;
+
+        if session
+            .checkpoints
+            .iter()
+            .any(|checkpoint| checkpoint.id == request.id)
+        {
+            return Err(StateMutationError::DuplicateCheckpoint {
+                session_id: session_id.to_owned(),
+                checkpoint_id: request.id,
+            });
+        }
+
+        session.checkpoints.push(Checkpoint::from(request));
+
+        Ok(())
+    }
+
+    pub fn record_command_evidence(
+        &mut self,
+        request: RecordCommandEvidenceRequest,
+    ) -> Result<(), StateMutationError> {
+        let session = self
+            .feature_sessions
+            .iter_mut()
+            .find(|session| session.id == request.session_id)
+            .ok_or_else(|| StateMutationError::MissingFeatureSession {
+                session_id: request.session_id.clone(),
+            })?;
+        let checkpoint = session
+            .checkpoints
+            .iter_mut()
+            .find(|checkpoint| checkpoint.id == request.checkpoint_id)
+            .ok_or_else(|| StateMutationError::MissingCheckpoint {
+                session_id: request.session_id.clone(),
+                checkpoint_id: request.checkpoint_id.clone(),
+            })?;
+
+        let evidence = Evidence::command_exit_code(CommandExitCodeEvidence {
+            evidence_id: request.evidence_id,
+            session_id: request.session_id,
+            checkpoint_id: request.checkpoint_id,
+            command: request.command,
+            exit_code: request.exit_code,
+            created_at: request.created_at,
+            created_by: request.created_by,
+        });
+
+        if evidence.command_succeeded()
+            && checkpoint
+                .required_evidence
+                .iter()
+                .any(|required| required == "command_exit_code")
+        {
+            checkpoint.status = CheckpointStatus::Passed;
+        }
+
+        self.evidence.push(evidence);
+
+        Ok(())
+    }
+
+    pub fn close_feature_session(&mut self, session_id: &str) -> Result<(), StateMutationError> {
+        let position = self
+            .feature_sessions
+            .iter()
+            .position(|session| session.id == session_id)
+            .ok_or_else(|| StateMutationError::MissingFeatureSession {
+                session_id: session_id.to_owned(),
+            })?;
+        let closed = self.feature_sessions[position]
+            .clone()
+            .close()
+            .map_err(StateMutationError::CheckpointNotPassed)?;
+
+        self.feature_sessions[position] = closed;
+
+        Ok(())
+    }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct CreateFeatureSessionRequest {
+    pub session_id: String,
+    pub title: String,
+    pub goal: GoalObject,
+    pub team_id: String,
+    pub branch: String,
+    pub checkpoints: Vec<CreateCheckpointRequest>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct CreateCheckpointRequest {
+    pub id: String,
+    pub label: String,
+    pub owner_agent: String,
+    pub required_evidence: Vec<String>,
+}
+
+impl From<CreateCheckpointRequest> for Checkpoint {
+    fn from(request: CreateCheckpointRequest) -> Self {
+        Self {
+            id: request.id,
+            label: request.label,
+            owner_agent: request.owner_agent,
+            required_evidence: request.required_evidence,
+            status: CheckpointStatus::Pending,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct RecordCommandEvidenceRequest {
+    pub evidence_id: String,
+    pub session_id: String,
+    pub checkpoint_id: String,
+    pub command: String,
+    pub exit_code: i32,
+    pub created_at: String,
+    pub created_by: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StateMutationError {
+    DuplicateFeatureSession {
+        session_id: String,
+    },
+    MissingFeatureSession {
+        session_id: String,
+    },
+    DuplicateCheckpoint {
+        session_id: String,
+        checkpoint_id: String,
+    },
+    MissingCheckpoint {
+        session_id: String,
+        checkpoint_id: String,
+    },
+    CheckpointNotPassed(SessionTransitionError),
+}
+
+impl fmt::Display for StateMutationError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            StateMutationError::DuplicateFeatureSession { session_id } => {
+                write!(formatter, "feature session '{session_id}' already exists")
+            }
+            StateMutationError::MissingFeatureSession { session_id } => {
+                write!(formatter, "feature session '{session_id}' does not exist")
+            }
+            StateMutationError::DuplicateCheckpoint {
+                session_id,
+                checkpoint_id,
+            } => {
+                write!(
+                    formatter,
+                    "checkpoint '{checkpoint_id}' already exists in feature session '{session_id}'"
+                )
+            }
+            StateMutationError::MissingCheckpoint {
+                session_id,
+                checkpoint_id,
+            } => {
+                write!(
+                    formatter,
+                    "checkpoint '{checkpoint_id}' does not exist in feature session '{session_id}'"
+                )
+            }
+            StateMutationError::CheckpointNotPassed(error) => {
+                write!(formatter, "feature session cannot close: {error:?}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for StateMutationError {}
 
 #[derive(Debug)]
 pub enum StateStoreError {
@@ -183,12 +404,17 @@ mod tests {
     };
 
     use super::{
-        temp_path_for, AgentOsState, JsonStateStore, StateStoreError, CURRENT_SCHEMA_VERSION,
+        temp_path_for, AgentOsState, CreateCheckpointRequest, CreateFeatureSessionRequest,
+        JsonStateStore, RecordCommandEvidenceRequest, StateMutationError, StateStoreError,
+        CURRENT_SCHEMA_VERSION,
     };
     use crate::core::{
         costs::ModelCallEstimate,
         evidence::{CommandExitCodeEvidence, Evidence},
-        sessions::{Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject},
+        sessions::{
+            Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
+            SessionTransitionError,
+        },
     };
 
     #[test]
@@ -217,6 +443,184 @@ mod tests {
         let loaded = store.load().expect("missing state file should load");
 
         assert_eq!(loaded, AgentOsState::empty());
+    }
+
+    #[test]
+    fn create_feature_session_adds_goal_session_and_pending_checkpoints() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .create_feature_session(create_session_request("feat_state_v1"))
+            .expect("feature session should be created");
+
+        assert_eq!(state.goals, vec![sample_goal()]);
+        assert_eq!(state.feature_sessions.len(), 1);
+        assert_eq!(state.feature_sessions[0].id, "feat_state_v1");
+        assert_eq!(state.feature_sessions[0].goal_object_id, "goal_agentos");
+        assert_eq!(
+            state.feature_sessions[0].checkpoints[0].status,
+            CheckpointStatus::Pending
+        );
+    }
+
+    #[test]
+    fn create_feature_session_rejects_duplicate_session_id() {
+        let mut state = AgentOsState::empty();
+        state
+            .create_feature_session(create_session_request("feat_state_v1"))
+            .expect("feature session should be created");
+
+        let error = state
+            .create_feature_session(create_session_request("feat_state_v1"))
+            .expect_err("duplicate session id should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::DuplicateFeatureSession {
+                session_id: "feat_state_v1".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn add_checkpoint_appends_pending_checkpoint_to_existing_session() {
+        let mut state = state_with_session();
+
+        state
+            .add_checkpoint(
+                "feat_state_v1",
+                CreateCheckpointRequest {
+                    id: "review_approved".to_owned(),
+                    label: "Review approved".to_owned(),
+                    owner_agent: "reviewer".to_owned(),
+                    required_evidence: vec!["reviewer_approved".to_owned()],
+                },
+            )
+            .expect("checkpoint should be added");
+
+        assert_eq!(state.feature_sessions[0].checkpoints.len(), 2);
+        assert_eq!(state.feature_sessions[0].checkpoints[1].id, "review_approved");
+        assert_eq!(
+            state.feature_sessions[0].checkpoints[1].status,
+            CheckpointStatus::Pending
+        );
+    }
+
+    #[test]
+    fn add_checkpoint_rejects_missing_session() {
+        let mut state = AgentOsState::empty();
+
+        let error = state
+            .add_checkpoint("missing", checkpoint_request("state_tests"))
+            .expect_err("missing session should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::MissingFeatureSession {
+                session_id: "missing".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn add_checkpoint_rejects_duplicate_checkpoint_id() {
+        let mut state = state_with_session();
+
+        let error = state
+            .add_checkpoint("feat_state_v1", checkpoint_request("state_tests"))
+            .expect_err("duplicate checkpoint should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::DuplicateCheckpoint {
+                session_id: "feat_state_v1".to_owned(),
+                checkpoint_id: "state_tests".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn record_successful_command_evidence_marks_required_checkpoint_passed() {
+        let mut state = state_with_session();
+
+        state
+            .record_command_evidence(command_evidence_request(0))
+            .expect("evidence should be recorded");
+
+        assert_eq!(state.evidence.len(), 1);
+        assert_eq!(state.evidence[0].command, "npm run desktop:test");
+        assert_eq!(
+            state.feature_sessions[0].checkpoints[0].status,
+            CheckpointStatus::Passed
+        );
+    }
+
+    #[test]
+    fn record_failed_command_evidence_keeps_checkpoint_pending() {
+        let mut state = state_with_session();
+
+        state
+            .record_command_evidence(command_evidence_request(101))
+            .expect("evidence should be recorded");
+
+        assert_eq!(state.evidence.len(), 1);
+        assert_eq!(
+            state.feature_sessions[0].checkpoints[0].status,
+            CheckpointStatus::Pending
+        );
+    }
+
+    #[test]
+    fn record_command_evidence_rejects_missing_checkpoint() {
+        let mut state = state_with_session();
+        let mut request = command_evidence_request(0);
+        request.checkpoint_id = "missing".to_owned();
+
+        let error = state
+            .record_command_evidence(request)
+            .expect_err("missing checkpoint should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::MissingCheckpoint {
+                session_id: "feat_state_v1".to_owned(),
+                checkpoint_id: "missing".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn close_feature_session_closes_after_required_checkpoint_passed() {
+        let mut state = state_with_session();
+        state
+            .record_command_evidence(command_evidence_request(0))
+            .expect("evidence should pass checkpoint");
+
+        state
+            .close_feature_session("feat_state_v1")
+            .expect("session should close");
+
+        assert_eq!(
+            state.feature_sessions[0].status,
+            crate::core::sessions::FeatureSessionStatus::Closed
+        );
+    }
+
+    #[test]
+    fn close_feature_session_rejects_pending_checkpoint() {
+        let mut state = state_with_session();
+
+        let error = state
+            .close_feature_session("feat_state_v1")
+            .expect_err("pending checkpoint should block close");
+
+        assert!(matches!(
+            error,
+            StateMutationError::CheckpointNotPassed(SessionTransitionError::CheckpointNotPassed {
+                checkpoint_id,
+                status: CheckpointStatus::Pending,
+            }) if checkpoint_id == "state_tests"
+        ));
     }
 
     #[test]
@@ -323,13 +727,7 @@ mod tests {
     }
 
     fn sample_state() -> AgentOsState {
-        let goal = GoalObject {
-            id: "goal_agentos".to_owned(),
-            title: "Persist AgentOS state".to_owned(),
-            definition_of_done: vec!["State round trip passes".to_owned()],
-            constraints: vec!["Rust owns state".to_owned()],
-            out_of_scope: vec!["Cloud sync".to_owned()],
-        };
+        let goal = sample_goal();
         let design_session =
             DesignSession::new("design_state_v1", "Design durable state", "goal_agentos");
         let mut checkpoint = Checkpoint::new(
@@ -373,6 +771,56 @@ mod tests {
             feature_sessions: vec![feature_session],
             evidence: vec![evidence],
             model_call_estimates: vec![model_call_estimate],
+        }
+    }
+
+    fn state_with_session() -> AgentOsState {
+        let mut state = AgentOsState::empty();
+        state
+            .create_feature_session(create_session_request("feat_state_v1"))
+            .expect("feature session should be created");
+        state
+    }
+
+    fn create_session_request(session_id: &str) -> CreateFeatureSessionRequest {
+        CreateFeatureSessionRequest {
+            session_id: session_id.to_owned(),
+            title: "Build durable state".to_owned(),
+            goal: sample_goal(),
+            team_id: "core".to_owned(),
+            branch: "feat/state-v1".to_owned(),
+            checkpoints: vec![checkpoint_request("state_tests")],
+        }
+    }
+
+    fn checkpoint_request(checkpoint_id: &str) -> CreateCheckpointRequest {
+        CreateCheckpointRequest {
+            id: checkpoint_id.to_owned(),
+            label: "State tests".to_owned(),
+            owner_agent: "qa".to_owned(),
+            required_evidence: vec!["command_exit_code".to_owned()],
+        }
+    }
+
+    fn command_evidence_request(exit_code: i32) -> RecordCommandEvidenceRequest {
+        RecordCommandEvidenceRequest {
+            evidence_id: format!("ev_state_tests_{exit_code}"),
+            session_id: "feat_state_v1".to_owned(),
+            checkpoint_id: "state_tests".to_owned(),
+            command: "npm run desktop:test".to_owned(),
+            exit_code,
+            created_at: "2026-05-28T19:30:00Z".to_owned(),
+            created_by: "qa".to_owned(),
+        }
+    }
+
+    fn sample_goal() -> GoalObject {
+        GoalObject {
+            id: "goal_agentos".to_owned(),
+            title: "Persist AgentOS state".to_owned(),
+            definition_of_done: vec!["State round trip passes".to_owned()],
+            constraints: vec!["Rust owns state".to_owned()],
+            out_of_scope: vec!["Cloud sync".to_owned()],
         }
     }
 
