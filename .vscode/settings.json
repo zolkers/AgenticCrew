@@ -1,0 +1,13 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "sonarlint.rules": {
+    "typescript:S125": {
+      "level": "on"
+    },
+    "typescript:S3776": {
+      "level": "on"
+    }
+  }
+}

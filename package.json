@@ -1,0 +1,14 @@
+{
+  "name": "agentos",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "lint": "npm run lint -w frontend",
+    "typecheck": "npm run typecheck -w frontend",
+    "test": "npm run test -w frontend",
+    "coverage": "npm run coverage -w frontend",
+    "quality": "npm run lint && npm run typecheck && npm run coverage"
+  }
+}
