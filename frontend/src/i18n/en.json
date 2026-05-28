@@ -13,6 +13,8 @@
       "humanGateStatus": "Human gate",
       "providerModel": "Provider / model"
     },
+    "loadError": "Mission Control unavailable",
+    "loading": "Loading Mission Control",
     "status": "No active feature session",
     "title": "Mission Control"
   }

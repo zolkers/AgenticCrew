@@ -27,12 +27,14 @@ describe("loadMissionControlSnapshot", () => {
   it("returns a browser fallback snapshot when no invoke dependency is provided", async () => {
     const snapshot = await loadMissionControlSnapshot();
 
-    expect(typeof snapshot.activeAgentCount).toBe("number");
-    expect(typeof snapshot.activeSessionCount).toBe("number");
-    expect(typeof snapshot.currentCheckpoint).toBe("string");
-    expect(typeof snapshot.currentCostUsd).toBe("number");
-    expect(["open", "pending", "blocked"]).toContain(snapshot.humanGateStatus);
-    expect(typeof snapshot.model).toBe("string");
-    expect(typeof snapshot.provider).toBe("string");
+    expect(snapshot).toEqual({
+      activeAgentCount: 3,
+      activeSessionCount: 1,
+      currentCheckpoint: "Design approved",
+      currentCostUsd: 0,
+      humanGateStatus: "pending",
+      model: "gpt-4o",
+      provider: "openai"
+    });
   });
 });

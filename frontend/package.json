@@ -11,6 +11,7 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.11.0",
     "@vitejs/plugin-react": "^5.1.1",
     "i18next": "^25.7.2",
     "react": "^19.2.1",

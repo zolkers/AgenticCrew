@@ -13,7 +13,9 @@
       "humanGateStatus": "Validation humaine",
       "providerModel": "Fournisseur / modele"
     },
-    "status": "Aucune feature session active",
+    "loadError": "Mission Control indisponible",
+    "loading": "Chargement de Mission Control",
+    "status": "Aucune session de fonctionnalite active",
     "title": "Mission Control"
   }
 }
