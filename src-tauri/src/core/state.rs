@@ -45,6 +45,11 @@ pub enum StateStoreError {
         path: PathBuf,
         source: serde_json::Error,
     },
+    UnsupportedSchemaVersion {
+        path: PathBuf,
+        expected: u32,
+        actual: u32,
+    },
 }
 
 impl fmt::Display for StateStoreError {
@@ -64,6 +69,17 @@ impl fmt::Display for StateStoreError {
                     path.display()
                 )
             }
+            StateStoreError::UnsupportedSchemaVersion {
+                path,
+                expected,
+                actual,
+            } => {
+                write!(
+                    formatter,
+                    "state store schema version error at {}: expected {expected}, got {actual}",
+                    path.display()
+                )
+            }
         }
     }
 }
@@ -73,6 +89,7 @@ impl std::error::Error for StateStoreError {
         match self {
             StateStoreError::Io { source, .. } => Some(source),
             StateStoreError::Json { source, .. } => Some(source),
+            StateStoreError::UnsupportedSchemaVersion { .. } => None,
         }
     }
 }
@@ -97,13 +114,32 @@ impl JsonStateStore {
             source,
         })?;
 
-        serde_json::from_str(&content).map_err(|source| StateStoreError::Json {
-            path: self.path.clone(),
-            source,
-        })
+        let state: AgentOsState =
+            serde_json::from_str(&content).map_err(|source| StateStoreError::Json {
+                path: self.path.clone(),
+                source,
+            })?;
+
+        if state.schema_version != CURRENT_SCHEMA_VERSION {
+            return Err(StateStoreError::UnsupportedSchemaVersion {
+                path: self.path.clone(),
+                expected: CURRENT_SCHEMA_VERSION,
+                actual: state.schema_version,
+            });
+        }
+
+        Ok(state)
     }
 
     pub fn save(&self, state: &AgentOsState) -> Result<(), StateStoreError> {
+        if state.schema_version != CURRENT_SCHEMA_VERSION {
+            return Err(StateStoreError::UnsupportedSchemaVersion {
+                path: self.path.clone(),
+                expected: CURRENT_SCHEMA_VERSION,
+                actual: state.schema_version,
+            });
+        }
+
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent).map_err(|source| StateStoreError::Io {
                 path: parent.to_path_buf(),
@@ -205,6 +241,59 @@ mod tests {
         let error = store.load().expect_err("invalid json should fail");
 
         assert!(matches!(error, StateStoreError::Json { .. }));
+    }
+
+    #[test]
+    fn unsupported_schema_version_is_rejected_on_load() {
+        let path = test_path(
+            "unsupported_schema_version_is_rejected_on_load",
+            "state.json",
+        );
+        fs::create_dir_all(path.parent().expect("state path parent")).expect("create parent");
+        let mut state = AgentOsState::empty();
+        state.schema_version = CURRENT_SCHEMA_VERSION + 1;
+        fs::write(
+            &path,
+            serde_json::to_string(&state).expect("state should serialize"),
+        )
+        .expect("write unsupported state");
+        let store = JsonStateStore::new(&path);
+
+        let error = store.load().expect_err("unsupported schema should fail");
+
+        assert!(matches!(
+            error,
+            StateStoreError::UnsupportedSchemaVersion {
+                expected: CURRENT_SCHEMA_VERSION,
+                actual,
+                ..
+            } if actual == CURRENT_SCHEMA_VERSION + 1
+        ));
+    }
+
+    #[test]
+    fn unsupported_schema_version_is_rejected_on_save() {
+        let path = test_path(
+            "unsupported_schema_version_is_rejected_on_save",
+            "state.json",
+        );
+        let store = JsonStateStore::new(&path);
+        let mut state = AgentOsState::empty();
+        state.schema_version = CURRENT_SCHEMA_VERSION + 1;
+
+        let error = store
+            .save(&state)
+            .expect_err("unsupported schema should not save");
+
+        assert!(matches!(
+            error,
+            StateStoreError::UnsupportedSchemaVersion {
+                expected: CURRENT_SCHEMA_VERSION,
+                actual,
+                ..
+            } if actual == CURRENT_SCHEMA_VERSION + 1
+        ));
+        assert!(!path.exists());
     }
 
     #[test]
