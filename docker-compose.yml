@@ -1,0 +1,14 @@
+name: agenticcrew
+
+services:
+  frontend:
+    build:
+      context: .
+    command: npm run dev:docker -w frontend
+    ports:
+      - "5173:5173"
+
+  quality:
+    build:
+      context: .
+    command: sh -lc "npm run quality && npm run desktop:test"

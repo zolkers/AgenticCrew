@@ -10,6 +10,8 @@
     "typecheck": "npm run typecheck -w frontend",
     "test": "npm run test -w frontend",
     "coverage": "npm run coverage -w frontend",
+    "docker:quality": "docker compose run --rm quality",
+    "docker:frontend": "docker compose up --build frontend",
     "frontend:quality": "npm run lint && npm run typecheck && npm run coverage",
     "quality": "npm run frontend:quality && npm run worker:quality",
     "worker:install": "python -m pip install -e \"workers/python[dev]\"",

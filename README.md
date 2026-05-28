@@ -27,6 +27,20 @@ npm run quality
 npm run desktop:test
 ```
 
+Run the frontend quickly in Docker:
+
+```bash
+npm run docker:frontend
+```
+
+Docker Desktop or a Docker-compatible daemon must be running. Then open `http://localhost:5173`. This launches the React frontend preview; the native Tauri desktop shell still runs on the host OS because it needs the platform WebView.
+
+Run Linux quality gates in Docker:
+
+```bash
+npm run docker:quality
+```
+
 Run specific gates:
 
 ```bash
