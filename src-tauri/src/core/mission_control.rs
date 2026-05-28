@@ -55,7 +55,10 @@ pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionContr
         .iter()
         .flat_map(|session| session.checkpoints.iter())
         .find(|checkpoint| checkpoint.status != CheckpointStatus::Passed)
-        .map_or_else(|| "initial".to_owned(), |checkpoint| checkpoint.label.clone());
+        .map_or_else(
+            || "initial".to_owned(),
+            |checkpoint| checkpoint.label.clone(),
+        );
     let human_gate_status = if active_sessions
         .iter()
         .flat_map(|session| session.checkpoints.iter())
@@ -84,8 +87,12 @@ pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionContr
             .iter()
             .map(|estimate| estimate.estimated_cost_usd)
             .sum(),
-        provider: current_estimate.map_or_else(|| "openai".to_owned(), |estimate| estimate.provider.clone()),
-        model: current_estimate.map_or_else(|| "gpt-5-codex".to_owned(), |estimate| estimate.model.clone()),
+        provider: current_estimate
+            .map_or_else(|| "openai".to_owned(), |estimate| estimate.provider.clone()),
+        model: current_estimate.map_or_else(
+            || "gpt-5-codex".to_owned(),
+            |estimate| estimate.model.clone(),
+        ),
         current_checkpoint,
         human_gate_status,
     }
@@ -143,7 +150,8 @@ mod tests {
 
     #[test]
     fn snapshot_counts_active_sessions_and_checkpoint_agents_from_state() {
-        let mut state = state_with_session(FeatureSessionStatus::Running, CheckpointStatus::Pending);
+        let mut state =
+            state_with_session(FeatureSessionStatus::Running, CheckpointStatus::Pending);
 
         let snapshot = mission_control_snapshot_from_state(&state);
 

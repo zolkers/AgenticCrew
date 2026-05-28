@@ -61,7 +61,11 @@ impl AgentOsState {
             goal_object_id: request.goal.id,
             team_id: request.team_id,
             branch: request.branch,
-            checkpoints: request.checkpoints.into_iter().map(Checkpoint::from).collect(),
+            checkpoints: request
+                .checkpoints
+                .into_iter()
+                .map(Checkpoint::from)
+                .collect(),
             status: super::sessions::FeatureSessionStatus::Draft,
         });
 
@@ -499,7 +503,10 @@ mod tests {
             .expect("checkpoint should be added");
 
         assert_eq!(state.feature_sessions[0].checkpoints.len(), 2);
-        assert_eq!(state.feature_sessions[0].checkpoints[1].id, "review_approved");
+        assert_eq!(
+            state.feature_sessions[0].checkpoints[1].id,
+            "review_approved"
+        );
         assert_eq!(
             state.feature_sessions[0].checkpoints[1].status,
             CheckpointStatus::Pending
