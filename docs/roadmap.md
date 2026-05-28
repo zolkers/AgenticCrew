@@ -107,3 +107,19 @@ AgentOS is a local-first desktop product with a Rust-owned core, a React UI, and
 - `npm run desktop:test` passes where platform prerequisites are installed.
 - `npm audit --audit-level=high` returns zero vulnerabilities.
 - Git status contains only intentional untracked product/spec docs.
+
+## Phase 2 Roadmap
+
+### 10. Rust Durable State v1
+
+**Goal:** Persist Rust-owned product state locally without React or Python becoming state owners.
+
+**Ownership:** `src-tauri/src/core/state.rs`, `src-tauri/src/lib.rs`.
+
+**Acceptance:**
+- Durable state snapshot is versioned.
+- Goals, design sessions, feature sessions, evidence, and model call estimates round-trip through JSON.
+- Missing state files load as an empty current-schema state.
+- Invalid JSON fails with a typed store error.
+- Saves create parent directories and use a temporary file before rename.
+- Tauri exposes a read-only durable state snapshot command.
