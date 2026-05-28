@@ -4,7 +4,7 @@ export type InvokeMissionControl = (
   command: "mission_control_snapshot"
 ) => Promise<MissionControlSnapshot>;
 
-export const fallbackMissionControlSnapshot: MissionControlSnapshot = {
+const fallbackMissionControlSnapshot: MissionControlSnapshot = {
   activeAgentCount: 3,
   activeSessionCount: 1,
   currentCheckpoint: "Design approved",

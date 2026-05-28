@@ -5,14 +5,13 @@ type MissionControlProps = Readonly<{
   snapshot: MissionControlSnapshot;
 }>;
 
-const usdFormatter = new Intl.NumberFormat("en-US", {
-  currency: "USD",
-  style: "currency"
-});
-
 export function MissionControl({ snapshot }: MissionControlProps) {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const title = t("missionControl.title", { defaultValue: "Mission Control" });
+  const usdFormatter = new Intl.NumberFormat(i18n.language, {
+    currency: "USD",
+    style: "currency"
+  });
 
   return (
     <section aria-label={title}>
@@ -42,7 +41,7 @@ export function MissionControl({ snapshot }: MissionControlProps) {
         </div>
         <div>
           <dt>{t("missionControl.labels.humanGateStatus", { defaultValue: "Human gate" })}</dt>
-          <dd>{snapshot.humanGateStatus}</dd>
+          <dd>{t(`missionControl.humanGateStatus.${snapshot.humanGateStatus}`)}</dd>
         </div>
       </dl>
     </section>

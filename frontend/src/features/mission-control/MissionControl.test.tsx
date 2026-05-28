@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { MissionControl } from "./MissionControl";
 import type { MissionControlSnapshot } from "../../shared/types/core";
+import "../../i18n";
 
 describe("MissionControl", () => {
   it("renders the provided mission control snapshot", () => {
@@ -25,6 +26,7 @@ describe("MissionControl", () => {
     expect(screen.getByText("$1.25")).toBeInTheDocument();
     expect(screen.getByText("openai / gpt-5")).toBeInTheDocument();
     expect(screen.getByText("Architecture boundary")).toBeInTheDocument();
-    expect(screen.getByText("blocked")).toBeInTheDocument();
+    expect(screen.getByText("Blocked")).toBeInTheDocument();
+    expect(screen.queryByText("blocked")).not.toBeInTheDocument();
   });
 });

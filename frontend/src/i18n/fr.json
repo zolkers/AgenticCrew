@@ -1,5 +1,18 @@
 {
   "missionControl": {
+    "humanGateStatus": {
+      "blocked": "Bloque",
+      "open": "Ouvert",
+      "pending": "En attente"
+    },
+    "labels": {
+      "activeAgentCount": "Agents actifs",
+      "activeSessionCount": "Sessions actives",
+      "currentCheckpoint": "Point de controle",
+      "currentCostUsd": "Cout actuel",
+      "humanGateStatus": "Validation humaine",
+      "providerModel": "Fournisseur / modele"
+    },
     "status": "Aucune feature session active",
     "title": "Mission Control"
   }
