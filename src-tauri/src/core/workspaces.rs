@@ -12,6 +12,10 @@ pub struct WorkspaceRecord {
     pub mission: String,
     pub status: WorkspaceStatus,
     pub active_agent_id: String,
+    #[serde(default)]
+    pub selected_agent_template_id: Option<String>,
+    #[serde(default)]
+    pub selected_harness_profile_id: Option<String>,
     pub budget_limit_usd: u64,
     pub budget_used_usd: u64,
     #[serde(default)]
@@ -89,6 +93,14 @@ pub struct UpdateWorkspaceGitContextRequest {
     pub branch: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateWorkspaceLoadoutRequest {
+    pub workspace_id: String,
+    pub agent_template_id: Option<String>,
+    pub harness_profile_id: Option<String>,
+}
+
 pub fn workspace_snapshot_from_state(state: &AgentOsState) -> WorkspaceSnapshot {
     WorkspaceSnapshot {
         workspaces: state.workspaces.clone(),
@@ -109,6 +121,8 @@ impl WorkspaceRecord {
 
         Ok(Self {
             active_agent_id: "director".to_owned(),
+            selected_agent_template_id: None,
+            selected_harness_profile_id: None,
             agents: vec![WorkspaceAgent {
                 id: "director".to_owned(),
                 model: "gpt-5".to_owned(),
@@ -162,9 +176,28 @@ impl WorkspaceRecord {
         Ok(())
     }
 
+    pub fn update_loadout(
+        &mut self,
+        request: UpdateWorkspaceLoadoutRequest,
+    ) -> Result<(), WorkspaceError> {
+        self.selected_agent_template_id =
+            normalize_optional_identifier("agent template id", request.agent_template_id)?;
+        self.selected_harness_profile_id =
+            normalize_optional_identifier("harness profile id", request.harness_profile_id)?;
+        self.logs.push(format!(
+            "loadout updated: agent={} harness={}",
+            self.selected_agent_template_id.as_deref().unwrap_or("default"),
+            self.selected_harness_profile_id.as_deref().unwrap_or("default")
+        ));
+
+        Ok(())
+    }
+
     fn fullstack_app() -> Self {
         Self {
             active_agent_id: "maya".to_owned(),
+            selected_agent_template_id: Some("developer-pi".to_owned()),
+            selected_harness_profile_id: Some("pi-execution-discipline".to_owned()),
             agents: vec![
                 WorkspaceAgent {
                     id: "maya".to_owned(),
@@ -226,6 +259,8 @@ impl WorkspaceRecord {
     fn mobile_qa() -> Self {
         Self {
             active_agent_id: "qa".to_owned(),
+            selected_agent_template_id: Some("developer-pi".to_owned()),
+            selected_harness_profile_id: Some("pi-execution-discipline".to_owned()),
             agents: vec![WorkspaceAgent {
                 id: "qa".to_owned(),
                 model: "gpt-5".to_owned(),
@@ -314,11 +349,28 @@ fn validate_identifier(field: &'static str, value: String) -> Result<String, Wor
     Ok(value)
 }
 
+fn normalize_optional_identifier(
+    field: &'static str,
+    value: Option<String>,
+) -> Result<Option<String>, WorkspaceError> {
+    value
+        .map(|value| {
+            let value = value.trim();
+            if value.is_empty() {
+                Ok(None)
+            } else {
+                validate_identifier(field, value.to_owned()).map(Some)
+            }
+        })
+        .transpose()
+        .map(Option::flatten)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         workspace_snapshot_from_state, CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest,
-        WorkspaceRecord, WorkspaceStatus,
+        UpdateWorkspaceLoadoutRequest, WorkspaceRecord, WorkspaceStatus,
     };
     use crate::core::state::AgentOsState;
 
@@ -354,6 +406,8 @@ mod tests {
         assert_eq!(workspace.path, "C:\\work\\api");
         assert_eq!(workspace.branch, "feature/workspace");
         assert_eq!(workspace.active_agent_id, "director");
+        assert_eq!(workspace.selected_agent_template_id, None);
+        assert_eq!(workspace.selected_harness_profile_id, None);
         assert_eq!(workspace.checkpoints[1].label, "Build API");
         assert_eq!(workspace.status, WorkspaceStatus::Configured);
     }
@@ -380,5 +434,35 @@ mod tests {
         assert_eq!(workspace.branch, "feature/api");
         assert_eq!(workspace.path, "D:\\api");
         assert!(workspace.logs.last().expect("log").contains("feature/api"));
+    }
+
+    #[test]
+    fn workspace_loadout_update_trims_optional_bindings() {
+        let mut workspace = WorkspaceRecord::local(CreateWorkspaceRequest {
+            branch: "main".to_owned(),
+            id: "api".to_owned(),
+            mission: "Build API".to_owned(),
+            name: "API".to_owned(),
+            path: "C:\\work\\api".to_owned(),
+        })
+        .expect("workspace should be valid");
+
+        workspace
+            .update_loadout(UpdateWorkspaceLoadoutRequest {
+                agent_template_id: Some(" developer-pi ".to_owned()),
+                harness_profile_id: Some(" pi-execution-discipline ".to_owned()),
+                workspace_id: "api".to_owned(),
+            })
+            .expect("loadout should update");
+
+        assert_eq!(
+            workspace.selected_agent_template_id,
+            Some("developer-pi".to_owned())
+        );
+        assert_eq!(
+            workspace.selected_harness_profile_id,
+            Some("pi-execution-discipline".to_owned())
+        );
+        assert!(workspace.logs.last().expect("log").contains("developer-pi"));
     }
 }

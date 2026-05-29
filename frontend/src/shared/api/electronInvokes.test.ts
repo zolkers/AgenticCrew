@@ -71,6 +71,15 @@ describe("electronInvokes", () => {
         request: { branch: "main", path: "D:\\repo", workspaceId: "repo" }
       })
     ).resolves.toBeUndefined();
+    await expect(
+      electronWorkspaceInvoke("update_workspace_loadout", {
+        request: {
+          agentTemplateId: "developer-pi",
+          harnessProfileId: "pi-execution-discipline",
+          workspaceId: "repo"
+        }
+      })
+    ).resolves.toBeUndefined();
 
     expect(invoke).toHaveBeenCalledWith("sync_github_skill_source", { sourceId: "superpowers" });
     expect(invoke).toHaveBeenCalledWith("set_harness_profile_active", {
@@ -97,6 +106,13 @@ describe("electronInvokes", () => {
     });
     expect(invoke).toHaveBeenCalledWith("update_workspace_git_context", {
       request: { branch: "main", path: "D:\\repo", workspaceId: "repo" }
+    });
+    expect(invoke).toHaveBeenCalledWith("update_workspace_loadout", {
+      request: {
+        agentTemplateId: "developer-pi",
+        harnessProfileId: "pi-execution-discipline",
+        workspaceId: "repo"
+      }
     });
   });
 

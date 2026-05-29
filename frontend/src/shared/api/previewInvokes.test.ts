@@ -50,6 +50,20 @@ describe("previewInvokes", () => {
       id: "fullstack-app",
       path: "D:\\manual"
     });
+
+    const loadoutUpdated = await previewWorkspaceInvoke("update_workspace_loadout", {
+      request: {
+        agentTemplateId: "developer-pi",
+        harnessProfileId: "pi-execution-discipline",
+        workspaceId: "fullstack-app"
+      }
+    });
+
+    expect(loadoutUpdated.workspaces[0]).toMatchObject({
+      id: "fullstack-app",
+      selectedAgentTemplateId: "developer-pi",
+      selectedHarnessProfileId: "pi-execution-discipline"
+    });
   });
 
   it("uses preview workspace fallbacks when action args are absent", async () => {
@@ -75,6 +89,16 @@ describe("previewInvokes", () => {
       branch: "codex/cockpit-prototype",
       id: "fullstack-app",
       path: "C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew"
+    });
+
+    const loadoutUpdated = await previewWorkspaceInvoke("update_workspace_loadout", {
+      request: { workspaceId: "fullstack-app" }
+    });
+
+    expect(loadoutUpdated.workspaces[0]).toMatchObject({
+      id: "fullstack-app",
+      selectedAgentTemplateId: null,
+      selectedHarnessProfileId: null
     });
   });
 

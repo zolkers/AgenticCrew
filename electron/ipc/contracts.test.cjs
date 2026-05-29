@@ -8,6 +8,7 @@ test("accepts known snapshot commands", () => {
     assertCommand("workspace_snapshot");
     assertCommand("create_workspace");
     assertCommand("update_workspace_git_context");
+    assertCommand("update_workspace_loadout");
     assertCommand("skill_sources_snapshot");
     assertCommand("harness_studio_snapshot");
     assertCommand("create_harness_profile");

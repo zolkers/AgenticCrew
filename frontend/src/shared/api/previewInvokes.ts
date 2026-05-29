@@ -175,6 +175,8 @@ export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
           mission: request?.mission ?? "Start a new agent mission",
           name: request?.name ?? "Preview Workspace",
           path: request?.path ?? "local",
+          selectedAgentTemplateId: null,
+          selectedHarnessProfileId: null,
           skills: ["superpowers:tdd", "git:workspace-context"],
           status: "configured"
         }
@@ -192,6 +194,24 @@ export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
               ...workspace,
               branch: request.branch ?? workspace.branch,
               path: request.path ?? workspace.path
+            }
+          : workspace
+      )
+    });
+  }
+
+  if (command === "update_workspace_loadout") {
+    const request = args?.request as
+      | { agentTemplateId?: null | string; harnessProfileId?: null | string; workspaceId?: string }
+      | undefined;
+
+    return Promise.resolve({
+      workspaces: previewWorkspaceSnapshot.workspaces.map((workspace) =>
+        workspace.id === request?.workspaceId
+          ? {
+              ...workspace,
+              selectedAgentTemplateId: request.agentTemplateId ?? null,
+              selectedHarnessProfileId: request.harnessProfileId ?? null
             }
           : workspace
       )

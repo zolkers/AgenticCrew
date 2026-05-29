@@ -291,11 +291,16 @@ describe("App", () => {
 
     await openDefaultWorkspace();
     fireEvent.change(await screen.findByLabelText("Agent template"), { target: { value: "release-agent" } });
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Release Agent" })).toBeInTheDocument();
+    });
     fireEvent.change(screen.getByLabelText("Harness profile"), { target: { value: "release-harness" } });
 
-    expect(screen.getByRole("heading", { name: "Release Agent" })).toBeInTheDocument();
-    expect(screen.getByText("release / gpt-5.1")).toBeInTheDocument();
-    expect(screen.getByText("Harness: Release Harness")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Release Agent" })).toBeInTheDocument();
+      expect(screen.getByText("release / gpt-5.1")).toBeInTheDocument();
+      expect(screen.getByText("Harness: Release Harness")).toBeInTheDocument();
+    });
   });
 
   it("falls back to cockpit agent context when no saved loadout items exist", async () => {

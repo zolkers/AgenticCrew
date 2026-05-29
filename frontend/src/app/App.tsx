@@ -31,6 +31,7 @@ import {
   createWorkspace as createWorkspaceRecord,
   loadWorkspaceSnapshot,
   updateWorkspaceGitContext,
+  updateWorkspaceLoadout,
   type InvokeWorkspace
 } from "../shared/api/workspaceApi";
 import type { CockpitWorkspace } from "../shared/preview/cockpitData";
@@ -114,7 +115,6 @@ export function App({
 }: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
   const [routeState, setRouteState] = useState<AppRouteState>(() => resolveInitialRoute());
-  const [workspaceLoadouts, setWorkspaceLoadouts] = useState<Record<string, WorkspaceLoadout>>({});
   const { t } = useTranslation();
   const activeView = routeState.view;
   const activeWorkspaceId = routeState.workspaceId;
@@ -222,13 +222,20 @@ export function App({
     );
   }
 
-  const activeLoadout = workspaceLoadouts[activeWorkspace.id];
   const openView = (view: AppView) => {
     openWorkspace(activeWorkspace.id, view);
   };
   const updateActiveWorkspace = async (changes: Pick<CockpitWorkspace, "branch" | "path">) => {
     const workspaceSnapshot = await updateWorkspaceGitContext(workspaceInvoke, {
       ...changes,
+      workspaceId: activeWorkspace.id
+    });
+    replaceWorkspaceSnapshot(workspaceSnapshot);
+  };
+  const updateActiveLoadout = async (loadout: WorkspaceLoadout) => {
+    const workspaceSnapshot = await updateWorkspaceLoadout(workspaceInvoke, {
+      agentTemplateId: loadout.agentTemplateId,
+      harnessProfileId: loadout.harnessProfileId,
       workspaceId: activeWorkspace.id
     });
     replaceWorkspaceSnapshot(workspaceSnapshot);
@@ -333,12 +340,8 @@ export function App({
             activeWorkspace={activeWorkspace}
             agentStudioSnapshot={loadState.agentStudioSnapshot}
             harnessStudioSnapshot={loadState.harnessStudioSnapshot}
-            loadout={activeLoadout}
             onLoadoutChange={(loadout) => {
-              setWorkspaceLoadouts((current) => ({
-                ...current,
-                [activeWorkspace.id]: loadout
-              }));
+              void updateActiveLoadout(loadout);
             }}
             onWorkspaceChange={openWorkspace}
             workspaces={workspaces}
@@ -562,7 +565,6 @@ type CockpitProps = Readonly<{
   activeWorkspace: CockpitWorkspace;
   agentStudioSnapshot: AgentStudioSnapshot;
   harnessStudioSnapshot: HarnessStudioSnapshot;
-  loadout?: WorkspaceLoadout;
   onLoadoutChange: (loadout: WorkspaceLoadout) => void;
   onWorkspaceChange: (workspaceId: string) => void;
   workspaces: readonly CockpitWorkspace[];
@@ -577,7 +579,6 @@ function Cockpit({
   activeWorkspace,
   agentStudioSnapshot,
   harnessStudioSnapshot,
-  loadout,
   onLoadoutChange,
   onWorkspaceChange,
   workspaces
@@ -590,9 +591,9 @@ function Cockpit({
   const agentTemplates = preferredActiveItems(agentStudioSnapshot.templates);
   const harnessProfiles = preferredActiveItems(harnessStudioSnapshot.profiles);
   const selectedAgentTemplateId =
-    loadout === undefined ? (agentTemplates.at(0)?.id ?? "") : loadout.agentTemplateId;
+    activeWorkspace.selectedAgentTemplateId ?? (agentTemplates.at(0)?.id ?? "");
   const selectedHarnessProfileId =
-    loadout === undefined ? (harnessProfiles.at(0)?.id ?? "") : loadout.harnessProfileId;
+    activeWorkspace.selectedHarnessProfileId ?? (harnessProfiles.at(0)?.id ?? "");
   const selectedAgentTemplate = agentTemplates.find((template) => template.id === selectedAgentTemplateId);
   const selectedHarnessProfile = harnessProfiles.find((profile) => profile.id === selectedHarnessProfileId);
   const budgetPercent = Math.round((activeWorkspace.budgetUsedUsd / activeWorkspace.budgetLimitUsd) * 100);

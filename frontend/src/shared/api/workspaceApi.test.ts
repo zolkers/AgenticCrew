@@ -3,6 +3,7 @@ import {
   createWorkspace,
   loadWorkspaceSnapshot,
   updateWorkspaceGitContext,
+  updateWorkspaceLoadout,
   type InvokeWorkspace
 } from "./workspaceApi";
 
@@ -31,6 +32,11 @@ describe("workspaceApi", () => {
       path: "D:\\api",
       workspaceId: "api"
     };
+    const loadoutRequest = {
+      agentTemplateId: "developer-pi",
+      harnessProfileId: "pi-execution-discipline",
+      workspaceId: "api"
+    };
     const calls: unknown[] = [];
     const invoke: InvokeWorkspace = (command, args) => {
       calls.push([command, args]);
@@ -40,10 +46,12 @@ describe("workspaceApi", () => {
 
     await createWorkspace(invoke, createRequest);
     await updateWorkspaceGitContext(invoke, updateRequest);
+    await updateWorkspaceLoadout(invoke, loadoutRequest);
 
     expect(calls).toEqual([
       ["create_workspace", { request: createRequest }],
-      ["update_workspace_git_context", { request: updateRequest }]
+      ["update_workspace_git_context", { request: updateRequest }],
+      ["update_workspace_loadout", { request: loadoutRequest }]
     ]);
   });
 });

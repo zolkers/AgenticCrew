@@ -33,7 +33,7 @@ use core::{
     },
     workspaces::{
         workspace_snapshot_from_state, CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest,
-        WorkspaceSnapshot,
+        UpdateWorkspaceLoadoutRequest, WorkspaceSnapshot,
     },
 };
 
@@ -156,6 +156,15 @@ pub fn update_workspace_git_context_at_path(
     request: UpdateWorkspaceGitContextRequest,
 ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
     let state = mutate_state_at_path(path, |state| state.update_workspace_git_context(request))?;
+
+    Ok(workspace_snapshot_from_state(&state))
+}
+
+pub fn update_workspace_loadout_at_path(
+    path: impl AsRef<Path>,
+    request: UpdateWorkspaceLoadoutRequest,
+) -> Result<WorkspaceSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.update_workspace_loadout(request))?;
 
     Ok(workspace_snapshot_from_state(&state))
 }
@@ -418,7 +427,8 @@ mod commands {
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
         core::workspaces::{
-            CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest, WorkspaceSnapshot,
+            CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
+            WorkspaceSnapshot,
         },
         core::{agents::AgentStudioSnapshot, harnesses::HarnessStudioSnapshot},
         create_agent_template_at_path, create_feature_session_at_path,
@@ -429,7 +439,8 @@ mod commands {
         set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
         sync_github_skill_source_at_path, sync_provider_models_at_path, update_agent_template_at_path,
         update_ai_provider_settings_at_path, update_harness_profile_at_path,
-        update_workspace_git_context_at_path, validate_skill_source_at_path,
+        update_workspace_git_context_at_path, update_workspace_loadout_at_path,
+        validate_skill_source_at_path,
         workspace_snapshot_at_path,
         CreateCheckpointRequest, CreateFeatureSessionRequest, DesktopCommandError,
         MissionControlSnapshot, RecordCommandEvidenceRequest,
@@ -470,6 +481,14 @@ mod commands {
         request: UpdateWorkspaceGitContextRequest,
     ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
         update_workspace_git_context_at_path(app_state_path(&app)?, request)
+    }
+
+    #[tauri::command]
+    pub fn update_workspace_loadout(
+        app: tauri::AppHandle,
+        request: UpdateWorkspaceLoadoutRequest,
+    ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
+        update_workspace_loadout_at_path(app_state_path(&app)?, request)
     }
 
     #[tauri::command]
@@ -669,6 +688,7 @@ pub fn run() {
             commands::workspace_snapshot,
             commands::create_workspace,
             commands::update_workspace_git_context,
+            commands::update_workspace_loadout,
             commands::skill_sources_snapshot,
             commands::harness_studio_snapshot,
             commands::create_harness_profile,
@@ -719,8 +739,8 @@ mod tests {
         register_github_skill_source_at_path, set_agent_template_active_at_path,
         set_harness_profile_active_at_path, skill_sources_snapshot_at_path, state_file_path,
         update_agent_template_at_path, update_harness_profile_at_path,
-        update_workspace_git_context_at_path, validate_skill_source_at_path, workspace_snapshot_at_path,
-        STATE_FILE_NAME,
+        update_workspace_git_context_at_path, update_workspace_loadout_at_path,
+        validate_skill_source_at_path, workspace_snapshot_at_path, STATE_FILE_NAME,
     };
     use crate::core::{
         agents::{
@@ -738,7 +758,9 @@ mod tests {
         state::{
             CreateCheckpointRequest, CreateFeatureSessionRequest, RecordCommandEvidenceRequest,
         },
-        workspaces::{CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest},
+        workspaces::{
+            CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
+        },
     };
 
     #[test]
@@ -891,6 +913,29 @@ mod tests {
             .expect("workspace should exist");
         assert_eq!(workspace.branch, "feature/manual");
         assert_eq!(workspace.path, "D:\\manual");
+        let snapshot = update_workspace_loadout_at_path(
+            &path,
+            UpdateWorkspaceLoadoutRequest {
+                agent_template_id: Some("developer-pi".to_owned()),
+                harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                workspace_id: "api-platform".to_owned(),
+            },
+        )
+        .expect("workspace loadout should persist");
+
+        let workspace = snapshot
+            .workspaces
+            .iter()
+            .find(|workspace| workspace.id == "api-platform")
+            .expect("workspace should exist");
+        assert_eq!(
+            workspace.selected_agent_template_id,
+            Some("developer-pi".to_owned())
+        );
+        assert_eq!(
+            workspace.selected_harness_profile_id,
+            Some("pi-execution-discipline".to_owned())
+        );
         assert_eq!(
             snapshot,
             workspace_snapshot_at_path(&path).expect("snapshot should load")

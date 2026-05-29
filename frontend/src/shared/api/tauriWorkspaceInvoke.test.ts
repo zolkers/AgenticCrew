@@ -21,10 +21,26 @@ describe("tauriWorkspaceInvoke", () => {
         request: { branch: "main", path: "D:\\repo", workspaceId: "repo" }
       })
     ).resolves.toBe(snapshot);
+    await expect(
+      tauriWorkspaceInvoke("update_workspace_loadout", {
+        request: {
+          agentTemplateId: "developer-pi",
+          harnessProfileId: "pi-execution-discipline",
+          workspaceId: "repo"
+        }
+      })
+    ).resolves.toBe(snapshot);
 
     expect(invoke).toHaveBeenNthCalledWith(1, "workspace_snapshot", undefined);
     expect(invoke).toHaveBeenNthCalledWith(2, "update_workspace_git_context", {
       request: { branch: "main", path: "D:\\repo", workspaceId: "repo" }
+    });
+    expect(invoke).toHaveBeenNthCalledWith(3, "update_workspace_loadout", {
+      request: {
+        agentTemplateId: "developer-pi",
+        harnessProfileId: "pi-execution-discipline",
+        workspaceId: "repo"
+      }
     });
   });
 });

@@ -1,12 +1,14 @@
 import type {
   CreateWorkspaceRequest,
   UpdateWorkspaceGitContextRequest,
+  UpdateWorkspaceLoadoutRequest,
   WorkspaceSnapshot
 } from "../types/core";
 
 export type WorkspaceCommand =
   | "create_workspace"
   | "update_workspace_git_context"
+  | "update_workspace_loadout"
   | "workspace_snapshot";
 
 export type InvokeWorkspace = (
@@ -30,4 +32,11 @@ export async function updateWorkspaceGitContext(
   request: UpdateWorkspaceGitContextRequest
 ): Promise<WorkspaceSnapshot> {
   return invoke("update_workspace_git_context", { request });
+}
+
+export async function updateWorkspaceLoadout(
+  invoke: InvokeWorkspace,
+  request: UpdateWorkspaceLoadoutRequest
+): Promise<WorkspaceSnapshot> {
+  return invoke("update_workspace_loadout", { request });
 }

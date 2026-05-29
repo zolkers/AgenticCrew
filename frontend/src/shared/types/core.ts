@@ -36,6 +36,8 @@ export type WorkspaceRecord = {
   mission: string;
   name: string;
   path: string;
+  selectedAgentTemplateId?: string | null;
+  selectedHarnessProfileId?: string | null;
   skills: string[];
   status: "configured" | "observing" | "running";
 };
@@ -55,6 +57,12 @@ export type CreateWorkspaceRequest = {
 export type UpdateWorkspaceGitContextRequest = {
   branch: string;
   path: string;
+  workspaceId: string;
+};
+
+export type UpdateWorkspaceLoadoutRequest = {
+  agentTemplateId?: string | null;
+  harnessProfileId?: string | null;
   workspaceId: string;
 };
 
@@ -311,5 +319,6 @@ export type ElectronCommandMap = {
   update_ai_provider_settings: SettingsSnapshot;
   update_harness_profile: HarnessStudioSnapshot;
   update_workspace_git_context: WorkspaceSnapshot;
+  update_workspace_loadout: WorkspaceSnapshot;
   workspace_snapshot: WorkspaceSnapshot;
 };

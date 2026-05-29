@@ -29,7 +29,8 @@ use super::{
         SkillSource, SkillSourceError,
     },
     workspaces::{
-        CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest, WorkspaceError, WorkspaceRecord,
+        CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
+        WorkspaceError, WorkspaceRecord,
     },
 };
 
@@ -530,6 +531,53 @@ impl AgentOsState {
 
         Ok(())
     }
+
+    pub fn update_workspace_loadout(
+        &mut self,
+        request: UpdateWorkspaceLoadoutRequest,
+    ) -> Result<(), StateMutationError> {
+        if let Some(agent_template_id) = request.agent_template_id.as_deref() {
+            let agent_template_id = agent_template_id.trim();
+            if !agent_template_id.is_empty()
+                && !self
+                    .agent_templates
+                    .iter()
+                    .any(|template| template.id == agent_template_id)
+            {
+                return Err(StateMutationError::MissingAgentTemplate {
+                    template_id: agent_template_id.to_owned(),
+                });
+            }
+        }
+
+        if let Some(harness_profile_id) = request.harness_profile_id.as_deref() {
+            let harness_profile_id = harness_profile_id.trim();
+            if !harness_profile_id.is_empty()
+                && !self
+                    .harness_profiles
+                    .iter()
+                    .any(|profile| profile.id == harness_profile_id)
+            {
+                return Err(StateMutationError::MissingHarnessProfile {
+                    profile_id: harness_profile_id.to_owned(),
+                });
+            }
+        }
+
+        let workspace = self
+            .workspaces
+            .iter_mut()
+            .find(|workspace| workspace.id == request.workspace_id)
+            .ok_or_else(|| StateMutationError::MissingWorkspace {
+                workspace_id: request.workspace_id.clone(),
+            })?;
+
+        workspace
+            .update_loadout(request)
+            .map_err(StateMutationError::InvalidWorkspace)?;
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -869,7 +917,7 @@ mod tests {
         },
         settings::{DesktopSettings, UpdateAiProviderSettingsRequest},
         skills::RegisterGitHubSkillSourceRequest,
-        workspaces::WorkspaceRecord,
+        workspaces::{CreateWorkspaceRequest, UpdateWorkspaceLoadoutRequest, WorkspaceRecord},
     };
 
     #[test]
@@ -1195,6 +1243,90 @@ mod tests {
             error,
             StateMutationError::MissingHarnessProfile {
                 profile_id: "missing-harness".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn update_workspace_loadout_changes_existing_workspace() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .update_workspace_loadout(UpdateWorkspaceLoadoutRequest {
+                agent_template_id: Some(" developer-pi ".to_owned()),
+                harness_profile_id: Some(" pi-execution-discipline ".to_owned()),
+                workspace_id: "fullstack-app".to_owned(),
+            })
+            .expect("workspace loadout should update");
+
+        let workspace = state
+            .workspaces
+            .iter()
+            .find(|workspace| workspace.id == "fullstack-app")
+            .expect("workspace should exist");
+        assert_eq!(
+            workspace.selected_agent_template_id,
+            Some("developer-pi".to_owned())
+        );
+        assert_eq!(
+            workspace.selected_harness_profile_id,
+            Some("pi-execution-discipline".to_owned())
+        );
+    }
+
+    #[test]
+    fn update_workspace_loadout_rejects_missing_bindings() {
+        let mut state = AgentOsState::empty();
+
+        let missing_agent_error = state
+            .update_workspace_loadout(UpdateWorkspaceLoadoutRequest {
+                agent_template_id: Some("missing-agent".to_owned()),
+                harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                workspace_id: "fullstack-app".to_owned(),
+            })
+            .expect_err("missing agent should fail");
+
+        assert_eq!(
+            missing_agent_error,
+            StateMutationError::MissingAgentTemplate {
+                template_id: "missing-agent".to_owned()
+            }
+        );
+
+        let missing_harness_error = state
+            .update_workspace_loadout(UpdateWorkspaceLoadoutRequest {
+                agent_template_id: Some("developer-pi".to_owned()),
+                harness_profile_id: Some("missing-harness".to_owned()),
+                workspace_id: "fullstack-app".to_owned(),
+            })
+            .expect_err("missing harness should fail");
+
+        assert_eq!(
+            missing_harness_error,
+            StateMutationError::MissingHarnessProfile {
+                profile_id: "missing-harness".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn create_workspace_rejects_duplicate_id() {
+        let mut state = AgentOsState::empty();
+
+        let error = state
+            .create_workspace(CreateWorkspaceRequest {
+                branch: "main".to_owned(),
+                id: "fullstack-app".to_owned(),
+                mission: "Duplicate".to_owned(),
+                name: "Duplicate".to_owned(),
+                path: "C:\\work".to_owned(),
+            })
+            .expect_err("duplicate workspace should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::DuplicateWorkspace {
+                workspace_id: "fullstack-app".to_owned()
             }
         );
     }
