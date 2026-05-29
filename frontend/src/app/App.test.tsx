@@ -561,7 +561,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Agent Studio" }));
 
     expect(await screen.findByRole("heading", { name: "Agent Studio" })).toBeInTheDocument();
-    expect(screen.getByText("Developer Agent")).toBeInTheDocument();
+    expect(screen.getAllByText("Developer Agent").length).toBeGreaterThan(0);
     expect(screen.getByText("pi-execution-discipline")).toBeInTheDocument();
   });
 
@@ -609,7 +609,7 @@ describe("App", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Create agent" }));
 
-    expect(await screen.findByText("Review Agent")).toBeInTheDocument();
+    expect((await screen.findAllByText("Review Agent")).length).toBeGreaterThan(0);
     expect(screen.getByText("2 active")).toBeInTheDocument();
   });
 

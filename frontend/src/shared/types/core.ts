@@ -314,6 +314,16 @@ export type AgentStudioSnapshot = {
   activeTemplateCount: number;
   templates: AgentTemplate[];
   trainingRuns: AgentTrainingRun[];
+  versionSummaries?: AgentVersionSummary[];
+};
+
+export type AgentVersionSummary = {
+  active: boolean;
+  currentVersion: number;
+  latestTrainingStatus?: AgentTrainingStatus | null;
+  promotedTrainingCount: number;
+  templateId: string;
+  templateName: string;
 };
 
 export type CreateAgentTemplateRequest = {

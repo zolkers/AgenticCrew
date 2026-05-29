@@ -86,6 +86,16 @@ const templateSnapshot: AgentStudioSnapshot = {
       promotedVersion: 3,
       status: "promoted"
     }
+  ],
+  versionSummaries: [
+    {
+      active: true,
+      currentVersion: 2,
+      latestTrainingStatus: "promoted",
+      promotedTrainingCount: 1,
+      templateId: "loose-agent",
+      templateName: "Loose Agent"
+    }
   ]
 };
 
@@ -110,8 +120,11 @@ describe("AgentStudio", () => {
       />
     );
 
-    expect(screen.getByText("Loose Agent")).toBeInTheDocument();
+    expect(screen.getAllByText("Loose Agent").length).toBeGreaterThan(0);
     expect(screen.getAllByText("None").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Version ledger" })).toBeInTheDocument();
+    expect(screen.getByText("v2 / active")).toBeInTheDocument();
+    expect(screen.getAllByText("promoted").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Training lane" })).toBeInTheDocument();
     expect(screen.getByText("smoke")).toBeInTheDocument();
     expect(screen.getByText("loose-agent / draft")).toBeInTheDocument();
@@ -119,6 +132,22 @@ describe("AgentStudio", () => {
     expect(screen.getByText("release-regression")).toBeInTheDocument();
     expect(screen.getByText("0.91")).toBeInTheDocument();
     expect(screen.getByText("v3")).toBeInTheDocument();
+  });
+
+  it("derives version summaries when older snapshots omit them", () => {
+    render(
+      <AgentStudio
+        harnessSnapshot={harnessSnapshot}
+        invoke={vi.fn()}
+        snapshot={{
+          ...templateSnapshot,
+          versionSummaries: undefined
+        }}
+      />
+    );
+
+    expect(screen.getByText("v2 / active")).toBeInTheDocument();
+    expect(screen.getAllByText("1").length).toBeGreaterThan(0);
   });
 
   it("keeps legacy template models selectable when the provider registry omits them", () => {

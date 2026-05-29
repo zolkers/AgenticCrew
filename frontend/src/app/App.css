@@ -812,7 +812,8 @@ button {
   background: var(--color-terminal);
 }
 
-.training-lane {
+.training-lane,
+.version-ledger {
   display: grid;
   gap: 0.75rem;
   margin-top: 1rem;
@@ -844,19 +845,22 @@ button {
   color: var(--color-teal);
 }
 
-.training-lane > header {
+.training-lane > header,
+.version-ledger > header {
   display: flex;
   gap: 0.5rem;
   align-items: center;
 }
 
-.training-lane h3 {
+.training-lane h3,
+.version-ledger h3 {
   margin: 0;
   font-size: 0.9rem;
   text-transform: uppercase;
 }
 
-.training-lane svg {
+.training-lane svg,
+.version-ledger svg {
   color: var(--color-teal);
 }
 

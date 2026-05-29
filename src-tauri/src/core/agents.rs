@@ -45,7 +45,19 @@ pub enum AgentTrainingStatus {
 pub struct AgentStudioSnapshot {
     pub templates: Vec<AgentTemplate>,
     pub training_runs: Vec<AgentTrainingRun>,
+    pub version_summaries: Vec<AgentVersionSummary>,
     pub active_template_count: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentVersionSummary {
+    pub active: bool,
+    pub current_version: u32,
+    pub latest_training_status: Option<AgentTrainingStatus>,
+    pub promoted_training_count: u64,
+    pub template_id: String,
+    pub template_name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -88,14 +100,42 @@ pub struct UpdateAgentTemplateRequest {
 
 pub fn agent_studio_snapshot_from_state(state: &AgentOsState) -> AgentStudioSnapshot {
     AgentStudioSnapshot {
-        templates: state.agent_templates.clone(),
-        training_runs: state.agent_training_runs.clone(),
         active_template_count: state
             .agent_templates
             .iter()
             .filter(|template| template.active)
             .count() as u64,
+        templates: state.agent_templates.clone(),
+        training_runs: state.agent_training_runs.clone(),
+        version_summaries: agent_version_summaries(&state.agent_templates, &state.agent_training_runs),
     }
+}
+
+fn agent_version_summaries(
+    templates: &[AgentTemplate],
+    training_runs: &[AgentTrainingRun],
+) -> Vec<AgentVersionSummary> {
+    templates
+        .iter()
+        .map(|template| {
+            let matching_runs = training_runs
+                .iter()
+                .filter(|run| run.agent_template_id == template.id)
+                .collect::<Vec<_>>();
+
+            AgentVersionSummary {
+                active: template.active,
+                current_version: template.version,
+                latest_training_status: matching_runs.last().map(|run| run.status),
+                promoted_training_count: matching_runs
+                    .iter()
+                    .filter(|run| run.promoted_version.is_some())
+                    .count() as u64,
+                template_id: template.id.clone(),
+                template_name: template.name.clone(),
+            }
+        })
+        .collect()
 }
 
 impl AgentTemplate {
@@ -250,6 +290,9 @@ mod tests {
 
         assert_eq!(snapshot.active_template_count, 1);
         assert_eq!(snapshot.templates[0].id, "developer-pi");
+        assert_eq!(snapshot.version_summaries.len(), 1);
+        assert_eq!(snapshot.version_summaries[0].template_id, "developer-pi");
+        assert_eq!(snapshot.version_summaries[0].current_version, 1);
     }
 
     #[test]

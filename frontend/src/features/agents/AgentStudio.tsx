@@ -49,6 +49,7 @@ export function AgentStudio({
     ? availableModels
     : [{ id: modelId, label: modelId, providerId: "openai" }, ...availableModels];
   const selectedSkillRoutes = splitSkillRoutes(skillRoutesText);
+  const versionSummaries = snapshot.versionSummaries ?? agentVersionSummaries(snapshot);
   const generatedId = useMemo(() => slugify(name), [name]);
   const submitLabel = saving ? "Saving" : getAgentSubmitLabel(editingTemplateId);
 
@@ -229,6 +230,36 @@ export function AgentStudio({
         </ul>
         </>
       )}
+      {versionSummaries.length > 0 ? (
+        <section aria-labelledby="version-ledger-title" className="version-ledger">
+          <header>
+            <Trophy aria-hidden="true" size={18} />
+            <h3 id="version-ledger-title">Version ledger</h3>
+          </header>
+          <ul className="surface-list">
+            {versionSummaries.map((summary) => (
+              <li key={summary.templateId}>
+                <div>
+                  <strong>{summary.templateName}</strong>
+                  <span>
+                    v{summary.currentVersion} / {summary.active ? "active" : "inactive"}
+                  </span>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Latest training</dt>
+                    <dd>{summary.latestTrainingStatus ?? "none"}</dd>
+                  </div>
+                  <div>
+                    <dt>Promotions</dt>
+                    <dd>{summary.promotedTrainingCount}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {snapshot.trainingRuns.length > 0 ? (
         <section aria-labelledby="training-lane-title" className="training-lane">
           <header>
@@ -416,6 +447,23 @@ function splitSkillRoutes(value: string): string[] {
 
 function getAgentSubmitLabel(editingTemplateId: null | string): string {
   return editingTemplateId === null ? "Create agent" : "Save agent";
+}
+
+function agentVersionSummaries(snapshot: AgentStudioSnapshot) {
+  return snapshot.templates.map((template) => {
+    const trainingRuns = snapshot.trainingRuns.filter((run) => run.agentTemplateId === template.id);
+
+    return {
+      active: template.active,
+      currentVersion: template.version,
+      latestTrainingStatus: trainingRuns.at(-1)?.status ?? null,
+      promotedTrainingCount: trainingRuns.filter(
+        (run) => run.promotedVersion !== null && run.promotedVersion !== undefined
+      ).length,
+      templateId: template.id,
+      templateName: template.name
+    };
+  });
 }
 
 function slugify(value: string): string {
