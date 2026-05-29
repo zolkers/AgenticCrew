@@ -4,11 +4,19 @@ services:
   frontend:
     build:
       context: .
+      dockerfile: docker/Dockerfile
     command: npm run dev:docker -w frontend
     ports:
       - "5173:5173"
 
+  desktop-test:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: npm run desktop:test
+
   quality:
     build:
       context: .
+      dockerfile: docker/Dockerfile
     command: sh -lc "npm run quality && npm run desktop:test"

@@ -27,6 +27,12 @@ npm run quality
 npm run desktop:test
 ```
 
+Run desktop Rust tests in Docker when local Windows MSVC/MinGW prerequisites are not installed:
+
+```bash
+npm run docker:desktop:test
+```
+
 Run the frontend quickly in Docker:
 
 ```bash
