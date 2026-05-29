@@ -6,18 +6,6 @@ cd /d "%~dp0\.." || exit /b 1
 if "%~1"=="--help" goto :help
 if "%~1"=="-h" goto :help
 
-where npm >nul 2>nul
-if errorlevel 1 (
-  echo npm is required on PATH.
-  exit /b 1
-)
-
-where python >nul 2>nul
-if errorlevel 1 (
-  echo python is required on PATH.
-  exit /b 1
-)
-
 where docker >nul 2>nul
 if errorlevel 1 (
   echo Docker is required on PATH.
@@ -31,23 +19,14 @@ if not "%~1"=="" (
   goto :help
 )
 
-echo Installing project dependencies...
-call npm ci || exit /b 1
-call python -m pip install -e "workers/python[dev]" || exit /b 1
-
 echo Starting AgenticCrew frontend at http://localhost:5173
-call npm run docker:frontend
+call docker compose up --build frontend
 exit /b %errorlevel%
 
 :quality
-echo Installing project dependencies...
-call npm ci || exit /b 1
-call python -m pip install -e "workers/python[dev]" || exit /b 1
-
 echo Running quality gates...
-call npm run quality || exit /b 1
-call npm run docker:desktop:test || exit /b 1
-call npm audit --audit-level=high
+call docker compose run --build --rm quality || exit /b 1
+call docker compose run --build --rm desktop-test sh -lc "find node_modules frontend/node_modules -mindepth 1 -maxdepth 1 -exec rm -rf {} + && npm ci && npm audit --audit-level=high"
 exit /b %errorlevel%
 
 :help

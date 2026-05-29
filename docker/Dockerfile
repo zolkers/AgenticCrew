@@ -13,6 +13,7 @@ RUN apt-get update \
     librsvg2-dev \
     libwebkit2gtk-4.1-dev \
     pkg-config \
+    python-is-python3 \
     python3-pip \
     python3.12 \
     python3.12-dev \

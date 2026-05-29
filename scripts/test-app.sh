@@ -28,23 +28,16 @@ require_command() {
   fi
 }
 
-require_command npm
-require_command python
 require_command docker
-
-echo "Installing project dependencies..."
-npm ci
-python -m pip install -e "workers/python[dev]"
 
 case "${1:-}" in
   --quality|quality)
     echo "Running quality gates..."
-    npm run quality
-    npm run docker:desktop:test
-    npm audit --audit-level=high
+    docker compose run --build --rm quality
+    docker compose run --build --rm desktop-test sh -lc "find node_modules frontend/node_modules -mindepth 1 -maxdepth 1 -exec rm -rf {} + && npm ci && npm audit --audit-level=high"
     ;;
   "")
     echo "Starting AgenticCrew frontend at http://localhost:5173"
-    npm run docker:frontend
+    docker compose up --build frontend
     ;;
 esac
