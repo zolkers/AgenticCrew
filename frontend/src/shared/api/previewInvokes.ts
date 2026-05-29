@@ -173,6 +173,36 @@ export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =
     });
   }
 
+  if (command === "update_harness_profile") {
+    const request = args?.request as
+      | { basePolicy: string; description: string; name: string; profileId: string }
+      | undefined;
+    if (request === undefined) {
+      return Promise.resolve(previewHarnessStudioSnapshot);
+    }
+
+    const profiles = previewHarnessStudioSnapshot.profiles.map((profile) =>
+      profile.id === request.profileId
+        ? {
+            ...profile,
+            description: request.description,
+            modules: profile.modules.map((module) => ({
+              ...module,
+              content: request.basePolicy,
+              version: incrementStringVersion(module.version)
+            })),
+            name: request.name,
+            version: incrementStringVersion(profile.version)
+          }
+        : profile
+    );
+
+    return Promise.resolve({
+      ...previewHarnessStudioSnapshot,
+      profiles
+    });
+  }
+
   return Promise.resolve(previewHarnessStudioSnapshot);
 };
 
@@ -231,8 +261,53 @@ export const previewAgentStudioInvoke: InvokeAgentStudio = (command, args) => {
     });
   }
 
+  if (command === "update_agent_template") {
+    const request = args?.request as
+      | {
+          budgetCents: number;
+          description: string;
+          harnessProfileId: null | string;
+          modelId: string;
+          name: string;
+          providerId: string;
+          role: string;
+          skillRoutes: string[];
+          templateId: string;
+        }
+      | undefined;
+    if (request === undefined) {
+      return Promise.resolve(previewAgentStudioSnapshot);
+    }
+
+    const templates = previewAgentStudioSnapshot.templates.map((template) =>
+      template.id === request.templateId
+        ? {
+            ...template,
+            budgetCents: request.budgetCents,
+            description: request.description,
+            harnessProfileId: request.harnessProfileId,
+            modelId: request.modelId,
+            name: request.name,
+            providerId: request.providerId,
+            role: request.role,
+            skillRoutes: request.skillRoutes,
+            version: template.version + 1
+          }
+        : template
+    );
+
+    return Promise.resolve({
+      ...previewAgentStudioSnapshot,
+      templates
+    });
+  }
+
   return Promise.resolve(previewAgentStudioSnapshot);
 };
+
+function incrementStringVersion(version: string): string {
+  return String(Number.parseInt(version, 10) + 1);
+}
 
 export const previewSkillSourcesInvoke: InvokeSkillSources = (command) => {
   if (command === "skill_sources_snapshot") {

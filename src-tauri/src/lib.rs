@@ -10,11 +10,11 @@ use serde::Serialize;
 use core::{
     agents::{
         agent_studio_snapshot_from_state, AgentStudioSnapshot, CreateAgentTemplateRequest,
-        SetAgentTemplateActiveRequest,
+        SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
     },
     harnesses::{
         harness_studio_snapshot_from_state, CreateHarnessProfileRequest, HarnessStudioSnapshot,
-        SetHarnessProfileActiveRequest,
+        SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
     },
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
     permissions::ApprovedPermissionPolicy,
@@ -147,6 +147,15 @@ pub fn set_agent_template_active_at_path(
     Ok(agent_studio_snapshot_from_state(&state))
 }
 
+pub fn update_agent_template_at_path(
+    path: impl AsRef<Path>,
+    request: UpdateAgentTemplateRequest,
+) -> Result<AgentStudioSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.update_agent_template(request))?;
+
+    Ok(agent_studio_snapshot_from_state(&state))
+}
+
 pub fn create_harness_profile_at_path(
     path: impl AsRef<Path>,
     request: CreateHarnessProfileRequest,
@@ -161,6 +170,15 @@ pub fn set_harness_profile_active_at_path(
     request: SetHarnessProfileActiveRequest,
 ) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
     let state = mutate_state_at_path(path, |state| state.set_harness_profile_active(request))?;
+
+    Ok(harness_studio_snapshot_from_state(&state))
+}
+
+pub fn update_harness_profile_at_path(
+    path: impl AsRef<Path>,
+    request: UpdateHarnessProfileRequest,
+) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.update_harness_profile(request))?;
 
     Ok(harness_studio_snapshot_from_state(&state))
 }
@@ -340,8 +358,12 @@ mod commands {
     use crate::{
         activate_skill_source_at_path, add_checkpoint_at_path, agent_studio_snapshot_at_path,
         approve_skill_source_permissions_at_path, close_feature_session_at_path,
-        core::agents::{CreateAgentTemplateRequest, SetAgentTemplateActiveRequest},
-        core::harnesses::{CreateHarnessProfileRequest, SetHarnessProfileActiveRequest},
+        core::agents::{
+            CreateAgentTemplateRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
+        },
+        core::harnesses::{
+            CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
+        },
         core::permissions::ApprovedPermissionPolicy,
         core::settings::{SettingsSnapshot, UpdateAiProviderSettingsRequest},
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
@@ -353,9 +375,10 @@ mod commands {
         mission_control_snapshot_at_path, record_command_evidence_at_path,
         register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
         set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
-        sync_github_skill_source_at_path, update_ai_provider_settings_at_path,
-        validate_skill_source_at_path, CreateCheckpointRequest, CreateFeatureSessionRequest,
-        DesktopCommandError, MissionControlSnapshot, RecordCommandEvidenceRequest,
+        sync_github_skill_source_at_path, update_agent_template_at_path,
+        update_ai_provider_settings_at_path, update_harness_profile_at_path, validate_skill_source_at_path,
+        CreateCheckpointRequest, CreateFeatureSessionRequest, DesktopCommandError,
+        MissionControlSnapshot, RecordCommandEvidenceRequest,
     };
 
     #[tauri::command]
@@ -403,6 +426,14 @@ mod commands {
     }
 
     #[tauri::command]
+    pub fn update_harness_profile(
+        app: tauri::AppHandle,
+        request: UpdateHarnessProfileRequest,
+    ) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
+        update_harness_profile_at_path(app_state_path(&app)?, request)
+    }
+
+    #[tauri::command]
     pub fn agent_studio_snapshot(
         app: tauri::AppHandle,
     ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
@@ -423,6 +454,14 @@ mod commands {
         request: SetAgentTemplateActiveRequest,
     ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
         set_agent_template_active_at_path(app_state_path(&app)?, request)
+    }
+
+    #[tauri::command]
+    pub fn update_agent_template(
+        app: tauri::AppHandle,
+        request: UpdateAgentTemplateRequest,
+    ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
+        update_agent_template_at_path(app_state_path(&app)?, request)
     }
 
     #[tauri::command]
@@ -546,9 +585,11 @@ pub fn run() {
             commands::harness_studio_snapshot,
             commands::create_harness_profile,
             commands::set_harness_profile_active,
+            commands::update_harness_profile,
             commands::agent_studio_snapshot,
             commands::create_agent_template,
             commands::set_agent_template_active,
+            commands::update_agent_template,
             commands::settings_snapshot,
             commands::create_feature_session,
             commands::add_checkpoint,
@@ -587,12 +628,17 @@ mod tests {
         inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
         record_command_evidence_at_path, record_skill_source_sync_success_at_path,
         register_github_skill_source_at_path, set_agent_template_active_at_path,
-        set_harness_profile_active_at_path, skill_sources_snapshot_at_path, state_file_path, validate_skill_source_at_path,
+        set_harness_profile_active_at_path, skill_sources_snapshot_at_path, state_file_path,
+        update_agent_template_at_path, update_harness_profile_at_path, validate_skill_source_at_path,
         STATE_FILE_NAME,
     };
     use crate::core::{
-        agents::{CreateAgentTemplateRequest, SetAgentTemplateActiveRequest},
-        harnesses::{CreateHarnessProfileRequest, SetHarnessProfileActiveRequest},
+        agents::{
+            CreateAgentTemplateRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
+        },
+        harnesses::{
+            CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
+        },
         permissions::{
             ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
             NetworkPermissionScope,
@@ -788,6 +834,50 @@ mod tests {
     }
 
     #[test]
+    fn update_harness_profile_command_persists_profile_guidance() {
+        let path = test_path(
+            "update_harness_profile_command_persists_profile_guidance",
+            "state.json",
+        );
+        create_harness_profile_at_path(
+            &path,
+            CreateHarnessProfileRequest {
+                active: true,
+                base_policy: "Use review gates.".to_owned(),
+                description: "Local review harness".to_owned(),
+                id: "local-review".to_owned(),
+                name: "Local Review".to_owned(),
+            },
+        )
+        .expect("local harness should persist");
+
+        let snapshot = update_harness_profile_at_path(
+            &path,
+            UpdateHarnessProfileRequest {
+                base_policy: "Require approval evidence.".to_owned(),
+                description: "Updated review harness".to_owned(),
+                name: "Review Harness".to_owned(),
+                profile_id: "local-review".to_owned(),
+            },
+        )
+        .expect("local harness should update");
+
+        let profile = snapshot
+            .profiles
+            .iter()
+            .find(|profile| profile.id == "local-review")
+            .expect("updated profile should exist");
+        assert_eq!(profile.name, "Review Harness");
+        assert_eq!(profile.description, "Updated review harness");
+        assert_eq!(profile.modules[0].content, "Require approval evidence.");
+        assert_eq!(profile.version, "2");
+        assert_eq!(
+            snapshot,
+            harness_studio_snapshot_at_path(&path).expect("snapshot should load")
+        );
+    }
+
+    #[test]
     fn agent_studio_snapshot_command_reads_built_in_developer_agent() {
         let path = test_path(
             "agent_studio_snapshot_command_reads_built_in_developer_agent",
@@ -840,6 +930,61 @@ mod tests {
         assert_eq!(snapshot.active_template_count, 1);
         let loaded = agent_studio_snapshot_at_path(&path).expect("snapshot should load");
         assert_eq!(snapshot, loaded);
+    }
+
+    #[test]
+    fn update_agent_template_command_persists_agent_guidance() {
+        let path = test_path(
+            "update_agent_template_command_persists_agent_guidance",
+            "state.json",
+        );
+        create_agent_template_at_path(
+            &path,
+            CreateAgentTemplateRequest {
+                active: true,
+                budget_cents: 525,
+                description: "Review local changes".to_owned(),
+                harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                id: "review-agent".to_owned(),
+                model_id: "gpt-5.2".to_owned(),
+                name: "Review Agent".to_owned(),
+                provider_id: "openai".to_owned(),
+                role: "reviewer".to_owned(),
+                skill_routes: vec!["agenticcrew://skills/review".to_owned()],
+            },
+        )
+        .expect("agent should persist");
+
+        let snapshot = update_agent_template_at_path(
+            &path,
+            UpdateAgentTemplateRequest {
+                budget_cents: 900,
+                description: "Owns release review.".to_owned(),
+                harness_profile_id: None,
+                model_id: "gpt-5.1".to_owned(),
+                name: "Release Reviewer".to_owned(),
+                provider_id: "openai".to_owned(),
+                role: "release-reviewer".to_owned(),
+                skill_routes: vec!["agenticcrew://skills/release".to_owned()],
+                template_id: "review-agent".to_owned(),
+            },
+        )
+        .expect("agent should update");
+
+        let template = snapshot
+            .templates
+            .iter()
+            .find(|template| template.id == "review-agent")
+            .expect("updated template should exist");
+        assert_eq!(template.name, "Release Reviewer");
+        assert_eq!(template.description, "Owns release review.");
+        assert_eq!(template.harness_profile_id, None);
+        assert_eq!(template.skill_routes, vec!["agenticcrew://skills/release"]);
+        assert_eq!(template.version, 2);
+        assert_eq!(
+            snapshot,
+            agent_studio_snapshot_at_path(&path).expect("snapshot should load")
+        );
     }
 
     #[test]

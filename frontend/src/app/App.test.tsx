@@ -203,6 +203,101 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Open plugin bay" })).toBeInTheDocument();
   });
 
+  it("selects the active agent and harness loadout from saved templates", async () => {
+    const multiHarnessSnapshot: HarnessStudioSnapshot = {
+      ...harnessStudioSnapshot,
+      activeProfileCount: 2,
+      profiles: [
+        ...harnessStudioSnapshot.profiles,
+        {
+          ...harnessStudioSnapshot.profiles[0],
+          id: "release-harness",
+          name: "Release Harness"
+        }
+      ]
+    };
+    const multiAgentSnapshot: AgentStudioSnapshot = {
+      ...agentStudioSnapshot,
+      activeTemplateCount: 2,
+      templates: [
+        ...agentStudioSnapshot.templates,
+        {
+          ...agentStudioSnapshot.templates[0],
+          harnessProfileId: "release-harness",
+          id: "release-agent",
+          modelId: "gpt-5.1",
+          name: "Release Agent",
+          role: "release"
+        }
+      ]
+    };
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(multiAgentSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(multiHarnessSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.change(await screen.findByLabelText("Agent template"), { target: { value: "release-agent" } });
+    fireEvent.change(screen.getByLabelText("Harness profile"), { target: { value: "release-harness" } });
+
+    expect(screen.getByRole("heading", { name: "Release Agent" })).toBeInTheDocument();
+    expect(screen.getByText("release / gpt-5.1")).toBeInTheDocument();
+    expect(screen.getByText("Harness: Release Harness")).toBeInTheDocument();
+  });
+
+  it("falls back to cockpit agent context when no saved loadout items exist", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve({ activeTemplateCount: 0, templates: [], trainingRuns: [] })}
+        harnessStudioInvoke={() => Promise.resolve({ activeProfileCount: 0, bindings: [], profiles: [] })}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+
+    expect(await screen.findByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
+    expect(screen.getByText("UI architect / gpt-5")).toBeInTheDocument();
+    expect(screen.getByText("Harness: None")).toBeInTheDocument();
+  });
+
+  it("offers inactive saved templates when none are active", async () => {
+    render(
+      <App
+        agentStudioInvoke={() =>
+          Promise.resolve({
+            activeTemplateCount: 0,
+            templates: agentStudioSnapshot.templates.map((template) => ({ ...template, active: false })),
+            trainingRuns: []
+          })
+        }
+        harnessStudioInvoke={() =>
+          Promise.resolve({
+            ...harnessStudioSnapshot,
+            activeProfileCount: 0,
+            profiles: harnessStudioSnapshot.profiles.map((profile) => ({ ...profile, active: false }))
+          })
+        }
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+
+    expect(await screen.findByLabelText("Agent template")).toHaveValue("developer-pi");
+    expect(screen.getByLabelText("Harness profile")).toHaveValue("pi-execution-discipline");
+  });
+
   it("returns to the cockpit from the product mark", async () => {
     render(
       <App

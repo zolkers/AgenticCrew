@@ -10,7 +10,8 @@ import {
   LayoutDashboard,
   Store,
   Route,
-  Settings2
+  Settings2,
+  SlidersHorizontal
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AgentStudio } from "../features/agents/AgentStudio";
@@ -27,7 +28,9 @@ import { loadSkillSourcesSnapshot, type InvokeSkillSources } from "../shared/api
 import { cockpitWorkspaces, type CockpitWorkspace } from "../shared/preview/cockpitData";
 import type {
   AgentStudioSnapshot,
+  AgentTemplate,
   HarnessStudioSnapshot,
+  HarnessProfile,
   MissionControlSnapshot,
   SettingsSnapshot,
   SkillSourcesSnapshot
@@ -98,6 +101,7 @@ export function App({
 }: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
   const [routeState, setRouteState] = useState<AppRouteState>(() => resolveInitialRoute());
+  const [workspaceLoadouts, setWorkspaceLoadouts] = useState<Record<string, WorkspaceLoadout>>({});
   const { t } = useTranslation();
   const activeView = routeState.view;
   const activeWorkspaceId = routeState.workspaceId;
@@ -158,6 +162,7 @@ export function App({
     cockpitWorkspaces.map((workspace) => [workspace.id, workspace])
   ) as Record<string, CockpitWorkspace>;
   const activeWorkspace = activeWorkspaceId === null ? null : workspacesById[activeWorkspaceId];
+  const activeLoadout = activeWorkspace === null ? undefined : workspaceLoadouts[activeWorkspace.id];
   const openWorkspace = (workspaceId: string, view: AppView = "cockpit") => {
     setRouteState({ view, workspaceId });
     window.history.pushState(null, "", `/workspace/${workspaceId}/${routeSegmentByView[view]}`);
@@ -278,6 +283,15 @@ export function App({
         {activeView === "cockpit" ? (
           <Cockpit
             activeWorkspace={activeWorkspace}
+            agentStudioSnapshot={loadState.agentStudioSnapshot}
+            harnessStudioSnapshot={loadState.harnessStudioSnapshot}
+            loadout={activeLoadout}
+            onLoadoutChange={(loadout) => {
+              setWorkspaceLoadouts((current) => ({
+                ...current,
+                [activeWorkspace.id]: loadout
+              }));
+            }}
             onWorkspaceChange={openWorkspace}
             workspaces={cockpitWorkspaces}
           />
@@ -437,17 +451,49 @@ function WorkspaceLaunchpad({ onWorkspaceSelect, workspaces }: WorkspaceLaunchpa
 
 type CockpitProps = Readonly<{
   activeWorkspace: CockpitWorkspace;
+  agentStudioSnapshot: AgentStudioSnapshot;
+  harnessStudioSnapshot: HarnessStudioSnapshot;
+  loadout?: WorkspaceLoadout;
+  onLoadoutChange: (loadout: WorkspaceLoadout) => void;
   onWorkspaceChange: (workspaceId: string) => void;
   workspaces: readonly CockpitWorkspace[];
 }>;
 
-function Cockpit({ activeWorkspace, onWorkspaceChange, workspaces }: CockpitProps) {
+type WorkspaceLoadout = Readonly<{
+  agentTemplateId: string;
+  harnessProfileId: string;
+}>;
+
+function Cockpit({
+  activeWorkspace,
+  agentStudioSnapshot,
+  harnessStudioSnapshot,
+  loadout,
+  onLoadoutChange,
+  onWorkspaceChange,
+  workspaces
+}: CockpitProps) {
   const agentsById = Object.fromEntries(activeWorkspace.agents.map((agent) => [agent.id, agent])) as Record<
     string,
     CockpitWorkspace["agents"][number]
   >;
   const activeAgent = agentsById[activeWorkspace.activeAgentId];
+  const agentTemplates = preferredActiveItems(agentStudioSnapshot.templates);
+  const harnessProfiles = preferredActiveItems(harnessStudioSnapshot.profiles);
+  const selectedAgentTemplateId =
+    loadout === undefined ? (agentTemplates.at(0)?.id ?? "") : loadout.agentTemplateId;
+  const selectedHarnessProfileId =
+    loadout === undefined ? (harnessProfiles.at(0)?.id ?? "") : loadout.harnessProfileId;
+  const selectedAgentTemplate = agentTemplates.find((template) => template.id === selectedAgentTemplateId);
+  const selectedHarnessProfile = harnessProfiles.find((profile) => profile.id === selectedHarnessProfileId);
   const budgetPercent = Math.round((activeWorkspace.budgetUsedUsd / activeWorkspace.budgetLimitUsd) * 100);
+  const updateLoadout = (next: Partial<WorkspaceLoadout>) => {
+    onLoadoutChange({
+      agentTemplateId: selectedAgentTemplateId,
+      harnessProfileId: selectedHarnessProfileId,
+      ...next
+    });
+  };
 
   return (
     <div className="cockpit-grid">
@@ -487,6 +533,45 @@ function Cockpit({ activeWorkspace, onWorkspaceChange, workspaces }: CockpitProp
               </li>
             ))}
           </ul>
+        </section>
+
+        <section aria-labelledby="loadout-title" className="loadout-panel">
+          <h2 id="loadout-title">
+            <SlidersHorizontal aria-hidden="true" size={16} />
+            Loadout
+          </h2>
+          <label>
+            <span>Agent</span>
+            <select
+              aria-label="Agent template"
+              onChange={(event) => {
+                updateLoadout({ agentTemplateId: event.target.value });
+              }}
+              value={selectedAgentTemplateId}
+            >
+              {agentTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Harness</span>
+            <select
+              aria-label="Harness profile"
+              onChange={(event) => {
+                updateLoadout({ harnessProfileId: event.target.value });
+              }}
+              value={selectedHarnessProfileId}
+            >
+              {harnessProfiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </section>
 
         <section aria-labelledby="progress-title">
@@ -544,9 +629,12 @@ function Cockpit({ activeWorkspace, onWorkspaceChange, workspaces }: CockpitProp
           <header className="agent-header">
             <div>
               <p className="eyebrow">Active agent</p>
-              <h3 id="active-agent-title">{activeAgent.name}</h3>
+              <h3 id="active-agent-title">{selectedAgentTemplate?.name ?? activeAgent.name}</h3>
               <p>
-                {activeAgent.role} / {activeAgent.model}
+                {(selectedAgentTemplate?.role ?? activeAgent.role)} / {(selectedAgentTemplate?.modelId ?? activeAgent.model)}
+              </p>
+              <p>
+                Harness: {selectedHarnessProfile?.name ?? (selectedHarnessProfileId || "None")}
               </p>
             </div>
             <ul className="tool-list" aria-label="Active agent tools">
@@ -583,4 +671,10 @@ function Cockpit({ activeWorkspace, onWorkspaceChange, workspaces }: CockpitProp
       </section>
     </div>
   );
+}
+
+function preferredActiveItems<T extends AgentTemplate | HarnessProfile>(items: readonly T[]): T[] {
+  const activeItems = items.filter((item) => item.active);
+
+  return activeItems.length > 0 ? activeItems : [...items];
 }

@@ -103,6 +103,81 @@ describe("HarnessStudio", () => {
     expect(await screen.findByText("Harness creation failed")).toBeInTheDocument();
   });
 
+  it("edits an existing harness profile", async () => {
+    const nextSnapshot: HarnessStudioSnapshot = {
+      activeProfileCount: 1,
+      bindings: [],
+      profiles: [
+        {
+          ...profileFixture("profile-on", true),
+          description: "Updated profile",
+          name: "Updated Harness",
+          version: "2"
+        }
+      ]
+    };
+    const invoke = vi.fn().mockResolvedValue(nextSnapshot);
+    const onSnapshotChange = vi.fn();
+
+    render(
+      <HarnessStudio
+        invoke={invoke}
+        onSnapshotChange={onSnapshotChange}
+        snapshot={{ activeProfileCount: 1, bindings: [], profiles: [profileFixture("profile-on", true)] }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText("Route")).toHaveValue("agenticcrew://harnesses/local/profile-on");
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Updated Harness" } });
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Updated profile" } });
+    fireEvent.change(screen.getByLabelText("Base policy"), { target: { value: "Require evidence." } });
+    fireEvent.click(screen.getByRole("button", { name: "Save harness" }));
+
+    await waitFor(() => {
+      expect(onSnapshotChange).toHaveBeenCalledWith(nextSnapshot);
+    });
+    expect(invoke).toHaveBeenCalledWith("update_harness_profile", {
+      request: {
+        basePolicy: "Require evidence.",
+        description: "Updated profile",
+        name: "Updated Harness",
+        profileId: "profile-on"
+      }
+    });
+  });
+
+  it("reports harness update failures", async () => {
+    render(
+      <HarnessStudio
+        invoke={vi.fn().mockRejectedValue(new Error("failed"))}
+        snapshot={{ activeProfileCount: 1, bindings: [], profiles: [profileFixture("profile-on", true)] }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save harness" }));
+
+    expect(await screen.findByText("Harness update failed")).toBeInTheDocument();
+  });
+
+  it("prefills an empty base policy when a profile has no base policy module", () => {
+    render(
+      <HarnessStudio
+        invoke={vi.fn()}
+        snapshot={{
+          activeProfileCount: 1,
+          bindings: [],
+          profiles: [{ ...profileFixture("profile-on", true), modules: [] }]
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    expect(screen.getByLabelText("Base policy")).toHaveValue("");
+  });
+
   it("toggles harness profile activation and reports failures", async () => {
     const invoke = vi.fn().mockRejectedValueOnce(new Error("failed")).mockResolvedValueOnce({
       activeProfileCount: 0,

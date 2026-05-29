@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   createHarnessProfile,
   loadHarnessStudioSnapshot,
-  setHarnessProfileActive
+  setHarnessProfileActive,
+  updateHarnessProfile
 } from "./harnessStudioApi";
 
 describe("harnessStudioApi", () => {
@@ -48,6 +49,28 @@ describe("harnessStudioApi", () => {
         active: false,
         profileId: "local"
       })
+    ).resolves.toEqual(snapshot);
+  });
+
+  it("updates a harness profile through the injected invoke", async () => {
+    const snapshot = {
+      activeProfileCount: 1,
+      bindings: [],
+      profiles: []
+    };
+    const request = {
+      basePolicy: "Require evidence",
+      description: "Updated harness",
+      name: "Review Harness",
+      profileId: "local"
+    };
+
+    await expect(
+      updateHarnessProfile((command, args) => {
+        expect(command).toBe("update_harness_profile");
+        expect(args).toEqual({ request });
+        return Promise.resolve(snapshot);
+      }, request)
     ).resolves.toEqual(snapshot);
   });
 });

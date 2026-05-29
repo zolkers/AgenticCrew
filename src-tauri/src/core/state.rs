@@ -7,13 +7,13 @@ use std::{
 use super::{
     agents::{
         AgentTemplate, AgentTemplateError, AgentTrainingRun, CreateAgentTemplateRequest,
-        SetAgentTemplateActiveRequest,
+        SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
     },
     costs::ModelCallEstimate,
     evidence::{CommandExitCodeEvidence, Evidence},
     harnesses::{
         CreateHarnessProfileRequest, HarnessBinding, HarnessProfile, HarnessProfileError,
-        SetHarnessProfileActiveRequest,
+        SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
     },
     permissions::ApprovedPermissionPolicy,
     sessions::{
@@ -356,6 +356,25 @@ impl AgentOsState {
         Ok(())
     }
 
+    pub fn update_harness_profile(
+        &mut self,
+        request: UpdateHarnessProfileRequest,
+    ) -> Result<(), StateMutationError> {
+        let profile = self
+            .harness_profiles
+            .iter_mut()
+            .find(|profile| profile.id == request.profile_id)
+            .ok_or_else(|| StateMutationError::MissingHarnessProfile {
+                profile_id: request.profile_id.clone(),
+            })?;
+
+        profile
+            .update_from(request)
+            .map_err(StateMutationError::InvalidHarnessProfile)?;
+
+        Ok(())
+    }
+
     pub fn create_agent_template(
         &mut self,
         request: CreateAgentTemplateRequest,
@@ -403,6 +422,39 @@ impl AgentOsState {
             })?;
 
         template.active = request.active;
+
+        Ok(())
+    }
+
+    pub fn update_agent_template(
+        &mut self,
+        request: UpdateAgentTemplateRequest,
+    ) -> Result<(), StateMutationError> {
+        if let Some(harness_profile_id) = request.harness_profile_id.as_deref() {
+            let harness_profile_id = harness_profile_id.trim();
+            if !harness_profile_id.is_empty()
+                && !self
+                    .harness_profiles
+                    .iter()
+                    .any(|profile| profile.id == harness_profile_id)
+            {
+                return Err(StateMutationError::MissingHarnessProfile {
+                    profile_id: harness_profile_id.to_owned(),
+                });
+            }
+        }
+
+        let template = self
+            .agent_templates
+            .iter_mut()
+            .find(|template| template.id == request.template_id)
+            .ok_or_else(|| StateMutationError::MissingAgentTemplate {
+                template_id: request.template_id.clone(),
+            })?;
+
+        template
+            .update_from(request)
+            .map_err(StateMutationError::InvalidAgentTemplate)?;
 
         Ok(())
     }
@@ -721,11 +773,15 @@ mod tests {
         CURRENT_SCHEMA_VERSION,
     };
     use crate::core::{
-        agents::{AgentTemplate, CreateAgentTemplateRequest, SetAgentTemplateActiveRequest},
+        agents::{
+            AgentTemplate, CreateAgentTemplateRequest, SetAgentTemplateActiveRequest,
+            UpdateAgentTemplateRequest,
+        },
         costs::ModelCallEstimate,
         evidence::{CommandExitCodeEvidence, Evidence},
         harnesses::{
             CreateHarnessProfileRequest, HarnessProfile, SetHarnessProfileActiveRequest,
+            UpdateHarnessProfileRequest,
         },
         permissions::{
             ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
@@ -915,6 +971,27 @@ mod tests {
     }
 
     #[test]
+    fn update_harness_profile_changes_existing_profile() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .update_harness_profile(UpdateHarnessProfileRequest {
+                base_policy: "Require regression proof.".to_owned(),
+                description: "Review before final claims.".to_owned(),
+                name: "Review Harness".to_owned(),
+                profile_id: "pi-execution-discipline".to_owned(),
+            })
+            .expect("profile should update");
+
+        assert_eq!(state.harness_profiles[0].name, "Review Harness");
+        assert_eq!(
+            state.harness_profiles[0].modules[0].content,
+            "Require regression proof."
+        );
+        assert_eq!(state.harness_profiles[0].version, "2");
+    }
+
+    #[test]
     fn create_agent_template_adds_local_agent_bound_to_harness() {
         let mut state = AgentOsState::empty();
 
@@ -981,6 +1058,61 @@ mod tests {
             .expect("agent should update");
 
         assert!(!state.agent_templates[0].active);
+    }
+
+    #[test]
+    fn update_agent_template_changes_existing_agent_and_harness_binding() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .update_agent_template(UpdateAgentTemplateRequest {
+                budget_cents: 900,
+                description: "Reviews implementation plans.".to_owned(),
+                harness_profile_id: None,
+                model_id: "gpt-5.2".to_owned(),
+                name: "Reviewer".to_owned(),
+                provider_id: "openai".to_owned(),
+                role: "reviewer".to_owned(),
+                skill_routes: vec!["agenticcrew://skills/review".to_owned()],
+                template_id: "developer-pi".to_owned(),
+            })
+            .expect("agent should update");
+
+        assert_eq!(state.agent_templates[0].name, "Reviewer");
+        assert_eq!(state.agent_templates[0].role, "reviewer");
+        assert_eq!(state.agent_templates[0].harness_profile_id, None);
+        assert_eq!(
+            state.agent_templates[0].skill_routes,
+            vec!["agenticcrew://skills/review"]
+        );
+        assert_eq!(state.agent_templates[0].budget_cents, 900);
+        assert_eq!(state.agent_templates[0].version, 2);
+    }
+
+    #[test]
+    fn update_agent_template_rejects_missing_harness() {
+        let mut state = AgentOsState::empty();
+
+        let error = state
+            .update_agent_template(UpdateAgentTemplateRequest {
+                budget_cents: 900,
+                description: "Reviews implementation plans.".to_owned(),
+                harness_profile_id: Some("missing-harness".to_owned()),
+                model_id: "gpt-5.2".to_owned(),
+                name: "Reviewer".to_owned(),
+                provider_id: "openai".to_owned(),
+                role: "reviewer".to_owned(),
+                skill_routes: vec!["agenticcrew://skills/review".to_owned()],
+                template_id: "developer-pi".to_owned(),
+            })
+            .expect_err("missing harness should be rejected");
+
+        assert_eq!(
+            error,
+            StateMutationError::MissingHarnessProfile {
+                profile_id: "missing-harness".to_owned()
+            }
+        );
     }
 
     #[test]

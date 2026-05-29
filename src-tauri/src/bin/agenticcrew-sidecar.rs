@@ -2,14 +2,19 @@ use std::{env, path::PathBuf, process};
 
 use agenticcrew_desktop::{
     agent_studio_snapshot_at_path, approve_skill_source_permissions_at_path,
-    core::agents::{CreateAgentTemplateRequest, SetAgentTemplateActiveRequest},
-    core::harnesses::{CreateHarnessProfileRequest, SetHarnessProfileActiveRequest},
+    core::agents::{
+        CreateAgentTemplateRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
+    },
+    core::harnesses::{
+        CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
+    },
     core::permissions::ApprovedPermissionPolicy, core::settings::UpdateAiProviderSettingsRequest,
     create_agent_template_at_path, create_harness_profile_at_path, harness_studio_snapshot_at_path,
     inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
     set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
     skill_sources_snapshot_at_path, sync_github_skill_source_at_path,
-    update_ai_provider_settings_at_path, DesktopCommandError,
+    update_agent_template_at_path, update_ai_provider_settings_at_path, update_harness_profile_at_path,
+    DesktopCommandError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -52,6 +57,12 @@ struct SetHarnessProfileActiveArgs {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct UpdateHarnessProfileArgs {
+    request: UpdateHarnessProfileRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CreateAgentTemplateArgs {
     request: CreateAgentTemplateRequest,
 }
@@ -60,6 +71,12 @@ struct CreateAgentTemplateArgs {
 #[serde(rename_all = "camelCase")]
 struct SetAgentTemplateActiveArgs {
     request: SetAgentTemplateActiveRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateAgentTemplateArgs {
+    request: UpdateAgentTemplateRequest,
 }
 
 fn main() {
@@ -122,6 +139,11 @@ fn run() -> Result<(), DesktopCommandError> {
                 args.request,
             )?)
         }
+        "update_harness_profile" => {
+            let args = parse_args::<UpdateHarnessProfileArgs>(&args_json)?;
+
+            print_json(&update_harness_profile_at_path(state_path, args.request)?)
+        }
         "agent_studio_snapshot" => print_json(&agent_studio_snapshot_at_path(state_path)?),
         "create_agent_template" => {
             let args = parse_args::<CreateAgentTemplateArgs>(&args_json)?;
@@ -132,6 +154,11 @@ fn run() -> Result<(), DesktopCommandError> {
             let args = parse_args::<SetAgentTemplateActiveArgs>(&args_json)?;
 
             print_json(&set_agent_template_active_at_path(state_path, args.request)?)
+        }
+        "update_agent_template" => {
+            let args = parse_args::<UpdateAgentTemplateArgs>(&args_json)?;
+
+            print_json(&update_agent_template_at_path(state_path, args.request)?)
         }
         "settings_snapshot" => print_json(&settings_snapshot_at_path(state_path)?),
         "sync_github_skill_source" => {

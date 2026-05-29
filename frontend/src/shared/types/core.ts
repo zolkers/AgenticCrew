@@ -140,6 +140,13 @@ export type SetHarnessProfileActiveRequest = {
   profileId: string;
 };
 
+export type UpdateHarnessProfileRequest = {
+  basePolicy: string;
+  description: string;
+  name: string;
+  profileId: string;
+};
+
 export type AgentTemplate = {
   active: boolean;
   budgetCents: number;
@@ -189,6 +196,18 @@ export type SetAgentTemplateActiveRequest = {
   templateId: string;
 };
 
+export type UpdateAgentTemplateRequest = {
+  budgetCents: number;
+  description: string;
+  harnessProfileId?: string | null;
+  modelId: string;
+  name: string;
+  providerId: string;
+  role: string;
+  skillRoutes: string[];
+  templateId: string;
+};
+
 export type AiProviderSettings = {
   apiKeyConfigured: boolean;
   apiKeyLastFour?: string | null;
@@ -220,5 +239,7 @@ export type ElectronCommandMap = {
   set_harness_profile_active: HarnessStudioSnapshot;
   skill_sources_snapshot: SkillSourcesSnapshot;
   sync_github_skill_source: unknown;
+  update_agent_template: AgentStudioSnapshot;
   update_ai_provider_settings: SettingsSnapshot;
+  update_harness_profile: HarnessStudioSnapshot;
 };

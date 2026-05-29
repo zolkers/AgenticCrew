@@ -97,6 +97,15 @@ pub struct SetHarnessProfileActiveRequest {
     pub active: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateHarnessProfileRequest {
+    pub profile_id: String,
+    pub name: String,
+    pub description: String,
+    pub base_policy: String,
+}
+
 pub fn harness_studio_snapshot_from_state(state: &AgentOsState) -> HarnessStudioSnapshot {
     HarnessStudioSnapshot {
         profiles: state.harness_profiles.clone(),
@@ -162,6 +171,28 @@ impl HarnessProfile {
             active: request.active,
         })
     }
+
+    pub fn update_from(
+        &mut self,
+        request: UpdateHarnessProfileRequest,
+    ) -> Result<(), HarnessProfileError> {
+        self.name = validate_required("harness profile name", request.name)?;
+        self.description =
+            validate_required("harness profile description", request.description)?;
+        let base_policy = validate_required("base policy", request.base_policy)?;
+
+        if let Some(module) = self
+            .modules
+            .iter_mut()
+            .find(|module| module.kind == HarnessModuleKind::BasePolicy)
+        {
+            module.content = base_policy;
+        }
+
+        self.version = increment_version(&self.version);
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -212,9 +243,19 @@ fn validate_identifier(
     Ok(value)
 }
 
+fn increment_version(version: &str) -> String {
+    version
+        .parse::<u32>()
+        .map(|value| value.saturating_add(1).to_string())
+        .unwrap_or_else(|_| "2".to_owned())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{harness_studio_snapshot_from_state, CreateHarnessProfileRequest, HarnessProfile};
+    use super::{
+        harness_studio_snapshot_from_state, CreateHarnessProfileRequest, HarnessProfile,
+        UpdateHarnessProfileRequest,
+    };
     use crate::core::state::AgentOsState;
 
     #[test]
@@ -257,5 +298,31 @@ mod tests {
             profile.modules[0].source.route.as_deref(),
             Some("agenticcrew://harnesses/local/local-strict")
         );
+    }
+
+    #[test]
+    fn update_harness_profile_changes_guidance_and_bumps_version() {
+        let mut profile = HarnessProfile::local(CreateHarnessProfileRequest {
+            active: true,
+            base_policy: "Old guidance".to_owned(),
+            description: "Local profile".to_owned(),
+            id: "local-strict".to_owned(),
+            name: "Local Strict".to_owned(),
+        })
+        .expect("local harness should validate");
+
+        profile
+            .update_from(UpdateHarnessProfileRequest {
+                base_policy: "Review tests before final response.".to_owned(),
+                description: "Updated profile".to_owned(),
+                name: "Review Harness".to_owned(),
+                profile_id: "local-strict".to_owned(),
+            })
+            .expect("profile should update");
+
+        assert_eq!(profile.name, "Review Harness");
+        assert_eq!(profile.description, "Updated profile");
+        assert_eq!(profile.modules[0].content, "Review tests before final response.");
+        assert_eq!(profile.version, "2");
     }
 }

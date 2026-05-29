@@ -43,6 +43,26 @@ describe("electronInvokes", () => {
         request: { active: false, templateId: "review-agent" }
       })
     ).resolves.toBeUndefined();
+    await expect(
+      electronHarnessStudioInvoke("update_harness_profile", {
+        request: { basePolicy: "Validate", description: "Local", name: "Local", profileId: "local" }
+      })
+    ).resolves.toBeUndefined();
+    await expect(
+      electronAgentStudioInvoke("update_agent_template", {
+        request: {
+          budgetCents: 200,
+          description: "Local",
+          harnessProfileId: null,
+          modelId: "gpt-5.2",
+          name: "Local",
+          providerId: "openai",
+          role: "developer",
+          skillRoutes: [],
+          templateId: "local"
+        }
+      })
+    ).resolves.toBeUndefined();
 
     expect(invoke).toHaveBeenCalledWith("sync_github_skill_source", { sourceId: "superpowers" });
     expect(invoke).toHaveBeenCalledWith("set_harness_profile_active", {
@@ -50,6 +70,22 @@ describe("electronInvokes", () => {
     });
     expect(invoke).toHaveBeenCalledWith("set_agent_template_active", {
       request: { active: false, templateId: "review-agent" }
+    });
+    expect(invoke).toHaveBeenCalledWith("update_harness_profile", {
+      request: { basePolicy: "Validate", description: "Local", name: "Local", profileId: "local" }
+    });
+    expect(invoke).toHaveBeenCalledWith("update_agent_template", {
+      request: {
+        budgetCents: 200,
+        description: "Local",
+        harnessProfileId: null,
+        modelId: "gpt-5.2",
+        name: "Local",
+        providerId: "openai",
+        role: "developer",
+        skillRoutes: [],
+        templateId: "local"
+      }
     });
   });
 

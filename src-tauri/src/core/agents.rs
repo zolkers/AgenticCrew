@@ -71,6 +71,21 @@ pub struct SetAgentTemplateActiveRequest {
     pub active: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAgentTemplateRequest {
+    pub template_id: String,
+    pub name: String,
+    pub role: String,
+    pub description: String,
+    pub provider_id: String,
+    pub model_id: String,
+    pub harness_profile_id: Option<String>,
+    #[serde(default)]
+    pub skill_routes: Vec<String>,
+    pub budget_cents: u64,
+}
+
 pub fn agent_studio_snapshot_from_state(state: &AgentOsState) -> AgentStudioSnapshot {
     AgentStudioSnapshot {
         templates: state.agent_templates.clone(),
@@ -135,6 +150,30 @@ impl AgentTemplate {
             active: request.active,
         })
     }
+
+    pub fn update_from(
+        &mut self,
+        request: UpdateAgentTemplateRequest,
+    ) -> Result<(), AgentTemplateError> {
+        self.name = validate_required("agent template name", request.name)?;
+        self.role = validate_required("agent role", request.role)?;
+        self.description = validate_required("agent description", request.description)?;
+        self.provider_id = validate_identifier("provider id", request.provider_id)?;
+        self.model_id = validate_required("model id", request.model_id)?;
+        self.harness_profile_id = request.harness_profile_id.and_then(|profile_id| {
+            let trimmed = profile_id.trim().to_owned();
+            (!trimmed.is_empty()).then_some(trimmed)
+        });
+        self.skill_routes = request
+            .skill_routes
+            .into_iter()
+            .map(|route| validate_required("skill route", route))
+            .collect::<Result<Vec<_>, _>>()?;
+        self.budget_cents = request.budget_cents;
+        self.version = self.version.saturating_add(1);
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -184,7 +223,10 @@ fn validate_identifier(field: &'static str, value: String) -> Result<String, Age
 
 #[cfg(test)]
 mod tests {
-    use super::{agent_studio_snapshot_from_state, AgentTemplate, CreateAgentTemplateRequest};
+    use super::{
+        agent_studio_snapshot_from_state, AgentTemplate, CreateAgentTemplateRequest,
+        UpdateAgentTemplateRequest,
+    };
     use crate::core::state::AgentOsState;
 
     #[test]
@@ -234,5 +276,45 @@ mod tests {
             Some("pi-execution-discipline")
         );
         assert_eq!(template.skill_routes, vec!["agenticcrew://skills/ui"]);
+    }
+
+    #[test]
+    fn update_agent_template_changes_guidance_and_bumps_version() {
+        let mut template = AgentTemplate::local(CreateAgentTemplateRequest {
+            active: true,
+            budget_cents: 350,
+            description: "Builds UI".to_owned(),
+            harness_profile_id: Some("pi-execution-discipline".to_owned()),
+            id: "ui-agent".to_owned(),
+            model_id: "gpt-5.2".to_owned(),
+            name: "UI Agent".to_owned(),
+            provider_id: "openai".to_owned(),
+            role: "developer".to_owned(),
+            skill_routes: vec!["agenticcrew://skills/ui".to_owned()],
+        })
+        .expect("agent should validate");
+
+        template
+            .update_from(UpdateAgentTemplateRequest {
+                budget_cents: 500,
+                description: " Reviews UI diffs ".to_owned(),
+                harness_profile_id: None,
+                model_id: " gpt-5.1 ".to_owned(),
+                name: " Review Agent ".to_owned(),
+                provider_id: "openai".to_owned(),
+                role: "reviewer".to_owned(),
+                skill_routes: vec![" agenticcrew://skills/review ".to_owned()],
+                template_id: "ui-agent".to_owned(),
+            })
+            .expect("agent should update");
+
+        assert_eq!(template.name, "Review Agent");
+        assert_eq!(template.role, "reviewer");
+        assert_eq!(template.description, "Reviews UI diffs");
+        assert_eq!(template.model_id, "gpt-5.1");
+        assert_eq!(template.harness_profile_id, None);
+        assert_eq!(template.skill_routes, vec!["agenticcrew://skills/review"]);
+        assert_eq!(template.budget_cents, 500);
+        assert_eq!(template.version, 2);
     }
 }

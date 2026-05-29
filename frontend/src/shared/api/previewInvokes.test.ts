@@ -103,6 +103,50 @@ describe("previewInvokes", () => {
     });
   });
 
+  it("handles preview harness profile updates", async () => {
+    await expect(
+      previewHarnessStudioInvoke("update_harness_profile", {
+        request: {
+          basePolicy: "Require evidence",
+          description: "Updated profile",
+          name: "Updated PI",
+          profileId: "pi-execution-discipline"
+        }
+      })
+    ).resolves.toMatchObject({
+      profiles: [
+        {
+          description: "Updated profile",
+          id: "pi-execution-discipline",
+          modules: [{ content: "Require evidence", version: "2" }],
+          name: "Updated PI",
+          version: "2"
+        }
+      ]
+    });
+  });
+
+  it("keeps preview harness data when update args are absent", async () => {
+    await expect(previewHarnessStudioInvoke("update_harness_profile")).resolves.toMatchObject({
+      profiles: [{ id: "pi-execution-discipline", name: "Pi Execution Discipline" }]
+    });
+  });
+
+  it("keeps preview harness data when an update target is missing", async () => {
+    await expect(
+      previewHarnessStudioInvoke("update_harness_profile", {
+        request: {
+          basePolicy: "Require evidence",
+          description: "Updated profile",
+          name: "Updated PI",
+          profileId: "missing"
+        }
+      })
+    ).resolves.toMatchObject({
+      profiles: [{ id: "pi-execution-discipline", name: "Pi Execution Discipline" }]
+    });
+  });
+
   it("returns Agent Studio preview data for browser previews", async () => {
     await expect(previewAgentStudioInvoke("agent_studio_snapshot")).resolves.toMatchObject({
       activeTemplateCount: 1,
@@ -184,6 +228,64 @@ describe("previewInvokes", () => {
     ).resolves.toMatchObject({
       activeTemplateCount: 1,
       templates: [{ active: true, id: "developer-pi" }]
+    });
+  });
+
+  it("handles preview agent template updates", async () => {
+    await expect(
+      previewAgentStudioInvoke("update_agent_template", {
+        request: {
+          budgetCents: 450,
+          description: "Updated guidance",
+          harnessProfileId: null,
+          modelId: "gpt-5.1",
+          name: "Updated Developer",
+          providerId: "openai",
+          role: "lead",
+          skillRoutes: ["agenticcrew://skills/review"],
+          templateId: "developer-pi"
+        }
+      })
+    ).resolves.toMatchObject({
+      templates: [
+        {
+          budgetCents: 450,
+          description: "Updated guidance",
+          harnessProfileId: null,
+          id: "developer-pi",
+          modelId: "gpt-5.1",
+          name: "Updated Developer",
+          role: "lead",
+          skillRoutes: ["agenticcrew://skills/review"],
+          version: 2
+        }
+      ]
+    });
+  });
+
+  it("keeps preview agent data when update args are absent", async () => {
+    await expect(previewAgentStudioInvoke("update_agent_template")).resolves.toMatchObject({
+      templates: [{ id: "developer-pi", name: "Developer Agent" }]
+    });
+  });
+
+  it("keeps preview agent data when an update target is missing", async () => {
+    await expect(
+      previewAgentStudioInvoke("update_agent_template", {
+        request: {
+          budgetCents: 450,
+          description: "Updated guidance",
+          harnessProfileId: null,
+          modelId: "gpt-5.1",
+          name: "Updated Developer",
+          providerId: "openai",
+          role: "lead",
+          skillRoutes: ["agenticcrew://skills/review"],
+          templateId: "missing"
+        }
+      })
+    ).resolves.toMatchObject({
+      templates: [{ id: "developer-pi", name: "Developer Agent" }]
     });
   });
 

@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { Layers3, Plus, Power, Route, Shield } from "lucide-react";
+import { Edit3, Layers3, Plus, Power, Route, Shield, X } from "lucide-react";
 import {
   createHarnessProfile,
   setHarnessProfileActive,
+  updateHarnessProfile,
   type InvokeHarnessStudio
 } from "../../shared/api/harnessStudioApi";
-import type { HarnessStudioSnapshot } from "../../shared/types/core";
+import type { HarnessProfile, HarnessStudioSnapshot } from "../../shared/types/core";
 
 type HarnessStudioProps = Readonly<{
   invoke: InvokeHarnessStudio;
@@ -16,32 +17,57 @@ type HarnessStudioProps = Readonly<{
 export function HarnessStudio({ invoke, onSnapshotChange, snapshot }: HarnessStudioProps) {
   const [basePolicy, setBasePolicy] = useState("Validate before final claims.");
   const [description, setDescription] = useState("Local execution profile for this workspace.");
+  const [editingProfileId, setEditingProfileId] = useState<null | string>(null);
   const [error, setError] = useState<null | string>(null);
   const [name, setName] = useState("Workspace Harness");
   const [saving, setSaving] = useState(false);
   const generatedId = useMemo(() => slugify(name), [name]);
+  const submitLabel = saving ? "Saving" : getHarnessSubmitLabel(editingProfileId);
 
   async function submitHarnessProfile() {
     setError(null);
     setSaving(true);
 
     try {
-      const nextSnapshot = await createHarnessProfile(invoke, {
-        active: true,
-        basePolicy,
-        description,
-        id: generatedId,
-        name
-      });
+      const nextSnapshot =
+        editingProfileId === null
+          ? await createHarnessProfile(invoke, {
+              active: true,
+              basePolicy,
+              description,
+              id: generatedId,
+              name
+            })
+          : await updateHarnessProfile(invoke, {
+              basePolicy,
+              description,
+              name,
+              profileId: editingProfileId
+            });
       onSnapshotChange?.(nextSnapshot);
-      setName("Workspace Harness");
-      setDescription("Local execution profile for this workspace.");
-      setBasePolicy("Validate before final claims.");
+      resetForm();
     } catch {
-      setError("Harness creation failed");
+      setError(editingProfileId === null ? "Harness creation failed" : "Harness update failed");
     } finally {
       setSaving(false);
     }
+  }
+
+  function beginEdit(profile: HarnessProfile) {
+    const basePolicyModule = profile.modules.find((module) => module.kind === "base_policy");
+
+    setEditingProfileId(profile.id);
+    setName(profile.name);
+    setDescription(profile.description);
+    setBasePolicy(basePolicyModule?.content ?? "");
+    setError(null);
+  }
+
+  function resetForm() {
+    setEditingProfileId(null);
+    setName("Workspace Harness");
+    setDescription("Local execution profile for this workspace.");
+    setBasePolicy("Validate before final claims.");
   }
 
   async function toggleHarnessProfile(profileId: string, active: boolean) {
@@ -126,6 +152,17 @@ export function HarnessStudio({ invoke, onSnapshotChange, snapshot }: HarnessStu
                 <Power aria-hidden="true" size={16} />
                 <span>{profile.active ? "Deactivate" : "Activate"}</span>
               </button>
+              <button
+                className="inline-action"
+                disabled={saving}
+                onClick={() => {
+                  beginEdit(profile);
+                }}
+                type="button"
+              >
+                <Edit3 aria-hidden="true" size={16} />
+                <span>Edit</span>
+              </button>
             </li>
           ))}
         </ul>
@@ -150,7 +187,7 @@ export function HarnessStudio({ invoke, onSnapshotChange, snapshot }: HarnessStu
         </label>
         <label>
           <span>Route</span>
-          <input disabled readOnly value={`agenticcrew://harnesses/local/${generatedId}`} />
+          <input disabled readOnly value={`agenticcrew://harnesses/local/${editingProfileId ?? generatedId}`} />
         </label>
         <label>
           <span>Description</span>
@@ -175,8 +212,14 @@ export function HarnessStudio({ invoke, onSnapshotChange, snapshot }: HarnessStu
         <div className="settings-actions">
           <button disabled={saving || generatedId.length === 0} type="submit">
             <Plus aria-hidden="true" size={16} />
-            <span>{saving ? "Creating" : "Create harness"}</span>
+            <span>{submitLabel}</span>
           </button>
+          {editingProfileId === null ? null : (
+            <button disabled={saving} onClick={resetForm} type="button">
+              <X aria-hidden="true" size={16} />
+              <span>Cancel</span>
+            </button>
+          )}
           {error ? (
             <output aria-live="polite" className="settings-error">
               {error}
@@ -200,6 +243,10 @@ function slugify(value: string): string {
     .split("-")
     .filter((part) => part.length > 0)
     .join("-");
+}
+
+function getHarnessSubmitLabel(editingProfileId: null | string): string {
+  return editingProfileId === null ? "Create harness" : "Save harness";
 }
 
 function isSlugCharacter(character: string): boolean {

@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { Bot, FlaskConical, Plus, Power, Route, Trophy } from "lucide-react";
+import { Bot, Edit3, FlaskConical, Plus, Power, Route, Trophy, X } from "lucide-react";
 import {
   createAgentTemplate,
   setAgentTemplateActive,
+  updateAgentTemplate,
   type InvokeAgentStudio
 } from "../../shared/api/agentStudioApi";
-import type { AgentStudioSnapshot, HarnessStudioSnapshot } from "../../shared/types/core";
+import type { AgentStudioSnapshot, AgentTemplate, HarnessStudioSnapshot } from "../../shared/types/core";
 
 type AgentStudioProps = Readonly<{
   harnessSnapshot: HarnessStudioSnapshot;
@@ -17,6 +18,7 @@ type AgentStudioProps = Readonly<{
 export function AgentStudio({ harnessSnapshot, invoke, onSnapshotChange, snapshot }: AgentStudioProps) {
   const [budgetDollars, setBudgetDollars] = useState("2.00");
   const [description, setDescription] = useState("Custom workspace agent.");
+  const [editingTemplateId, setEditingTemplateId] = useState<null | string>(null);
   const [error, setError] = useState<null | string>(null);
   const [harnessProfileId, setHarnessProfileId] = useState(harnessSnapshot.profiles[0]?.id ?? "");
   const [modelId, setModelId] = useState("gpt-5.2");
@@ -25,35 +27,64 @@ export function AgentStudio({ harnessSnapshot, invoke, onSnapshotChange, snapsho
   const [saving, setSaving] = useState(false);
   const [skillRoutesText, setSkillRoutesText] = useState("agenticcrew://skills/superpowers/subagent-driven-development");
   const generatedId = useMemo(() => slugify(name), [name]);
+  const submitLabel = saving ? "Saving" : getAgentSubmitLabel(editingTemplateId);
 
   async function submitAgentTemplate() {
     setError(null);
     setSaving(true);
 
     try {
-      const nextSnapshot = await createAgentTemplate(invoke, {
-        active: true,
+      const request = {
         budgetCents: Math.round(Number.parseFloat(budgetDollars || "0") * 100),
         description,
         harnessProfileId: harnessProfileId.length > 0 ? harnessProfileId : null,
-        id: generatedId,
         modelId,
         name,
         providerId: "openai",
         role,
         skillRoutes: splitSkillRoutes(skillRoutesText)
-      });
+      };
+      const nextSnapshot =
+        editingTemplateId === null
+          ? await createAgentTemplate(invoke, {
+              ...request,
+              active: true,
+              id: generatedId
+            })
+          : await updateAgentTemplate(invoke, {
+              ...request,
+              templateId: editingTemplateId
+            });
       onSnapshotChange?.(nextSnapshot);
-      setName("Review Agent");
-      setRole("reviewer");
-      setDescription("Custom workspace agent.");
-      setBudgetDollars("2.00");
-      setSkillRoutesText("agenticcrew://skills/superpowers/subagent-driven-development");
+      resetForm();
     } catch {
-      setError("Agent creation failed");
+      setError(editingTemplateId === null ? "Agent creation failed" : "Agent update failed");
     } finally {
       setSaving(false);
     }
+  }
+
+  function beginEdit(template: AgentTemplate) {
+    setEditingTemplateId(template.id);
+    setName(template.name);
+    setRole(template.role);
+    setDescription(template.description);
+    setModelId(template.modelId);
+    setHarnessProfileId(template.harnessProfileId ?? "");
+    setBudgetDollars((template.budgetCents / 100).toFixed(2));
+    setSkillRoutesText(template.skillRoutes.join("\n"));
+    setError(null);
+  }
+
+  function resetForm() {
+    setEditingTemplateId(null);
+    setName("Review Agent");
+    setRole("reviewer");
+    setDescription("Custom workspace agent.");
+    setModelId("gpt-5.2");
+    setHarnessProfileId(harnessSnapshot.profiles[0]?.id ?? "");
+    setBudgetDollars("2.00");
+    setSkillRoutesText("agenticcrew://skills/superpowers/subagent-driven-development");
   }
 
   async function toggleAgentTemplate(templateId: string, active: boolean) {
@@ -147,6 +178,17 @@ export function AgentStudio({ harnessSnapshot, invoke, onSnapshotChange, snapsho
                 <Power aria-hidden="true" size={16} />
                 <span>{template.active ? "Deactivate" : "Activate"}</span>
               </button>
+              <button
+                className="inline-action"
+                disabled={saving}
+                onClick={() => {
+                  beginEdit(template);
+                }}
+                type="button"
+              >
+                <Edit3 aria-hidden="true" size={16} />
+                <span>Edit</span>
+              </button>
             </li>
           ))}
         </ul>
@@ -174,7 +216,7 @@ export function AgentStudio({ harnessSnapshot, invoke, onSnapshotChange, snapsho
         </label>
         <label>
           <span>Route</span>
-          <input disabled readOnly value={`agenticcrew://agents/local/${generatedId}`} />
+          <input disabled readOnly value={`agenticcrew://agents/local/${editingTemplateId ?? generatedId}`} />
         </label>
         <label>
           <span>Role</span>
@@ -252,10 +294,16 @@ export function AgentStudio({ harnessSnapshot, invoke, onSnapshotChange, snapsho
           />
         </label>
         <div className="settings-actions">
-          <button disabled={saving || generatedId.length === 0} type="submit">
+          <button disabled={saving || (editingTemplateId === null && generatedId.length === 0)} type="submit">
             <Plus aria-hidden="true" size={16} />
-            <span>{saving ? "Creating" : "Create agent"}</span>
+            <span>{submitLabel}</span>
           </button>
+          {editingTemplateId === null ? null : (
+            <button disabled={saving} onClick={resetForm} type="button">
+              <X aria-hidden="true" size={16} />
+              <span>Cancel</span>
+            </button>
+          )}
           {error ? (
             <output aria-live="polite" className="settings-error">
               {error}
@@ -274,6 +322,10 @@ function splitSkillRoutes(value: string): string[] {
     .split("\n")
     .map((route) => route.trim())
     .filter((route) => route.length > 0);
+}
+
+function getAgentSubmitLabel(editingTemplateId: null | string): string {
+  return editingTemplateId === null ? "Create agent" : "Save agent";
 }
 
 function slugify(value: string): string {

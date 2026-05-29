@@ -1,13 +1,15 @@
 import type {
   CreateHarnessProfileRequest,
   HarnessStudioSnapshot,
-  SetHarnessProfileActiveRequest
+  SetHarnessProfileActiveRequest,
+  UpdateHarnessProfileRequest
 } from "../types/core";
 
 export type HarnessStudioCommand =
   | "create_harness_profile"
   | "harness_studio_snapshot"
-  | "set_harness_profile_active";
+  | "set_harness_profile_active"
+  | "update_harness_profile";
 
 export type InvokeHarnessStudio = (
   command: HarnessStudioCommand,
@@ -32,4 +34,11 @@ export async function setHarnessProfileActive(
   request: SetHarnessProfileActiveRequest
 ): Promise<HarnessStudioSnapshot> {
   return invoke("set_harness_profile_active", { request });
+}
+
+export async function updateHarnessProfile(
+  invoke: InvokeHarnessStudio,
+  request: UpdateHarnessProfileRequest
+): Promise<HarnessStudioSnapshot> {
+  return invoke("update_harness_profile", { request });
 }

@@ -206,6 +206,82 @@ describe("AgentStudio", () => {
     expect(await screen.findByText("Agent creation failed")).toBeInTheDocument();
   });
 
+  it("edits an existing agent template", async () => {
+    const nextSnapshot: AgentStudioSnapshot = {
+      activeTemplateCount: 1,
+      templates: [
+        {
+          ...templateSnapshot.templates[0],
+          budgetCents: 325,
+          description: "Updated guidance",
+          harnessProfileId: "pi-execution-discipline",
+          modelId: "gpt-5.1",
+          name: "Updated Agent",
+          role: "lead",
+          skillRoutes: ["agenticcrew://skills/review"],
+          version: 3
+        }
+      ],
+      trainingRuns: []
+    };
+    const invoke = vi.fn().mockResolvedValue(nextSnapshot);
+    const onSnapshotChange = vi.fn();
+
+    render(
+      <AgentStudio
+        harnessSnapshot={harnessSnapshot}
+        invoke={invoke}
+        onSnapshotChange={onSnapshotChange}
+        snapshot={templateSnapshot}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText("Route")).toHaveValue("agenticcrew://agents/local/loose-agent");
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Updated Agent" } });
+    fireEvent.change(screen.getByLabelText("Role"), { target: { value: "lead" } });
+    fireEvent.change(screen.getByLabelText("Model"), { target: { value: "gpt-5.1" } });
+    fireEvent.change(screen.getByLabelText("Harness"), { target: { value: "pi-execution-discipline" } });
+    fireEvent.change(screen.getByLabelText("Budget"), { target: { value: "3.25" } });
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Updated guidance" } });
+    fireEvent.change(screen.getByLabelText("Skill routes"), {
+      target: { value: "agenticcrew://skills/review" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save agent" }));
+
+    await waitFor(() => {
+      expect(onSnapshotChange).toHaveBeenCalledWith(nextSnapshot);
+    });
+    expect(invoke).toHaveBeenCalledWith("update_agent_template", {
+      request: {
+        budgetCents: 325,
+        description: "Updated guidance",
+        harnessProfileId: "pi-execution-discipline",
+        modelId: "gpt-5.1",
+        name: "Updated Agent",
+        providerId: "openai",
+        role: "lead",
+        skillRoutes: ["agenticcrew://skills/review"],
+        templateId: "loose-agent"
+      }
+    });
+  });
+
+  it("surfaces update failures", async () => {
+    render(
+      <AgentStudio
+        harnessSnapshot={harnessSnapshot}
+        invoke={vi.fn().mockRejectedValue(new Error("failed"))}
+        snapshot={templateSnapshot}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save agent" }));
+
+    expect(await screen.findByText("Agent update failed")).toBeInTheDocument();
+  });
+
   it("toggles agent template activation and surfaces failures", async () => {
     const invoke = vi
       .fn()

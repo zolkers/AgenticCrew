@@ -27,8 +27,18 @@ describe("tauriAgentStudioInvoke", () => {
     vi.mocked(invoke).mockResolvedValue({ activeTemplateCount: 0, templates: [], trainingRuns: [] });
 
     await expect(
-      tauriAgentStudioInvoke("set_agent_template_active", {
-        request: { active: false, templateId: "review-agent" }
+      tauriAgentStudioInvoke("update_agent_template", {
+        request: {
+          budgetCents: 200,
+          description: "Local",
+          harnessProfileId: null,
+          modelId: "gpt-5.2",
+          name: "Local",
+          providerId: "openai",
+          role: "developer",
+          skillRoutes: [],
+          templateId: "review-agent"
+        }
       })
     ).resolves.toEqual({
       activeTemplateCount: 0,
@@ -36,8 +46,18 @@ describe("tauriAgentStudioInvoke", () => {
       trainingRuns: []
     });
 
-    expect(invoke).toHaveBeenCalledWith("set_agent_template_active", {
-      request: { active: false, templateId: "review-agent" }
+    expect(invoke).toHaveBeenCalledWith("update_agent_template", {
+      request: {
+        budgetCents: 200,
+        description: "Local",
+        harnessProfileId: null,
+        modelId: "gpt-5.2",
+        name: "Local",
+        providerId: "openai",
+        role: "developer",
+        skillRoutes: [],
+        templateId: "review-agent"
+      }
     });
   });
 });
