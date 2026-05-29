@@ -1,28 +1,31 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FolderOpen, GitBranch, GitCommit, GitPullRequest, RefreshCcw, Save, ShieldCheck } from "lucide-react";
 import type { CockpitWorkspace } from "../../shared/preview/cockpitData";
+import { uniqueStrings } from "../../shared/strings";
 
 type GitPanelProps = Readonly<{
+  branchOptions: readonly string[];
   onRefreshGitStatus: () => void;
   onWorkspaceChange: (changes: Pick<CockpitWorkspace, "branch" | "path">) => void;
   workspace: CockpitWorkspace;
 }>;
 
-export function GitPanel({ onRefreshGitStatus, onWorkspaceChange, workspace }: GitPanelProps) {
-  const [branch, setBranch] = useState(workspace.branch);
-  const [path, setPath] = useState(workspace.path);
+export function GitPanel({ branchOptions, onRefreshGitStatus, onWorkspaceChange, workspace }: GitPanelProps) {
   const gitStatus = workspace.gitStatus;
   const aheadCount = gitStatus?.aheadCount ?? 0;
   const behindCount = gitStatus?.behindCount ?? 0;
   const isDirty = gitStatus?.isDirty ?? false;
   const hasDivergence = aheadCount + behindCount > 0;
-
-  function saveGitContext() {
-    onWorkspaceChange({
-      branch,
-      path
-    });
-  }
+  const selectableBranches = useMemo(
+    () =>
+      uniqueStrings([
+        workspace.branch,
+        gitStatus?.branch,
+        gitStatus?.remoteBranch?.replace(/^origin\//u, ""),
+        ...branchOptions
+      ]),
+    [branchOptions, gitStatus?.branch, gitStatus?.remoteBranch, workspace.branch]
+  );
 
   return (
     <section aria-label="Git Panel">
@@ -80,36 +83,67 @@ export function GitPanel({ onRefreshGitStatus, onWorkspaceChange, workspace }: G
         </div>
       </dl>
 
-      <form
-        className="git-context-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          saveGitContext();
-        }}
-      >
-        <label>
-          <span>Branch</span>
-          <input
-            onChange={(event) => {
-              setBranch(event.target.value);
-            }}
-            value={branch}
-          />
-        </label>
-        <label>
-          <span>Workspace path</span>
-          <input
-            onChange={(event) => {
-              setPath(event.target.value);
-            }}
-            value={path}
-          />
-        </label>
-        <button type="submit">
-          <Save aria-hidden="true" size={16} />
-          <span>Save Git context</span>
-        </button>
-      </form>
+      <GitContextForm
+        key={`${workspace.id}:${workspace.branch}:${workspace.path}`}
+        branch={workspace.branch}
+        branchOptions={selectableBranches}
+        onSubmit={onWorkspaceChange}
+        path={workspace.path}
+      />
     </section>
+  );
+}
+
+type GitContextFormProps = Readonly<{
+  branch: string;
+  branchOptions: readonly string[];
+  onSubmit: (changes: Pick<CockpitWorkspace, "branch" | "path">) => void;
+  path: string;
+}>;
+
+function GitContextForm({ branch: initialBranch, branchOptions, onSubmit, path: initialPath }: GitContextFormProps) {
+  const [branch, setBranch] = useState(initialBranch);
+  const [path, setPath] = useState(initialPath);
+
+  return (
+    <form
+      className="git-context-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit({
+          branch,
+          path
+        });
+      }}
+    >
+      <label>
+        <span>Branch</span>
+        <select
+          onChange={(event) => {
+            setBranch(event.target.value);
+          }}
+          value={branch}
+        >
+          {branchOptions.map((branchOption) => (
+            <option key={branchOption} value={branchOption}>
+              {branchOption}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>Workspace path</span>
+        <input
+          onChange={(event) => {
+            setPath(event.target.value);
+          }}
+          value={path}
+        />
+      </label>
+      <button type="submit">
+        <Save aria-hidden="true" size={16} />
+        <span>Save Git context</span>
+      </button>
+    </form>
   );
 }

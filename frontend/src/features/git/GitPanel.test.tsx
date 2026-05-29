@@ -35,7 +35,7 @@ describe("GitPanel", () => {
       status: "running"
     };
 
-    render(<GitPanel onRefreshGitStatus={vi.fn()} onWorkspaceChange={vi.fn()} workspace={workspace} />);
+    render(<GitPanel branchOptions={["main", "codex/settings"]} onRefreshGitStatus={vi.fn()} onWorkspaceChange={vi.fn()} workspace={workspace} />);
 
     expect(screen.getByRole("heading", { name: "Git Panel" })).toBeInTheDocument();
     expect(screen.getAllByText("codex/settings").length).toBeGreaterThan(0);
@@ -46,7 +46,7 @@ describe("GitPanel", () => {
     expect(screen.getByText("2026-05-29T12:00:00Z")).toBeInTheDocument();
   });
 
-  it("submits manual branch and workspace path edits", () => {
+  it("submits selected branch and workspace path edits", () => {
     const workspace: CockpitWorkspace = {
       activeAgentId: "dev",
       agents: [],
@@ -64,7 +64,14 @@ describe("GitPanel", () => {
     };
     const onWorkspaceChange = vi.fn();
 
-    render(<GitPanel onRefreshGitStatus={vi.fn()} onWorkspaceChange={onWorkspaceChange} workspace={workspace} />);
+    render(
+      <GitPanel
+        branchOptions={["main", "codex/settings", "feature/new-shell"]}
+        onRefreshGitStatus={vi.fn()}
+        onWorkspaceChange={onWorkspaceChange}
+        workspace={workspace}
+      />
+    );
 
     fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "feature/new-shell" } });
     fireEvent.change(screen.getByLabelText("Workspace path"), { target: { value: "D:\\work\\AgenticCrew" } });
@@ -94,9 +101,57 @@ describe("GitPanel", () => {
     };
     const onRefreshGitStatus = vi.fn();
 
-    render(<GitPanel onRefreshGitStatus={onRefreshGitStatus} onWorkspaceChange={vi.fn()} workspace={workspace} />);
+    render(<GitPanel branchOptions={["main", "dev"]} onRefreshGitStatus={onRefreshGitStatus} onWorkspaceChange={vi.fn()} workspace={workspace} />);
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
 
     expect(onRefreshGitStatus).toHaveBeenCalledOnce();
+  });
+
+  it("resyncs editable git context when the workspace changes", () => {
+    const firstWorkspace: CockpitWorkspace = {
+      activeAgentId: "dev",
+      agents: [],
+      branch: "dev",
+      budgetLimitUsd: 10,
+      budgetUsedUsd: 1,
+      checkpoints: [],
+      id: "settings-workspace",
+      logs: [],
+      mission: "Wire settings",
+      name: "Settings Workspace",
+      path: "C:\\repo\\AgenticCrew",
+      skills: [],
+      status: "running"
+    };
+    const secondWorkspace: CockpitWorkspace = {
+      ...firstWorkspace,
+      branch: "release",
+      id: "release-workspace",
+      path: "D:\\release\\AgenticCrew"
+    };
+    const onWorkspaceChange = vi.fn();
+    const { rerender } = render(
+      <GitPanel
+        branchOptions={["dev", "release"]}
+        onRefreshGitStatus={vi.fn()}
+        onWorkspaceChange={onWorkspaceChange}
+        workspace={firstWorkspace}
+      />
+    );
+
+    rerender(
+      <GitPanel
+        branchOptions={["dev", "release"]}
+        onRefreshGitStatus={vi.fn()}
+        onWorkspaceChange={onWorkspaceChange}
+        workspace={secondWorkspace}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save Git context" }));
+
+    expect(onWorkspaceChange).toHaveBeenCalledWith({
+      branch: "release",
+      path: "D:\\release\\AgenticCrew"
+    });
   });
 });

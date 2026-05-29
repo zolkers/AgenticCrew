@@ -28,9 +28,17 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
 body {
   margin: 0;
   min-width: 320px;
+  overflow: hidden;
   background: var(--color-page);
   font-family: var(--font-body);
 }
@@ -47,12 +55,14 @@ button {
 }
 
 .app-shell {
-  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .topbar {
-  position: sticky;
-  top: 0;
   z-index: 2;
   display: grid;
   grid-template-columns: minmax(210px, 1.2fr) minmax(160px, 0.9fr) minmax(150px, 0.8fr) auto;
@@ -149,23 +159,27 @@ button {
 }
 
 .app-main {
+  min-height: 0;
   padding: 1rem;
+  overflow: auto;
 }
 
 .workspace-layout {
   display: grid;
   grid-template-columns: 4.5rem minmax(0, 1fr);
-  min-height: calc(100vh - 4.55rem);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .workspace-rail {
-  position: sticky;
-  top: 4.55rem;
   display: grid;
   gap: 0.55rem;
   align-content: start;
-  height: calc(100vh - 4.55rem);
+  height: 100%;
+  min-height: 0;
   padding: 1rem 0.65rem;
+  overflow-y: auto;
   border-right: 1px solid var(--color-border);
   background: #192127;
 }
@@ -190,9 +204,11 @@ button {
 .workspace-launchpad {
   display: grid;
   gap: 1.25rem;
-  min-height: 100vh;
-  align-content: center;
+  height: 100dvh;
+  min-height: 100dvh;
+  align-content: start;
   padding: clamp(1rem, 4vw, 3rem);
+  overflow: auto;
   background:
     linear-gradient(135deg, rgba(78, 212, 200, 0.13), transparent 38%),
     linear-gradient(315deg, rgba(220, 125, 115, 0.12), transparent 36%),
@@ -262,7 +278,9 @@ button {
 }
 
 .workspace-create-form input,
-.git-context-form input {
+.workspace-create-form select,
+.git-context-form input,
+.git-context-form select {
   min-width: 0;
   min-height: 2.55rem;
   padding: 0 0.75rem;
@@ -273,9 +291,20 @@ button {
 }
 
 .workspace-create-form input:focus,
-.git-context-form input:focus {
+.workspace-create-form select:focus,
+.git-context-form input:focus,
+.git-context-form select:focus {
   border-color: rgba(78, 212, 200, 0.72);
   outline: 0;
+}
+
+.workspace-create-form input:focus-visible,
+.workspace-create-form select:focus-visible,
+.git-context-form input:focus-visible,
+.git-context-form select:focus-visible {
+  border-color: var(--color-teal);
+  outline: 2px solid rgba(78, 212, 200, 0.72);
+  outline-offset: 2px;
 }
 
 .workspace-create-form button,
@@ -390,6 +419,8 @@ button {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   gap: 1rem;
+  height: 100%;
+  min-height: 0;
 }
 
 .cockpit-sidebar,
@@ -403,7 +434,9 @@ button {
   display: grid;
   gap: 1rem;
   align-content: start;
+  min-height: 0;
   padding: 1rem;
+  overflow-y: auto;
 }
 
 .cockpit-sidebar h2,
@@ -611,8 +644,9 @@ button {
 
 .terminal-panel {
   display: grid;
-  grid-template-rows: auto minmax(360px, 1fr) auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -696,7 +730,7 @@ button {
 }
 
 .terminal-stream {
-  min-height: 20rem;
+  min-height: 0;
   padding: 1rem;
   overflow: auto;
   color: #c6f4df;
@@ -1006,8 +1040,10 @@ section[aria-label="Harness Studio"],
 section[aria-label="Agent Studio"],
 section[aria-label="Git Panel"],
 section[aria-label="Settings"] {
-  max-width: 960px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  margin: 0;
   padding: 1.25rem;
   border: 1px solid var(--color-border-soft);
   border-radius: 8px;
@@ -1015,7 +1051,7 @@ section[aria-label="Settings"] {
 }
 
 .mission-page {
-  max-width: 1180px !important;
+  max-width: none !important;
 }
 
 .mission-header h1 {

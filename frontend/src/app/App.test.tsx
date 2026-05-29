@@ -275,14 +275,14 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Choose a workspace" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Workspace name"), { target: { value: "API_{2-Platform" } });
     fireEvent.change(screen.getByLabelText("Workspace path"), { target: { value: "D:\\work\\api-platform" } });
-    fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "feature/api-platform" } });
+    fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "dev" } });
     fireEvent.change(screen.getByLabelText("Mission"), { target: { value: "Build API agents" } });
     fireEvent.click(screen.getByRole("button", { name: "Create workspace" }));
 
     expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workspace/api_-2-platform/cockpit");
     expect(screen.getByRole("heading", { name: "Build API agents" })).toBeInTheDocument();
-    expect(screen.getAllByText("feature/api-platform").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("dev").length).toBeGreaterThan(0);
   });
 
   it("keeps navigation out of the topbar and exposes it in a workspace rail", async () => {
@@ -683,10 +683,10 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     expect(await screen.findByText("Working tree dirty")).toBeInTheDocument();
     expect(screen.getByText("1 ahead / 0 behind")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "feature/manual-branch" } });
+    fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "codex/mobile-smoke" } });
     fireEvent.click(screen.getByRole("button", { name: "Save Git context" }));
     await waitFor(() => {
-      expect(screen.getAllByText("feature/manual-branch").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("codex/mobile-smoke").length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));

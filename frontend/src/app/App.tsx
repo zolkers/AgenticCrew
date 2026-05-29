@@ -47,6 +47,7 @@ import type {
   SkillSourcesSnapshot,
   WorkspaceSnapshot
 } from "../shared/types/core";
+import { uniqueStrings } from "../shared/strings";
 import "../i18n";
 import "./App.css";
 
@@ -105,6 +106,8 @@ const viewByRouteSegment: Record<string, AppView> = {
   settings: "settings",
   skills: "skillSources"
 };
+
+const defaultBranchOptions = ["main", "dev", "staging", "release"];
 
 export function App({
   agentStudioInvoke,
@@ -187,6 +190,15 @@ export function App({
     workspaces.map((workspace) => [workspace.id, workspace])
   ) as Record<string, CockpitWorkspace>;
   const activeWorkspace = activeWorkspaceId === null ? null : (workspacesById[activeWorkspaceId] ?? null);
+  const branchOptions = uniqueStrings([
+    ...defaultBranchOptions,
+    ...loadState.missionControlSnapshot.gitSummary.activeBranches,
+    ...workspaces.map((workspace) => workspace.branch),
+    ...workspaces.flatMap((workspace) => [
+      workspace.gitStatus?.branch,
+      workspace.gitStatus?.remoteBranch?.replace(/^origin\//u, "")
+    ])
+  ]);
   const openWorkspace = (workspaceId: string, view: AppView = "cockpit") => {
     setRouteState({ view, workspaceId });
     window.history.pushState(null, "", `/workspace/${workspaceId}/${routeSegmentByView[view]}`);
@@ -211,6 +223,7 @@ export function App({
     return (
       <MantineProvider defaultColorScheme="dark">
         <WorkspaceLaunchpad
+          branchOptions={branchOptions}
           onWorkspaceCreate={(request) => {
             void createWorkspace(request);
           }}
@@ -399,6 +412,7 @@ export function App({
         ) : null}
         {activeView === "gitPanel" ? (
           <GitPanel
+            branchOptions={branchOptions}
             onRefreshGitStatus={() => {
               void refreshActiveGitStatus();
             }}
@@ -460,12 +474,13 @@ function NavButton({ active, icon, label, onClick }: NavButtonProps) {
 }
 
 type WorkspaceLaunchpadProps = Readonly<{
+  branchOptions: readonly string[];
   onWorkspaceCreate: (request: CreateWorkspaceRequest) => void;
   onWorkspaceSelect: (workspaceId: string) => void;
   workspaces: readonly CockpitWorkspace[];
 }>;
 
-function WorkspaceLaunchpad({ onWorkspaceCreate, onWorkspaceSelect, workspaces }: WorkspaceLaunchpadProps) {
+function WorkspaceLaunchpad({ branchOptions, onWorkspaceCreate, onWorkspaceSelect, workspaces }: WorkspaceLaunchpadProps) {
   const [branch, setBranch] = useState("main");
   const [mission, setMission] = useState("Start a new agent mission");
   const [name, setName] = useState("New Workspace");
@@ -512,12 +527,18 @@ function WorkspaceLaunchpad({ onWorkspaceCreate, onWorkspaceSelect, workspaces }
         </label>
         <label>
           <span>Branch</span>
-          <input
+          <select
             onChange={(event) => {
               setBranch(event.target.value);
             }}
             value={branch}
-          />
+          >
+            {branchOptions.map((branchOption) => (
+              <option key={branchOption} value={branchOption}>
+                {branchOption}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           <span>Mission</span>
