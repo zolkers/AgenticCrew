@@ -5,8 +5,10 @@ use std::{
 };
 
 use super::{
+    agents::{AgentTemplate, AgentTrainingRun},
     costs::ModelCallEstimate,
     evidence::{CommandExitCodeEvidence, Evidence},
+    harnesses::{HarnessBinding, HarnessProfile},
     permissions::ApprovedPermissionPolicy,
     sessions::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
@@ -30,6 +32,14 @@ pub struct AgentOsState {
     pub model_call_estimates: Vec<ModelCallEstimate>,
     #[serde(default)]
     pub skill_sources: Vec<SkillSource>,
+    #[serde(default)]
+    pub harness_profiles: Vec<HarnessProfile>,
+    #[serde(default)]
+    pub harness_bindings: Vec<HarnessBinding>,
+    #[serde(default)]
+    pub agent_templates: Vec<AgentTemplate>,
+    #[serde(default)]
+    pub agent_training_runs: Vec<AgentTrainingRun>,
 }
 
 impl AgentOsState {
@@ -42,6 +52,10 @@ impl AgentOsState {
             evidence: Vec::new(),
             model_call_estimates: Vec::new(),
             skill_sources: Vec::new(),
+            harness_profiles: vec![HarnessProfile::pi_execution_discipline()],
+            harness_bindings: Vec::new(),
+            agent_templates: vec![AgentTemplate::developer_with_pi()],
+            agent_training_runs: Vec::new(),
         }
     }
 
@@ -561,15 +575,17 @@ mod tests {
         CURRENT_SCHEMA_VERSION,
     };
     use crate::core::{
+        agents::AgentTemplate,
         costs::ModelCallEstimate,
         evidence::{CommandExitCodeEvidence, Evidence},
-        sessions::{
-            Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
-            SessionTransitionError,
-        },
+        harnesses::HarnessProfile,
         permissions::{
             ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
             NetworkPermissionScope,
+        },
+        sessions::{
+            Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
+            SessionTransitionError,
         },
         skills::RegisterGitHubSkillSourceRequest,
     };
@@ -590,6 +606,32 @@ mod tests {
         assert!(state.feature_sessions.is_empty());
         assert!(state.evidence.is_empty());
         assert!(state.model_call_estimates.is_empty());
+        assert!(state.skill_sources.is_empty());
+        assert_eq!(state.harness_profiles.len(), 1);
+        assert_eq!(state.harness_profiles[0].id, "pi-execution-discipline");
+        assert!(state.harness_bindings.is_empty());
+        assert_eq!(state.agent_templates.len(), 1);
+        assert_eq!(state.agent_templates[0].id, "developer-pi");
+        assert!(state.agent_training_runs.is_empty());
+    }
+
+    #[test]
+    fn legacy_state_json_defaults_harness_and_agent_collections() {
+        let state: AgentOsState = serde_json::from_value(serde_json::json!({
+            "schema_version": CURRENT_SCHEMA_VERSION,
+            "goals": [],
+            "design_sessions": [],
+            "feature_sessions": [],
+            "evidence": [],
+            "model_call_estimates": [],
+            "skill_sources": []
+        }))
+        .expect("legacy state should deserialize with defaults");
+
+        assert!(state.harness_profiles.is_empty());
+        assert!(state.harness_bindings.is_empty());
+        assert!(state.agent_templates.is_empty());
+        assert!(state.agent_training_runs.is_empty());
     }
 
     #[test]
@@ -1181,6 +1223,10 @@ mod tests {
             evidence: vec![evidence],
             model_call_estimates: vec![model_call_estimate],
             skill_sources: Vec::new(),
+            harness_profiles: vec![HarnessProfile::pi_execution_discipline()],
+            harness_bindings: Vec::new(),
+            agent_templates: vec![AgentTemplate::developer_with_pi()],
+            agent_training_runs: Vec::new(),
         }
     }
 

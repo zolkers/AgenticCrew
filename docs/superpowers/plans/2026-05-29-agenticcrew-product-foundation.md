@@ -12,7 +12,7 @@
 
 ## Scope And Sequencing
 
-This is too large for one implementation pass. Execute in thirteen milestones, each independently shippable:
+This is too large for one implementation pass. Execute in fifteen milestones, each independently shippable:
 
 0. Electron shell migration.
 1. UI framework and multi-agent design system.
@@ -24,9 +24,11 @@ This is too large for one implementation pass. Execute in thirteen milestones, e
 7. Git interface v1.
 8. Skill route index and package addressing.
 9. Skill marketplace and source management workflow.
-10. Modern Mission Control and Skill Sources redesign.
-11. Product power features.
-12. Polish, integration, and roadmap cleanup.
+10. Harness Studio and PI extension system.
+11. Agent Studio, training, and evaluation.
+12. Modern Mission Control and Skill Sources redesign.
+13. Product power features.
+14. Polish, integration, and roadmap cleanup.
 
 The guiding rule: no feature view should present fake operational values once the corresponding backend snapshot exists. Preview data may remain only inside browser-preview adapters and tests.
 
@@ -148,12 +150,38 @@ These are not fully covered by the earlier plan and should be added to the roadm
 - **Artifacts panel:** files, patches, screenshots, logs, reports, and PR descriptions produced by agents.
 - **Diff review center:** central review of file changes by agent and checkpoint, before commit or PR.
 - **Run replay:** deterministic timeline replay of a completed or failed run from stored events.
-- **Agent templates:** create agents from presets and save custom role/model/skill bundles.
+- **Harness Studio:** create, import, compose, preview, version, validate, and bind multiple harness profiles.
+- **PI extension manager:** import user PI extensions, inspect compatibility, approve permissions, and expose extension components to harness composition.
+- **Agent Studio:** create agents from presets, save custom role/model/skill/harness bundles, version them, and bind published versions to workspaces and runs.
+- **Training and evaluation panel:** run prompt/config/skill/harness iteration against datasets, compare versions, score outputs, and promote a candidate only after human approval.
 - **Skill dependency view:** show which agents use which skills, and which skills request network/git/docker/filesystem.
 - **Safety center:** budget caps, tool permissions, workspace filesystem boundaries, network allowlist, and kill/pause controls.
 - **Layout presets:** focus agent, all agents grid, mission control, marketplace, git review, compact laptop mode.
 - **Notifications:** local notifications for gates, failed tests, budget thresholds, long-running agent completion.
 - **Evaluation lane:** critic/reviewer output quality checks and compare runs over the same task.
+
+### Harness And PI Extension Route System
+
+Harnesses and PI extensions are not fake skills. They have their own route families, trust gates, manifests, and binding rules.
+
+Canonical routes:
+
+```text
+agenticcrew://harnesses/{sourceId}/{harnessSlug}
+agenticcrew://harnesses/{sourceId}/{namespace}/{harnessSlug}
+agenticcrew://pi-extensions/{sourceId}/{extensionSlug}
+agenticcrew://pi-extensions/{sourceId}/{namespace}/{extensionSlug}
+```
+
+Rules:
+
+- Rust owns harness source registration, manifests, composition, validation, and effective runtime snapshots.
+- Harness components can reference skill routes, but skills cannot masquerade as harnesses.
+- A harness profile is an ordered composition of modules: base policy, behavior rule, tool rule, safety rule, output style, project memory, and agent persona.
+- Bindings can target global, workspace, agent, skill, and run scopes. Precedence is global < workspace < agent < skill < run.
+- The UI must show the effective harness before launch so users can see exactly what an agent will receive.
+- PI extensions remain inactive until inspected, permission-approved, and activated.
+- External harness or PI extension routes cannot execute code during metadata preview.
 
 ---
 
@@ -172,6 +200,12 @@ These are not fully covered by the earlier plan and should be added to the roadm
 - Create `crates/agenticcrew-core/src/cockpit.rs`: real cockpit DTO derived from durable state, workspaces, git, sessions, skills, costs, and provider config.
 - Create `crates/agenticcrew-core/src/agent_events.rs`: append-only agent activity events, heartbeats, tool calls, file touches, artifacts, and gate requests.
 - Create `crates/agenticcrew-core/src/skill_routes.rs`: stable route index, route parsing, search, resolution, and trust-aware load contracts.
+- Create `crates/agenticcrew-core/src/harnesses.rs`: harness profiles, modules, sources, bindings, effective snapshot composition, and built-in PI policy metadata.
+- Create `crates/agenticcrew-core/src/harness_routes.rs`: stable route parsing for `agenticcrew://harnesses/...`.
+- Create `crates/agenticcrew-core/src/harness_manifest.rs`: serde-backed `HARNESS.md` or `.agenticcrew/manifest.json` parsing.
+- Create `crates/agenticcrew-core/src/pi_extensions.rs`: PI extension registry, compatibility, activation gates, and extension commands/components metadata.
+- Create `crates/agenticcrew-core/src/agents.rs`: Rust-owned agent templates, published versions, skill/harness bindings, training runs, and snapshots.
+- Create `crates/agenticcrew-core/src/evaluations.rs`: reusable evaluation harnesses, run results, score summaries, and regression records.
 - Modify `crates/agenticcrew-core/src/state.rs`: add schema v2 fields with serde defaults and migration support.
 - Modify `crates/agenticcrew-core/src/mission_control.rs`: expand the snapshot from real sessions, costs, provider config, workspaces, and git.
 - Modify `crates/agenticcrew-core/src/skills.rs`: add marketplace/catalog DTOs and richer action states while preserving permission gates.
@@ -200,6 +234,9 @@ These are not fully covered by the earlier plan and should be added to the roadm
 - Create `frontend/src/features/git/GitPanel.tsx`, `GitStatusBadge.tsx`, `gitApi.ts`, `types.ts`, and tests.
 - Create `frontend/src/features/skill-sources/SkillMarketplace.tsx`, `SkillSourceCard.tsx`, `SkillSourceSearch.tsx`, `PermissionReviewDialog.tsx`, and workflow tests.
 - Create `frontend/src/features/skill-routes/SkillRouteBrowser.tsx`, `SkillRouteDetails.tsx`, `SkillRoutePicker.tsx`, `skillRoutesApi.ts`, `types.ts`, and tests.
+- Create `frontend/src/features/pi/PiStudioPage.tsx`, `PiExtensionImporter.tsx`, `PiExtensionDetails.tsx`, `piApi.ts`, `types.ts`, and tests.
+- Create `frontend/src/features/harnesses/HarnessStudioPage.tsx`, `HarnessCatalog.tsx`, `HarnessComposer.tsx`, `HarnessBindingMatrix.tsx`, `HarnessRoutePicker.tsx`, `harnessesApi.ts`, `types.ts`, and tests.
+- Create `frontend/src/features/agents/AgentStudioPage.tsx`, `AgentLibrary.tsx`, `AgentBuilder.tsx`, `AgentVersionHistory.tsx`, `AgentTrainingPanel.tsx`, `AgentEvaluationPanel.tsx`, `agentStudioApi.ts`, `types.ts`, and tests.
 - Create `frontend/src/features/mission-control/MissionControlPage.tsx`, `MissionTimeline.tsx`, `AgentRoster.tsx`, `BudgetPanel.tsx`, and tests.
 - Create `frontend/src/shared/api/cockpitApi.ts`, `providerConfigApi.ts`, `workspacesApi.ts`, `gitApi.ts`, plus Electron IPC and preview invoke tests.
 - Expand `frontend/src/shared/types/core.ts` or split feature contracts into local `types.ts` files where ownership is clearer.
@@ -649,6 +686,10 @@ git commit -m "refactor: split product shell from cockpit"
 - Create: `crates/agenticcrew-core/src/migrations.rs`
 - Create: `crates/agenticcrew-core/src/workspaces.rs`
 - Create: `crates/agenticcrew-core/src/provider_config.rs`
+- Create: `crates/agenticcrew-core/src/harnesses.rs`
+- Create: `crates/agenticcrew-core/src/pi_extensions.rs`
+- Create: `crates/agenticcrew-core/src/agents.rs`
+- Create: `crates/agenticcrew-core/src/evaluations.rs`
 - Modify: `crates/agenticcrew-core/src/lib.rs`
 - Modify: `crates/agenticcrew-core/src/state.rs`
 - Modify: `crates/agenticcrew-sidecar/src/main.rs`
@@ -731,6 +772,18 @@ pub schema_version: u32,
 pub workspaces: Vec<WorkspaceRecord>,
 #[serde(default)]
 pub provider_config: ProviderConfig,
+#[serde(default)]
+pub harness_profiles: Vec<HarnessProfile>,
+#[serde(default)]
+pub harness_bindings: Vec<HarnessBinding>,
+#[serde(default)]
+pub pi_extensions: Vec<PiExtension>,
+#[serde(default)]
+pub agent_templates: Vec<AgentTemplate>,
+#[serde(default)]
+pub agent_training_runs: Vec<AgentTrainingRun>,
+#[serde(default)]
+pub evaluation_runs: Vec<EvaluationRun>,
 ```
 
 Increment current schema version to `2`, then route JSON loading through `migrations.rs`.
@@ -742,9 +795,11 @@ Add commands:
 ```rust
 provider_config_snapshot
 workspaces_snapshot
+harness_studio_snapshot
+agent_studio_snapshot
 ```
 
-Both load from durable state and return typed DTOs.
+All load from durable state and return typed DTOs.
 
 - [ ] **Step 6: Verify and commit**
 
@@ -1277,7 +1332,168 @@ git commit -m "feat: add skill marketplace workflow"
 
 ---
 
-## Milestone 10: Modern Mission Control And Real Metrics
+## Milestone 10: Harness Studio And PI Extensions
+
+**Goal:** Let users import PI extensions, compose multiple harness profiles, preview the effective harness, and bind harnesses to global, workspace, agent, skill, and run scopes.
+
+**Files:**
+- Create: `crates/agenticcrew-core/src/harnesses.rs`
+- Create: `crates/agenticcrew-core/src/harness_routes.rs`
+- Create: `crates/agenticcrew-core/src/harness_manifest.rs`
+- Create: `crates/agenticcrew-core/src/pi_extensions.rs`
+- Modify: `crates/agenticcrew-core/src/state.rs`
+- Modify: `crates/agenticcrew-sidecar/src/main.rs`
+- Create: `frontend/src/features/pi/PiStudioPage.tsx`
+- Create: `frontend/src/features/pi/PiExtensionImporter.tsx`
+- Create: `frontend/src/features/pi/PiExtensionDetails.tsx`
+- Create: `frontend/src/features/harnesses/HarnessStudioPage.tsx`
+- Create: `frontend/src/features/harnesses/HarnessComposer.tsx`
+- Create: `frontend/src/features/harnesses/HarnessBindingMatrix.tsx`
+- Create: `frontend/src/features/harnesses/HarnessRoutePicker.tsx`
+
+- [ ] **Step 1: Model harnesses separately from skills**
+
+Add Rust-owned records:
+
+- `HarnessSource`
+- `HarnessManifest`
+- `HarnessModule`
+- `HarnessProfile`
+- `HarnessBinding`
+- `PiExtension`
+- `EffectiveHarnessSnapshot`
+
+Routes use `agenticcrew://harnesses/...` and `agenticcrew://pi-extensions/...`.
+
+- [ ] **Step 2: Add manifest and route validation**
+
+Parse structured harness manifests with serde. Reject traversal, malformed schemes, uppercase-unstable slugs, and cache paths outside the source root.
+
+- [ ] **Step 3: Add composition and binding commands**
+
+Expose:
+
+```text
+harness_studio_snapshot
+harness_resolve
+harness_load
+compose_harness
+effective_harness_snapshot
+bind_harness
+unbind_harness
+pi_extensions_snapshot
+import_pi_extension
+validate_pi_extension
+activate_pi_extension
+```
+
+- [ ] **Step 4: Build Harness Studio UI**
+
+Create an icon-first UI with:
+
+- catalog/search
+- composer
+- manifest/details drawer
+- effective harness preview
+- binding matrix
+- PI extension importer
+- permission review dialog
+
+- [ ] **Step 5: Verify and commit**
+
+Run:
+
+```powershell
+npm run coverage -w frontend
+scripts\test-app.bat --quality
+```
+
+Commit:
+
+```bash
+git add crates/agenticcrew-core crates/agenticcrew-sidecar electron frontend/src/features/pi frontend/src/features/harnesses frontend/src/shared docs
+git commit -m "feat: add harness studio and pi extensions"
+```
+
+---
+
+## Milestone 11: Agent Studio, Training, And Evaluation
+
+**Goal:** Let users create, load, version, evaluate, and improve custom agents that bind approved skill routes and harness profiles.
+
+**Files:**
+- Create: `crates/agenticcrew-core/src/agents.rs`
+- Create: `crates/agenticcrew-core/src/agent_versions.rs`
+- Create: `crates/agenticcrew-core/src/training.rs`
+- Create: `crates/agenticcrew-core/src/evaluations.rs`
+- Modify: `crates/agenticcrew-core/src/state.rs`
+- Modify: `crates/agenticcrew-sidecar/src/main.rs`
+- Create: `frontend/src/features/agents/AgentStudioPage.tsx`
+- Create: `frontend/src/features/agents/AgentLibrary.tsx`
+- Create: `frontend/src/features/agents/AgentBuilder.tsx`
+- Create: `frontend/src/features/agents/AgentVersionHistory.tsx`
+- Create: `frontend/src/features/agents/AgentTrainingPanel.tsx`
+- Create: `frontend/src/features/agents/AgentEvaluationPanel.tsx`
+- Create: `frontend/src/features/agents/AgentBindingPicker.tsx`
+
+- [ ] **Step 1: Add Rust-owned agent version model**
+
+Model editable drafts separately from immutable published versions. Published versions store prompt, provider/model, approved skill routes, harness profile bindings, memory scope, budget caps, and parent version.
+
+- [ ] **Step 2: Add training and evaluation records**
+
+For v1, training means prompt/config/skill/harness iteration, not model-weight fine-tuning. Store training runs, evaluation runs, score summaries, regressions, artifacts, cost, and reviewer approval.
+
+- [ ] **Step 3: Add commands**
+
+Expose:
+
+```text
+agent_studio_snapshot
+agent_create_draft
+agent_update_draft
+agent_publish_version
+agent_clone_version
+agent_version_diff
+agent_bind_to_workspace
+training_run_start
+training_run_snapshot
+evaluation_run_start
+evaluation_run_snapshot
+```
+
+- [ ] **Step 4: Build Agent Studio UI**
+
+Create:
+
+- agent library
+- builder
+- version history/diff
+- skill route picker
+- harness route picker
+- training setup/progress
+- evaluation comparison
+- publish/promote flow
+
+- [ ] **Step 5: Verify and commit**
+
+Run:
+
+```powershell
+npm run coverage -w frontend
+scripts\test-app.bat --quality
+```
+
+Commit:
+
+```bash
+git add crates/agenticcrew-core crates/agenticcrew-sidecar electron frontend/src/features/agents frontend/src/shared docs
+git commit -m "feat: add custom agent studio"
+```
+
+---
+
+## Milestone 12: Modern Mission Control And Real Metrics
 
 **Goal:** Replace the definition-list Mission Control with an operational management page backed by real sessions, checkpoints, provider config, git, skills, and model cost records.
 
@@ -1356,7 +1572,7 @@ git commit -m "feat: modernize mission control metrics"
 
 ---
 
-## Milestone 11: Product Power Features
+## Milestone 13: Product Power Features
 
 **Goal:** Add the practical features that make AgenticCrew better than a basic multi-agent dashboard.
 
@@ -1448,7 +1664,7 @@ git commit -m "feat: add agent operations power features"
 
 ---
 
-## Milestone 12: Polish, Integration, And Roadmap Cleanup
+## Milestone 14: Polish, Integration, And Roadmap Cleanup
 
 **Goal:** Make the app coherent after major feature landings and update docs so future work follows the new architecture.
 
@@ -1515,6 +1731,11 @@ git commit -m "docs: document product foundation architecture"
 - Skill Sources becomes a marketplace-like manager with search, registration, sync, inspection, permission review, route loading, and activation.
 - Every loadable skill has a canonical `agenticcrew://skills/{sourceId}/{skillSlug}` route and optional `skill://...` alias.
 - Agents store and receive skill routes, not local file paths.
+- The user can import or inspect PI extensions without activating untrusted execution behavior.
+- The user can create multiple harness profiles, compose modules, preview the effective harness, and bind a harness by global, workspace, agent, skill, or run scope.
+- Harness routes use `agenticcrew://harnesses/...`; PI extension routes use `agenticcrew://pi-extensions/...`.
+- The user can create custom agents, bind active skills and approved harnesses, save/publish versions, run evaluations, compare candidates, and promote a version after approval.
+- Cockpit and run launch bind published agent versions, not ad hoc preview agents.
 - Git status is visible per workspace.
 - Command palette can jump to workspace, agent, skill, route, git, settings, gates, and artifacts.
 - Artifact and diff review surfaces show what agents changed before handoff.
@@ -1535,7 +1756,9 @@ Suggested subagent split:
 - Worker B: frontend shell/cockpit extraction/workspace picker.
 - Worker C: settings/API key/model UI.
 - Worker D: skill marketplace workflow.
-- Worker E: Mission Control redesign.
+- Worker E: Harness Studio and PI extensions.
+- Worker F: Agent Studio, training, and evaluation.
+- Worker G: Mission Control redesign.
 - Reviewer agents after each milestone: spec compliance first, code quality second.
 
 Do not run all milestones in parallel. Milestones 2 and 3 define contracts that later frontend work depends on.

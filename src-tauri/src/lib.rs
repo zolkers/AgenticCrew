@@ -8,6 +8,8 @@ use std::{
 use serde::Serialize;
 
 use core::{
+    agents::{agent_studio_snapshot_from_state, AgentStudioSnapshot},
+    harnesses::{harness_studio_snapshot_from_state, HarnessStudioSnapshot},
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
     permissions::ApprovedPermissionPolicy,
     skill_manifest::{inspect_skill_manifests, SkillManifestInspectionError},
@@ -96,6 +98,22 @@ pub fn skill_sources_snapshot_at_path(
     let state = durable_state_snapshot_at_path(path)?;
 
     Ok(skill_sources_snapshot_from_state(&state))
+}
+
+pub fn harness_studio_snapshot_at_path(
+    path: impl Into<PathBuf>,
+) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
+    let state = durable_state_snapshot_at_path(path)?;
+
+    Ok(harness_studio_snapshot_from_state(&state))
+}
+
+pub fn agent_studio_snapshot_at_path(
+    path: impl Into<PathBuf>,
+) -> Result<AgentStudioSnapshot, DesktopCommandError> {
+    let state = durable_state_snapshot_at_path(path)?;
+
+    Ok(agent_studio_snapshot_from_state(&state))
 }
 
 pub fn create_feature_session_at_path(
@@ -254,18 +272,19 @@ mod commands {
     use tauri::Manager;
 
     use crate::{
-        activate_skill_source_at_path, add_checkpoint_at_path, close_feature_session_at_path,
-        approve_skill_source_permissions_at_path,
+        activate_skill_source_at_path, add_checkpoint_at_path, agent_studio_snapshot_at_path,
+        approve_skill_source_permissions_at_path, close_feature_session_at_path,
         core::permissions::ApprovedPermissionPolicy,
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
+        core::{agents::AgentStudioSnapshot, harnesses::HarnessStudioSnapshot},
         create_feature_session_at_path, durable_state_snapshot_at_path,
-        inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
-        record_command_evidence_at_path,
+        harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
+        mission_control_snapshot_at_path, record_command_evidence_at_path,
         register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
-        sync_github_skill_source_at_path, validate_skill_source_at_path,
-        CreateCheckpointRequest, CreateFeatureSessionRequest, DesktopCommandError,
-        MissionControlSnapshot, RecordCommandEvidenceRequest,
+        sync_github_skill_source_at_path, validate_skill_source_at_path, CreateCheckpointRequest,
+        CreateFeatureSessionRequest, DesktopCommandError, MissionControlSnapshot,
+        RecordCommandEvidenceRequest,
     };
 
     #[tauri::command]
@@ -287,6 +306,20 @@ mod commands {
         app: tauri::AppHandle,
     ) -> Result<SkillSourcesSnapshot, DesktopCommandError> {
         skill_sources_snapshot_at_path(app_state_path(&app)?)
+    }
+
+    #[tauri::command]
+    pub fn harness_studio_snapshot(
+        app: tauri::AppHandle,
+    ) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
+        harness_studio_snapshot_at_path(app_state_path(&app)?)
+    }
+
+    #[tauri::command]
+    pub fn agent_studio_snapshot(
+        app: tauri::AppHandle,
+    ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
+        agent_studio_snapshot_at_path(app_state_path(&app)?)
     }
 
     #[tauri::command]
@@ -392,6 +425,8 @@ pub fn run() {
             commands::mission_control_snapshot,
             commands::durable_state_snapshot,
             commands::skill_sources_snapshot,
+            commands::harness_studio_snapshot,
+            commands::agent_studio_snapshot,
             commands::create_feature_session,
             commands::add_checkpoint,
             commands::record_command_evidence,
@@ -421,24 +456,24 @@ mod tests {
     };
 
     use super::{
-        activate_skill_source_at_path, add_checkpoint_at_path, app_name,
-        approve_skill_source_permissions_at_path, close_feature_session_at_path,
+        activate_skill_source_at_path, add_checkpoint_at_path, agent_studio_snapshot_at_path,
+        app_name, approve_skill_source_permissions_at_path, close_feature_session_at_path,
         create_feature_session_at_path, durable_state_snapshot_at_path,
-        inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
-        record_command_evidence_at_path, record_skill_source_sync_success_at_path,
-        register_github_skill_source_at_path,
+        harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
+        mission_control_snapshot_at_path, record_command_evidence_at_path,
+        record_skill_source_sync_success_at_path, register_github_skill_source_at_path,
         skill_sources_snapshot_at_path, state_file_path, validate_skill_source_at_path,
         STATE_FILE_NAME,
     };
     use crate::core::{
+        permissions::{
+            ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
+            NetworkPermissionScope,
+        },
         sessions::GoalObject,
         skills::RegisterGitHubSkillSourceRequest,
         state::{
             CreateCheckpointRequest, CreateFeatureSessionRequest, RecordCommandEvidenceRequest,
-        },
-        permissions::{
-            ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
-            NetworkPermissionScope,
         },
     };
 
@@ -570,6 +605,40 @@ mod tests {
         assert_eq!(snapshot.sources.len(), 1);
         assert_eq!(snapshot.sources[0].id, "superpowers");
         assert_eq!(snapshot.active_source_count, 0);
+    }
+
+    #[test]
+    fn harness_studio_snapshot_command_reads_built_in_pi_profile() {
+        let path = test_path(
+            "harness_studio_snapshot_command_reads_built_in_pi_profile",
+            "state.json",
+        );
+
+        let snapshot = harness_studio_snapshot_at_path(&path).expect("harness studio should load");
+
+        assert_eq!(snapshot.active_profile_count, 1);
+        assert_eq!(snapshot.profiles[0].id, "pi-execution-discipline");
+        assert_eq!(
+            snapshot.profiles[0].modules[0].source.route.as_deref(),
+            Some("agenticcrew://harnesses/builtin-pi/pi-execution-discipline")
+        );
+    }
+
+    #[test]
+    fn agent_studio_snapshot_command_reads_built_in_developer_agent() {
+        let path = test_path(
+            "agent_studio_snapshot_command_reads_built_in_developer_agent",
+            "state.json",
+        );
+
+        let snapshot = agent_studio_snapshot_at_path(&path).expect("agent studio should load");
+
+        assert_eq!(snapshot.active_template_count, 1);
+        assert_eq!(snapshot.templates[0].id, "developer-pi");
+        assert_eq!(
+            snapshot.templates[0].harness_profile_id.as_deref(),
+            Some("pi-execution-discipline")
+        );
     }
 
     #[test]

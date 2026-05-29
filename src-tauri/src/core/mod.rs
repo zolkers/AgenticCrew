@@ -1,10 +1,12 @@
+pub mod agents;
 pub mod costs;
 pub mod evidence;
+pub mod harnesses;
 pub mod library;
 pub mod mission_control;
 pub mod permissions;
+pub mod sessions;
 pub mod skill_manifest;
 pub mod skill_sync;
-pub mod sessions;
 pub mod skills;
 pub mod state;

@@ -228,6 +228,10 @@ mod tests {
             evidence: Vec::new(),
             model_call_estimates: Vec::new(),
             skill_sources: Vec::new(),
+            harness_profiles: Vec::new(),
+            harness_bindings: Vec::new(),
+            agent_templates: Vec::new(),
+            agent_training_runs: Vec::new(),
         }
     }
 

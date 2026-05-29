@@ -19,6 +19,8 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - Electron shell migration: move Rust product truth from `src-tauri/src/core` into `crates/agenticcrew-core`, add a sidecar bridge, expose `window.agenticcrew.invoke`, and remove renderer Tauri imports.
 - Product UI foundation: adopt Mantine, TanStack Router, TanStack Query, Tabler icons, and the graphite/ink/copper visual system before expanding screens.
 - External skill marketplace and route workflow: register, sync, inspect, approve, search, route, and attach skills without activating untrusted code prematurely.
+- Harness Studio and PI extensions: compose multiple harness profiles, import user PI extensions, preview effective harnesses, and bind them to workspaces, agents, skills, and runs.
+- Agent Studio: create custom agents, bind approved skills and harnesses, evaluate candidate versions, and load published agent versions into workspaces and missions.
 
 ## Task Roadmap
 
@@ -168,3 +170,29 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - External sources remain inactive until Rust marks them validated.
 - The UI distinguishes bundled, local, and external GitHub skills.
 - Documentation captures trust, update, and pinning rules for third-party skill sources.
+
+### 13. Harness Studio And PI Extensions v1
+
+**Goal:** Make execution harnesses first-class, composable, inspectable, and bindable.
+
+**Ownership:** `crates/agenticcrew-core/src/harnesses.rs`, `crates/agenticcrew-core/src/pi_extensions.rs`, `frontend/src/features/harnesses`, `frontend/src/features/pi`.
+
+**Acceptance:**
+- Built-in PI execution discipline is represented as a Rust-owned harness profile.
+- Users can import or inspect PI extensions without automatic activation.
+- Harness and PI routes are separate from skill routes.
+- Effective harness snapshots are computed by Rust, not React.
+- Binding precedence is global < workspace < agent < skill < run.
+
+### 14. Agent Studio v1
+
+**Goal:** Make custom agents durable, versioned, skill-bound, harness-bound, and evaluable.
+
+**Ownership:** `crates/agenticcrew-core/src/agents.rs`, `crates/agenticcrew-core/src/evaluations.rs`, `frontend/src/features/agents`.
+
+**Acceptance:**
+- Agent templates and versions are Rust-owned durable records.
+- Agents bind canonical skill routes and approved harness profiles.
+- Training v1 means prompt/config/skill/harness iteration, not weight fine-tuning.
+- Evaluation runs compare versions with scores, regressions, costs, and artifacts.
+- Cockpit/session launch uses published agent versions rather than preview-only agents.
