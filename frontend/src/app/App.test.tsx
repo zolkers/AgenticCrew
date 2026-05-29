@@ -20,7 +20,10 @@ const skillSourcesSnapshot: SkillSourcesSnapshot = {
       active: false,
       id: "superpowers",
       kind: "git_hub",
+      lastSyncError: null,
       lastSyncStatus: "never_synced",
+      lastSyncedCommit: null,
+      localCachePath: null,
       permissionGate: {
         approved: false,
         policy: {

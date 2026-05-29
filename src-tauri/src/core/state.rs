@@ -202,6 +202,43 @@ impl AgentOsState {
         Ok(())
     }
 
+    pub fn record_skill_source_sync_success(
+        &mut self,
+        source_id: &str,
+        cache_path: String,
+        commit: String,
+    ) -> Result<(), StateMutationError> {
+        let source = self
+            .skill_sources
+            .iter_mut()
+            .find(|source| source.id == source_id)
+            .ok_or_else(|| StateMutationError::MissingSkillSource {
+                source_id: source_id.to_owned(),
+            })?;
+
+        source.record_sync_success(cache_path, commit);
+
+        Ok(())
+    }
+
+    pub fn record_skill_source_sync_failure(
+        &mut self,
+        source_id: &str,
+        error: String,
+    ) -> Result<(), StateMutationError> {
+        let source = self
+            .skill_sources
+            .iter_mut()
+            .find(|source| source.id == source_id)
+            .ok_or_else(|| StateMutationError::MissingSkillSource {
+                source_id: source_id.to_owned(),
+            })?;
+
+        source.record_sync_failure(error);
+
+        Ok(())
+    }
+
     pub fn approve_skill_source_permissions(
         &mut self,
         source_id: &str,
@@ -634,6 +671,62 @@ mod tests {
         assert_eq!(
             state.skill_sources[0].last_sync_status,
             crate::core::skills::SkillSourceSyncStatus::Synced
+        );
+        assert!(!state.skill_sources[0].active);
+    }
+
+    #[test]
+    fn record_skill_source_sync_success_updates_existing_source_cache_metadata() {
+        let mut state = AgentOsState::empty();
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        state
+            .record_skill_source_sync_success(
+                "superpowers",
+                "C:/AgenticCrew/cache/skills/superpowers".to_owned(),
+                "abc123".to_owned(),
+            )
+            .expect("skill source sync should record");
+
+        assert_eq!(
+            state.skill_sources[0].last_sync_status,
+            crate::core::skills::SkillSourceSyncStatus::Synced
+        );
+        assert_eq!(
+            state.skill_sources[0].local_cache_path,
+            Some("C:/AgenticCrew/cache/skills/superpowers".to_owned())
+        );
+        assert_eq!(
+            state.skill_sources[0].last_synced_commit,
+            Some("abc123".to_owned())
+        );
+        assert!(!state.skill_sources[0].active);
+    }
+
+    #[test]
+    fn record_skill_source_sync_failure_rejects_existing_source() {
+        let mut state = AgentOsState::empty();
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        state
+            .record_skill_source_sync_failure("superpowers", "git fetch failed".to_owned())
+            .expect("skill source sync failure should record");
+
+        assert_eq!(
+            state.skill_sources[0].last_sync_status,
+            crate::core::skills::SkillSourceSyncStatus::Failed
+        );
+        assert_eq!(
+            state.skill_sources[0].status,
+            crate::core::skills::SkillSourceActivationStatus::SyncFailed
+        );
+        assert_eq!(
+            state.skill_sources[0].last_sync_error,
+            Some("git fetch failed".to_owned())
         );
         assert!(!state.skill_sources[0].active);
     }

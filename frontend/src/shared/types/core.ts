@@ -45,7 +45,10 @@ export type SkillSource = {
   active: boolean;
   id: string;
   kind: SkillSourceKind;
+  lastSyncError?: string | null;
   lastSyncStatus: SkillSourceSyncStatus;
+  lastSyncedCommit?: string | null;
+  localCachePath?: string | null;
   permissionGate: PermissionGate;
   repositoryUrl: string;
   selectedRef: string;

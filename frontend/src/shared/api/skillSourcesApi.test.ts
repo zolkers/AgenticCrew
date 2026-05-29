@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approveSkillSourcePermissions, loadSkillSourcesSnapshot } from "./skillSourcesApi";
+import { approveSkillSourcePermissions, loadSkillSourcesSnapshot, syncGitHubSkillSource } from "./skillSourcesApi";
 import type { ApprovedPermissionPolicy, SkillSourcesSnapshot } from "../types/core";
 
 describe("loadSkillSourcesSnapshot", () => {
@@ -40,6 +40,22 @@ describe("loadSkillSourcesSnapshot", () => {
       {
         args: { policy, sourceId: "superpowers" },
         command: "approve_skill_source_permissions"
+      }
+    ]);
+  });
+
+  it("syncs a GitHub skill source through the Rust command", async () => {
+    const calls: unknown[] = [];
+
+    await syncGitHubSkillSource((command, args) => {
+      calls.push({ args, command });
+      return Promise.resolve({});
+    }, "superpowers");
+
+    expect(calls).toEqual([
+      {
+        args: { sourceId: "superpowers" },
+        command: "sync_github_skill_source"
       }
     ]);
   });

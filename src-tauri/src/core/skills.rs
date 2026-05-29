@@ -57,6 +57,12 @@ pub struct SkillSource {
     #[serde(default)]
     pub last_sync_status: SkillSourceSyncStatus,
     #[serde(default)]
+    pub local_cache_path: Option<String>,
+    #[serde(default)]
+    pub last_synced_commit: Option<String>,
+    #[serde(default)]
+    pub last_sync_error: Option<String>,
+    #[serde(default)]
     pub permission_gate: PermissionGate,
     pub active: bool,
 }
@@ -97,6 +103,9 @@ impl SkillSource {
             trust_level: SkillSourceTrustLevel::External,
             status: SkillSourceActivationStatus::PendingValidation,
             last_sync_status: SkillSourceSyncStatus::NeverSynced,
+            local_cache_path: None,
+            last_synced_commit: None,
+            last_sync_error: None,
             permission_gate: PermissionGate::default(),
             active: false,
         })
@@ -105,6 +114,22 @@ impl SkillSource {
     pub fn mark_validated(&mut self) {
         self.status = SkillSourceActivationStatus::Validated;
         self.last_sync_status = SkillSourceSyncStatus::Synced;
+    }
+
+    pub fn record_sync_success(&mut self, cache_path: String, commit: String) {
+        self.last_sync_status = SkillSourceSyncStatus::Synced;
+        self.local_cache_path = Some(cache_path);
+        self.last_synced_commit = Some(commit);
+        self.last_sync_error = None;
+    }
+
+    pub fn record_sync_failure(&mut self, error: String) {
+        self.status = SkillSourceActivationStatus::SyncFailed;
+        self.last_sync_status = SkillSourceSyncStatus::Failed;
+        self.local_cache_path = None;
+        self.last_synced_commit = None;
+        self.last_sync_error = Some(error);
+        self.active = false;
     }
 
     pub fn activate(&mut self) -> Result<(), SkillSourceError> {
@@ -192,6 +217,9 @@ mod tests {
             SkillSourceActivationStatus::PendingValidation
         );
         assert_eq!(source.last_sync_status, SkillSourceSyncStatus::NeverSynced);
+        assert_eq!(source.local_cache_path, None);
+        assert_eq!(source.last_synced_commit, None);
+        assert_eq!(source.last_sync_error, None);
         assert!(!source.active);
         assert!(!source.permission_gate.approved);
         assert!(source.permission_gate.policy.file_system.is_empty());
@@ -209,6 +237,43 @@ mod tests {
 
         assert_eq!(source.status, SkillSourceActivationStatus::Validated);
         assert_eq!(source.last_sync_status, SkillSourceSyncStatus::Synced);
+        assert!(!source.active);
+    }
+
+    #[test]
+    fn successful_skill_source_sync_records_cache_provenance_without_activating() {
+        let mut source = github_skill_source();
+
+        source.record_sync_success(
+            "C:/AgenticCrew/cache/skills/superpowers".to_owned(),
+            "abc123".to_owned(),
+        );
+
+        assert_eq!(source.last_sync_status, SkillSourceSyncStatus::Synced);
+        assert_eq!(
+            source.local_cache_path,
+            Some("C:/AgenticCrew/cache/skills/superpowers".to_owned())
+        );
+        assert_eq!(source.last_synced_commit, Some("abc123".to_owned()));
+        assert_eq!(source.last_sync_error, None);
+        assert_eq!(
+            source.status,
+            SkillSourceActivationStatus::PendingValidation
+        );
+        assert!(!source.active);
+    }
+
+    #[test]
+    fn failed_skill_source_sync_records_error_and_blocks_activation() {
+        let mut source = github_skill_source();
+
+        source.record_sync_failure("git fetch failed".to_owned());
+
+        assert_eq!(source.last_sync_status, SkillSourceSyncStatus::Failed);
+        assert_eq!(source.status, SkillSourceActivationStatus::SyncFailed);
+        assert_eq!(source.local_cache_path, None);
+        assert_eq!(source.last_synced_commit, None);
+        assert_eq!(source.last_sync_error, Some("git fetch failed".to_owned()));
         assert!(!source.active);
     }
 

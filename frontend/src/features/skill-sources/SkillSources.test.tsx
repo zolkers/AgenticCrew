@@ -13,7 +13,10 @@ describe("SkillSources", () => {
           active: false,
           id: "superpowers",
           kind: "git_hub",
+          lastSyncError: null,
           lastSyncStatus: "never_synced",
+          lastSyncedCommit: null,
+          localCachePath: null,
           permissionGate: {
             approved: false,
             policy: {
@@ -42,6 +45,44 @@ describe("SkillSources", () => {
     expect(screen.getByText("Never synced")).toBeInTheDocument();
     expect(screen.getByText("Pending approval")).toBeInTheDocument();
     expect(screen.getByText("https://github.com/obra/superpowers")).toBeInTheDocument();
+  });
+
+  it("renders sync cache provenance and validation errors", () => {
+    const snapshot: SkillSourcesSnapshot = {
+      activeSourceCount: 0,
+      sources: [
+        {
+          active: false,
+          id: "superpowers",
+          kind: "git_hub",
+          lastSyncError: "git fetch failed",
+          lastSyncStatus: "failed",
+          lastSyncedCommit: "abc123",
+          localCachePath: "C:/AgenticCrew/cache/skills/superpowers",
+          permissionGate: {
+            approved: false,
+            policy: {
+              commands: [],
+              docker: false,
+              fileSystem: [],
+              git: false,
+              network: []
+            }
+          },
+          repositoryUrl: "https://github.com/obra/superpowers",
+          selectedRef: "main",
+          status: "sync_failed",
+          trustLevel: "external"
+        }
+      ]
+    };
+
+    render(<SkillSources snapshot={snapshot} />);
+
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+    expect(screen.getByText("abc123")).toBeInTheDocument();
+    expect(screen.getByText("C:/AgenticCrew/cache/skills/superpowers")).toBeInTheDocument();
+    expect(screen.getByText("git fetch failed")).toBeInTheDocument();
   });
 
   it("renders the empty state", () => {

@@ -42,6 +42,24 @@ export function SkillSources({ snapshot }: SkillSourcesProps) {
                   <dt>{t("skillSources.labels.lastSyncStatus", { defaultValue: "Last sync" })}</dt>
                   <dd>{t(`skillSources.lastSyncStatus.${source.lastSyncStatus}`)}</dd>
                 </div>
+                {source.lastSyncedCommit ? (
+                  <div>
+                    <dt>{t("skillSources.labels.lastSyncedCommit", { defaultValue: "Commit" })}</dt>
+                    <dd>{source.lastSyncedCommit}</dd>
+                  </div>
+                ) : null}
+                {source.localCachePath ? (
+                  <div>
+                    <dt>{t("skillSources.labels.localCachePath", { defaultValue: "Cache" })}</dt>
+                    <dd>{source.localCachePath}</dd>
+                  </div>
+                ) : null}
+                {source.lastSyncError ? (
+                  <div>
+                    <dt>{t("skillSources.labels.lastSyncError", { defaultValue: "Sync error" })}</dt>
+                    <dd>{source.lastSyncError}</dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt>{t("skillSources.labels.permissionGate", { defaultValue: "Permissions" })}</dt>
                   <dd>

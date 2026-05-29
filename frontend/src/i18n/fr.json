@@ -29,7 +29,10 @@
     },
     "labels": {
       "kind": "Type",
+      "lastSyncError": "Erreur de sync",
       "lastSyncStatus": "Derniere sync",
+      "lastSyncedCommit": "Commit",
+      "localCachePath": "Cache",
       "permissionGate": "Permissions",
       "ref": "Ref",
       "repository": "Depot",

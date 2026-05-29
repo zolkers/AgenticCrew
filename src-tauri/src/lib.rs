@@ -10,6 +10,7 @@ use serde::Serialize;
 use core::{
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
     permissions::ApprovedPermissionPolicy,
+    skill_sync::{sync_github_skill_source_to_cache, SkillSourceSyncError},
     skills::{
         skill_sources_snapshot_from_state, RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot,
     },
@@ -54,6 +55,12 @@ impl From<StateStoreError> for DesktopCommandError {
 
 impl From<StateMutationError> for DesktopCommandError {
     fn from(error: StateMutationError) -> Self {
+        Self::new(error.to_string())
+    }
+}
+
+impl From<SkillSourceSyncError> for DesktopCommandError {
+    fn from(error: SkillSourceSyncError) -> Self {
         Self::new(error.to_string())
     }
 }
@@ -127,6 +134,53 @@ pub fn validate_skill_source_at_path(
     mutate_state_at_path(path, |state| state.validate_skill_source(source_id))
 }
 
+pub fn record_skill_source_sync_success_at_path(
+    path: impl AsRef<Path>,
+    source_id: &str,
+    cache_path: String,
+    commit: String,
+) -> Result<AgentOsState, DesktopCommandError> {
+    mutate_state_at_path(path, |state| {
+        state.record_skill_source_sync_success(source_id, cache_path, commit)
+    })
+}
+
+pub fn sync_github_skill_source_at_path(
+    path: impl AsRef<Path>,
+    cache_root: impl AsRef<Path>,
+    source_id: &str,
+) -> Result<AgentOsState, DesktopCommandError> {
+    let store = JsonStateStore::new(path.as_ref());
+    let mut state = store.load()?;
+    let source = state
+        .skill_sources
+        .iter()
+        .find(|source| source.id == source_id)
+        .cloned()
+        .ok_or_else(|| StateMutationError::MissingSkillSource {
+            source_id: source_id.to_owned(),
+        })?;
+
+    match sync_github_skill_source_to_cache(&source, cache_root) {
+        Ok(outcome) => {
+            state.record_skill_source_sync_success(
+                source_id,
+                outcome.cache_path.display().to_string(),
+                outcome.commit,
+            )?;
+        }
+        Err(error) => {
+            state.record_skill_source_sync_failure(source_id, error.to_string())?;
+            store.save(&state)?;
+            return Err(error.into());
+        }
+    }
+
+    store.save(&state)?;
+
+    Ok(state)
+}
+
 pub fn approve_skill_source_permissions_at_path(
     path: impl AsRef<Path>,
     source_id: &str,
@@ -171,8 +225,9 @@ mod commands {
         create_feature_session_at_path, durable_state_snapshot_at_path,
         mission_control_snapshot_at_path, record_command_evidence_at_path,
         register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
-        validate_skill_source_at_path, CreateCheckpointRequest, CreateFeatureSessionRequest,
-        DesktopCommandError, MissionControlSnapshot, RecordCommandEvidenceRequest,
+        sync_github_skill_source_at_path, validate_skill_source_at_path,
+        CreateCheckpointRequest, CreateFeatureSessionRequest, DesktopCommandError,
+        MissionControlSnapshot, RecordCommandEvidenceRequest,
     };
 
     #[tauri::command]
@@ -246,6 +301,20 @@ mod commands {
     }
 
     #[tauri::command]
+    pub fn sync_github_skill_source(
+        app: tauri::AppHandle,
+        source_id: String,
+    ) -> Result<AgentOsState, DesktopCommandError> {
+        let cache_root = app
+            .path()
+            .app_cache_dir()
+            .map_err(|error| DesktopCommandError::new(error.to_string()))?
+            .join("skill-sources");
+
+        sync_github_skill_source_at_path(app_state_path(&app)?, cache_root, &source_id)
+    }
+
+    #[tauri::command]
     pub fn activate_skill_source(
         app: tauri::AppHandle,
         source_id: String,
@@ -283,6 +352,7 @@ pub fn run() {
             commands::close_feature_session,
             commands::register_github_skill_source,
             commands::validate_skill_source,
+            commands::sync_github_skill_source,
             commands::approve_skill_source_permissions,
             commands::activate_skill_source
         ])
@@ -305,9 +375,11 @@ mod tests {
 
     use super::{
         activate_skill_source_at_path, add_checkpoint_at_path, app_name,
-        approve_skill_source_permissions_at_path, close_feature_session_at_path, create_feature_session_at_path,
-        durable_state_snapshot_at_path, mission_control_snapshot_at_path,
-        record_command_evidence_at_path, register_github_skill_source_at_path,
+        approve_skill_source_permissions_at_path, close_feature_session_at_path,
+        create_feature_session_at_path, durable_state_snapshot_at_path,
+        mission_control_snapshot_at_path, record_command_evidence_at_path,
+        record_skill_source_sync_success_at_path,
+        register_github_skill_source_at_path,
         skill_sources_snapshot_at_path, state_file_path, validate_skill_source_at_path,
         STATE_FILE_NAME,
     };
@@ -492,6 +564,35 @@ mod tests {
 
         assert_eq!(activated, loaded);
         assert!(loaded.skill_sources[0].active);
+    }
+
+    #[test]
+    fn record_skill_source_sync_success_command_persists_cache_metadata() {
+        let path = test_path(
+            "record_skill_source_sync_success_command_persists_cache_metadata",
+            "state.json",
+        );
+        register_github_skill_source_at_path(&path, github_skill_source_request())
+            .expect("github skill source should save");
+
+        let synced = record_skill_source_sync_success_at_path(
+            &path,
+            "superpowers",
+            "C:/AgenticCrew/cache/skills/superpowers".to_owned(),
+            "abc123".to_owned(),
+        )
+        .expect("skill source sync should persist");
+        let loaded = durable_state_snapshot_at_path(&path).expect("state should load");
+
+        assert_eq!(synced, loaded);
+        assert_eq!(
+            loaded.skill_sources[0].local_cache_path,
+            Some("C:/AgenticCrew/cache/skills/superpowers".to_owned())
+        );
+        assert_eq!(
+            loaded.skill_sources[0].last_synced_commit,
+            Some("abc123".to_owned())
+        );
     }
 
     fn create_session_request() -> CreateFeatureSessionRequest {

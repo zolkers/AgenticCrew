@@ -3,6 +3,7 @@ pub mod evidence;
 pub mod library;
 pub mod mission_control;
 pub mod permissions;
+pub mod skill_sync;
 pub mod sessions;
 pub mod skills;
 pub mod state;
