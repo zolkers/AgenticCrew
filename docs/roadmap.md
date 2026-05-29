@@ -2,13 +2,13 @@
 
 ## Architecture North Star
 
-AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI, and optional Python workers. Rust owns durable state, session lifecycle, checkpoints, evidence, audit, cost records, permissions, Git/Docker orchestration, and Markdown library compilation. Python workers may execute AI/tool adapters, but they never own product truth.
+AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owned core, a React UI, and optional Python workers. Rust owns durable state, session lifecycle, checkpoints, evidence, audit, cost records, permissions, Git/Docker orchestration, and Markdown library compilation. Electron owns windows, packaging, updater strategy, and a secure IPC bridge only. Python workers may execute AI/tool adapters, but they never own product truth.
 
 ## Current Progress
 
 **Completed on `dev`:**
 - Desktop tooling, Rust core session invariants, evidence harness, cost primitive, Mission Control command, frontend adapter boundary, worker boundary, and ADR baseline.
-- Durable Rust state v1 with JSON persistence, schema validation, atomic temp-file saves, and read-only Tauri snapshots.
+- Durable Rust state v1 with JSON persistence, schema validation, atomic temp-file saves, and read-only desktop snapshots.
 - State-backed feature session mutations for creation, checkpoints, command evidence, close gates, and Mission Control derived from persisted state.
 - External GitHub skill source registration, sync, cache inspection, manifest validation, provenance, selected ref, trust level, last sync status, inactive-by-default behavior, Rust-owned validation, and activation gated on validation and approved permissions.
 - Docker-backed desktop test workflow for Windows machines without local MSVC Build Tools or GNU MinGW prerequisites.
@@ -16,9 +16,9 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 - AgenticCrew technical naming across npm, Rust, Python worker, and Sonar project metadata.
 
 **Next focus:**
-- External skill sources workflow UI: register a GitHub source from the app, trigger sync/inspection, surface validation errors, and approve permission gates without activating untrusted code prematurely.
-- Team/agent model v1: encode hierarchical agent/team configuration in Rust-owned state before adding terminal execution.
-- Terminal-first UI foundation: add the visual system and terminal surfaces once the team/agent model gives them real product data.
+- Electron shell migration: move Rust product truth from `src-tauri/src/core` into `crates/agenticcrew-core`, add a sidecar bridge, expose `window.agenticcrew.invoke`, and remove renderer Tauri imports.
+- Product UI foundation: adopt Mantine, TanStack Router, TanStack Query, Tabler icons, and the graphite/ink/copper visual system before expanding screens.
+- External skill marketplace and route workflow: register, sync, inspect, approve, search, route, and attach skills without activating untrusted code prematurely.
 
 ## Task Roadmap
 
@@ -26,7 +26,7 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 
 **Goal:** `npm run desktop:test` is reliable on supported developer machines and CI.
 
-**Ownership:** `.cargo/`, `src-tauri/`, `README.md`, `package.json`.
+**Ownership:** `.cargo/`, `crates/`, `electron/`, `README.md`, `package.json`.
 
 **Acceptance:**
 - Rust test command is documented for Windows, Linux, and macOS.
@@ -37,7 +37,7 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 
 **Goal:** Encode core state rules in Rust before UI or workers depend on them.
 
-**Ownership:** `src-tauri/src/core/sessions.rs`.
+**Ownership:** `crates/agenticcrew-core/src/sessions.rs`.
 
 **Acceptance:**
 - `FeatureSession` cannot close while required checkpoints are pending.
@@ -49,7 +49,7 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 
 **Goal:** Claims become evidence-backed records owned by Rust.
 
-**Ownership:** `src-tauri/src/core/evidence.rs`.
+**Ownership:** `crates/agenticcrew-core/src/evidence.rs`.
 
 **Acceptance:**
 - Command evidence records command, exit code, actor, checkpoint, and timestamp.
@@ -60,21 +60,21 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 
 **Goal:** Cost calculations start in Rust with configured pricing inputs, not hardcoded providers.
 
-**Ownership:** `src-tauri/src/core/costs.rs`.
+**Ownership:** `crates/agenticcrew-core/src/costs.rs`.
 
 **Acceptance:**
 - Pricing is provided as data.
 - Cached and uncached input tokens are priced separately.
 - Invalid token/cost underflow is impossible.
 
-### 5. Tauri Mission Control Command
+### 5. Rust-Backed Desktop IPC Command
 
 **Goal:** Frontend reads a typed Mission Control snapshot from Rust.
 
-**Ownership:** `src-tauri/src/lib.rs`, `src-tauri/src/core/mission_control.rs`, `frontend/src/shared`.
+**Ownership:** `crates/agenticcrew-core/src/mission_control.rs`, `crates/agenticcrew-sidecar/src/main.rs`, `electron/ipc`, `frontend/src/shared`.
 
 **Acceptance:**
-- Tauri command returns typed session count, agent count, cost, provider/model, checkpoint, and gate status.
+- Electron IPC returns typed session count, agent count, cost, provider/model, checkpoint, and gate status from Rust.
 - Frontend has a small adapter boundary.
 - UI component remains presentational.
 
@@ -111,6 +111,7 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 - ADR records Rust core ownership.
 - ADR records Python worker boundary.
 - ADR records cross-platform desktop support policy.
+- ADR records Electron shell with Rust core and sidecar bridge.
 
 ### 9. Final Quality Review
 
@@ -130,7 +131,7 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 
 **Goal:** Persist Rust-owned product state locally without React or Python becoming state owners.
 
-**Ownership:** `src-tauri/src/core/state.rs`, `src-tauri/src/lib.rs`.
+**Ownership:** `crates/agenticcrew-core/src/state.rs`, `crates/agenticcrew-sidecar/src/main.rs`, `electron/ipc`.
 
 **Acceptance:**
 - Durable state snapshot is versioned.
@@ -138,13 +139,13 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 - Missing state files load as an empty current-schema state.
 - Invalid JSON fails with a typed store error.
 - Saves create parent directories and use a temporary file before rename.
-- Tauri exposes a read-only durable state snapshot command.
+- Electron IPC exposes a read-only durable state snapshot command backed by Rust.
 
 ### 11. State-Backed Sessions v1
 
 **Goal:** Mutate feature sessions through Rust-owned durable state commands.
 
-**Ownership:** `src-tauri/src/core/state.rs`, `src-tauri/src/core/mission_control.rs`, `src-tauri/src/lib.rs`.
+**Ownership:** `crates/agenticcrew-core/src/state.rs`, `crates/agenticcrew-core/src/mission_control.rs`, `crates/agenticcrew-sidecar/src/main.rs`, `electron/ipc`.
 
 **Acceptance:**
 - Feature sessions can be created through a state-backed command path.
@@ -152,13 +153,13 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 - Command evidence is recorded and can mark required command-exit-code checkpoints as passed.
 - Feature sessions can only close after required checkpoints pass.
 - Mission Control is calculated from persisted state instead of static data.
-- Desktop-shell command signatures compile with Tauri enabled.
+- Desktop-shell IPC signatures compile with the Electron bridge enabled.
 
 ### 12. External Skill Sources v1
 
 **Goal:** Allow AgenticCrew to discover and install skills from external GitHub repositories, including Superpowers-style repositories such as Obra's.
 
-**Ownership:** `src-tauri/src/core`, `frontend/src/features`, `docs/adr`.
+**Ownership:** `crates/agenticcrew-core`, `crates/agenticcrew-sidecar`, `electron`, `frontend/src/features`, `docs/adr`.
 
 **Acceptance:**
 - Users can register a GitHub repository as a skill source.

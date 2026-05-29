@@ -4,28 +4,29 @@
 
 **Goal:** Turn the current cockpit prototype into a real local-first AgenticCrew app with workspace selection, ChatGPT/OpenAI provider setup, real backend snapshots, git status, modern Mission Control, and a skill marketplace workflow.
 
-**Architecture:** Rust remains the product truth owner: durable state, workspace registry, provider config metadata, git snapshots, skill source trust gates, costs, sessions, and cockpit snapshots. React renders feature views through typed adapter APIs and no longer imports preview product data directly. Python remains adapter-only and is not used for durable state, orchestration truth, secrets, or UI state.
+**Architecture:** Electron becomes the desktop shell and IPC host. Rust remains the product truth owner: durable state, workspace registry, provider config metadata, git snapshots, skill source trust gates, costs, sessions, and cockpit snapshots. React renders feature views through typed adapter APIs and no longer imports preview product data directly. Python remains adapter-only and is not used for durable state, orchestration truth, secrets, or UI state.
 
-**Tech Stack:** Tauri v2, Rust core modules, JSON durable state with schema migration, React 19 + TypeScript, Mantine, Tabler Icons, TanStack Router, TanStack Query, Vitest/Testing Library, Docker-backed desktop quality checks.
+**Tech Stack:** Electron, Electron Builder, Node IPC preload bridge, Rust core crate/sidecar, JSON durable state with schema migration, React 19 + TypeScript, Mantine, Tabler Icons, TanStack Router, TanStack Query, Vitest/Testing Library, Docker-backed desktop quality checks.
 
 ---
 
 ## Scope And Sequencing
 
-This is too large for one implementation pass. Execute in twelve milestones, each independently shippable:
+This is too large for one implementation pass. Execute in thirteen milestones, each independently shippable:
 
-0. UI framework and multi-agent design system.
-1. Product shell and route architecture.
-2. Rust schema v2 foundation for workspaces, provider config, and migrations.
-3. ChatGPT/OpenAI setup with secure API key storage.
-4. Workspace picker and real cockpit snapshot.
-5. Multi-agent supervision console.
-6. Git interface v1.
-7. Skill route index and package addressing.
-8. Skill marketplace and source management workflow.
-9. Modern Mission Control and Skill Sources redesign.
-10. Product power features.
-11. Polish, integration, and roadmap cleanup.
+0. Electron shell migration.
+1. UI framework and multi-agent design system.
+2. Product shell and route architecture.
+3. Rust schema v2 foundation for workspaces, provider config, and migrations.
+4. ChatGPT/OpenAI setup with secure API key storage.
+5. Workspace picker and real cockpit snapshot.
+6. Multi-agent supervision console.
+7. Git interface v1.
+8. Skill route index and package addressing.
+9. Skill marketplace and source management workflow.
+10. Modern Mission Control and Skill Sources redesign.
+11. Product power features.
+12. Polish, integration, and roadmap cleanup.
 
 The guiding rule: no feature view should present fake operational values once the corresponding backend snapshot exists. Preview data may remain only inside browser-preview adapters and tests.
 
@@ -86,7 +87,7 @@ Adopt Mantine as the application UI framework, with TanStack Router and TanStack
 - Mantine gives the app real desktop-product building blocks now: AppShell, NavLink, Drawer, Modal, Tabs, Table, Timeline, Stepper, Combobox, Command-style search surfaces, notifications, forms, and dense dark-mode ergonomics.
 - Tabler Icons should be the default icon set for actions: git branch, search, settings, key, package, terminal, play, pause, stop, check, alert, eye, split, panel, route.
 - TanStack Router should replace string-union view state so workspace, skill, agent, git, marketplace, settings, and mission routes are URL-addressable and type-safe.
-- TanStack Query should own frontend server-state caching, invalidation, loading, retry, and mutation status for Tauri snapshots and preview adapters.
+- TanStack Query should own frontend server-state caching, invalidation, loading, retry, and mutation status for Electron IPC snapshots and preview adapters.
 - AgenticCrew still owns the visual identity through Mantine theme tokens, density, spacing, colors, and feature layouts. Do not use Mantine defaults unchanged.
 
 Do not build a hand-rolled UI framework in custom CSS. Custom CSS remains for terminal/log surfaces and precise layout accents only.
@@ -160,21 +161,32 @@ These are not fully covered by the earlier plan and should be added to the roadm
 
 ### Backend Rust
 
-- Create `src-tauri/src/core/migrations.rs`: schema-version upgrades and backwards-compatible state loading.
-- Create `src-tauri/src/core/provider_config.rs`: provider registry, ChatGPT/OpenAI model catalog, non-secret provider configuration, selected model.
-- Create `src-tauri/src/core/secrets.rs`: secret reference model and secret-store trait; initial command-facing abstraction for storing and checking API keys.
-- Create `src-tauri/src/core/workspaces.rs`: workspace registry, recent workspace discovery, workspace metadata, selected workspace.
-- Create `src-tauri/src/core/git.rs`: read-only git status primitives and safe command wrapper.
-- Create `src-tauri/src/core/cockpit.rs`: real cockpit DTO derived from durable state, workspaces, git, sessions, skills, costs, and provider config.
-- Create `src-tauri/src/core/agent_events.rs`: append-only agent activity events, heartbeats, tool calls, file touches, artifacts, and gate requests.
-- Create `src-tauri/src/core/skill_routes.rs`: stable route index, route parsing, search, resolution, and trust-aware load contracts.
-- Modify `src-tauri/src/core/state.rs`: add schema v2 fields with serde defaults and migration support.
-- Modify `src-tauri/src/core/mission_control.rs`: expand the snapshot from real sessions, costs, provider config, workspaces, and git.
-- Modify `src-tauri/src/core/skills.rs`: add marketplace/catalog DTOs and richer action states while preserving permission gates.
-- Modify `src-tauri/src/lib.rs`: expose Tauri commands for provider config, API keys, workspaces, git status, cockpit snapshot, and skill source actions.
+- Move Rust product core from `src-tauri/src/core/` to `crates/agenticcrew-core/src/` when the Electron migration lands.
+- Create `crates/agenticcrew-core/src/lib.rs`: exports durable state, sessions, evidence, costs, skills, workspaces, git, cockpit, and command handlers without any desktop-shell framework dependency.
+- Create `crates/agenticcrew-sidecar/`: CLI/JSON-RPC sidecar wrapper around the Rust core. Use this bridge first; optional native Node binding can be reconsidered later.
+- Create `crates/agenticcrew-core/src/migrations.rs`: schema-version upgrades and backwards-compatible state loading.
+- Create `crates/agenticcrew-core/src/provider_config.rs`: provider registry, ChatGPT/OpenAI model catalog, non-secret provider configuration, selected model.
+- Create `crates/agenticcrew-core/src/secrets.rs`: secret reference model and secret-store trait; initial command-facing abstraction for storing and checking API keys.
+- Create `crates/agenticcrew-core/src/workspaces.rs`: workspace registry, recent workspace discovery, workspace metadata, selected workspace.
+- Create `crates/agenticcrew-core/src/git.rs`: read-only git status primitives and safe command wrapper.
+- Create `crates/agenticcrew-core/src/cockpit.rs`: real cockpit DTO derived from durable state, workspaces, git, sessions, skills, costs, and provider config.
+- Create `crates/agenticcrew-core/src/agent_events.rs`: append-only agent activity events, heartbeats, tool calls, file touches, artifacts, and gate requests.
+- Create `crates/agenticcrew-core/src/skill_routes.rs`: stable route index, route parsing, search, resolution, and trust-aware load contracts.
+- Modify `crates/agenticcrew-core/src/state.rs`: add schema v2 fields with serde defaults and migration support.
+- Modify `crates/agenticcrew-core/src/mission_control.rs`: expand the snapshot from real sessions, costs, provider config, workspaces, and git.
+- Modify `crates/agenticcrew-core/src/skills.rs`: add marketplace/catalog DTOs and richer action states while preserving permission gates.
+- Replace `src-tauri/src/lib.rs` command exposure with `crates/agenticcrew-sidecar/src/main.rs` and Electron IPC handlers that call the Rust core through the sidecar bridge.
+- Move `src-tauri/src/core/library/pi_execution_discipline.md` to `crates/agenticcrew-core/src/library/pi_execution_discipline.md`.
 
 ### Frontend
 
+- Create `electron/main.ts`: Electron main process, windows, app lifecycle, command registration, and secure IPC routing.
+- Create `electron/preload.ts`: context-isolated API exposed as `window.agenticcrew`.
+- Create `electron/ipc/contracts.ts`: typed command names, request/response contracts, and renderer-safe bridge types.
+- Create `electron/ipc/rustSidecar.ts`: sidecar path resolution, process lifecycle, JSON request/response transport, and typed error mapping.
+- Create `frontend/src/shared/api/electronInvoke.ts`: typed frontend invoke adapter for Electron runtime.
+- Create `frontend/src/shared/api/electronMissionControlInvoke.ts` and `electronSkillSourcesInvoke.ts`: shell adapters matching existing typed invoke contracts.
+- Create `frontend/src/shared/api/electronBridge.d.ts`: global `window.agenticcrew` type with no renderer import from `electron`.
 - Create `frontend/src/app/AppShell.tsx`: top-level route frame and view composition.
 - Create `frontend/src/app/appRoutes.ts`: typed route/view state for setup, workspace picker, cockpit, mission control, skill sources, settings, git.
 - Create `frontend/src/app/useAppBootstrap.ts`: independent loading states for app config, workspaces, provider config, and feature snapshots.
@@ -189,19 +201,164 @@ These are not fully covered by the earlier plan and should be added to the roadm
 - Create `frontend/src/features/skill-sources/SkillMarketplace.tsx`, `SkillSourceCard.tsx`, `SkillSourceSearch.tsx`, `PermissionReviewDialog.tsx`, and workflow tests.
 - Create `frontend/src/features/skill-routes/SkillRouteBrowser.tsx`, `SkillRouteDetails.tsx`, `SkillRoutePicker.tsx`, `skillRoutesApi.ts`, `types.ts`, and tests.
 - Create `frontend/src/features/mission-control/MissionControlPage.tsx`, `MissionTimeline.tsx`, `AgentRoster.tsx`, `BudgetPanel.tsx`, and tests.
-- Create `frontend/src/shared/api/cockpitApi.ts`, `providerConfigApi.ts`, `workspacesApi.ts`, `gitApi.ts`, plus Tauri and preview invoke tests.
+- Create `frontend/src/shared/api/cockpitApi.ts`, `providerConfigApi.ts`, `workspacesApi.ts`, `gitApi.ts`, plus Electron IPC and preview invoke tests.
 - Expand `frontend/src/shared/types/core.ts` or split feature contracts into local `types.ts` files where ownership is clearer.
 - Update `frontend/src/i18n/en.json` and `frontend/src/i18n/fr.json` for all visible strings.
 
 ### Docs And Scripts
 
 - Modify `docs/roadmap.md`: add this phase plan and make `docs/PLAN.md` explicitly aspirational if kept.
+- Add a new ADR superseding the Tauri desktop decision: Electron desktop shell with Rust core and sidecar-first bridge.
 - Keep `docs/PLAN.md` untracked unless the product owner explicitly asks to add it.
-- Continue using `scripts/test-app.bat --quality` as the Windows/Docker end-to-end gate.
+- Replace Tauri-specific Docker, CI, and `desktop:test` assumptions with Electron plus Rust core/sidecar gates.
+- Continue using `scripts/test-app.bat --quality` as the Windows/Docker end-to-end gate once it points at the Electron/Rust sidecar stack.
 
 ---
 
-## Milestone 0: Frontend Framework And Design System
+## Milestone 0: Electron Shell Migration
+
+**Goal:** Replace Tauri as the desktop shell with Electron while keeping Rust as the product truth owner and preserving browser preview mode.
+
+**Files:**
+- Create: `electron/main.ts`
+- Create: `electron/preload.ts`
+- Create: `electron/ipc/contracts.ts`
+- Create: `electron/ipc/rustSidecar.ts`
+- Create: `crates/agenticcrew-core/src/lib.rs`
+- Create: `crates/agenticcrew-sidecar/src/main.rs`
+- Move: `src-tauri/src/core/*` to `crates/agenticcrew-core/src/*`
+- Move: `src-tauri/src/core/library/pi_execution_discipline.md` to `crates/agenticcrew-core/src/library/pi_execution_discipline.md`
+- Create: `frontend/src/shared/api/electronMissionControlInvoke.ts`
+- Create: `frontend/src/shared/api/electronSkillSourcesInvoke.ts`
+- Create: `frontend/src/shared/api/electronBridge.d.ts`
+- Modify: `frontend/src/main.tsx`
+- Modify: `frontend/package.json`
+- Modify: `package.json`
+- Modify: `scripts/desktop-test.mjs`
+- Modify: `.github/workflows/ci.yml`
+- Modify: `docker-compose.yml`
+- Modify: `scripts/verify-docker-config.mjs`
+- Modify: `sonar-project.properties`
+- Modify: `docs/roadmap.md`
+- Create: `docs/adr/0005-electron-desktop-shell-with-rust-core.md`
+
+- [ ] **Step 1: Move Rust core out of the desktop shell**
+
+Create a workspace crate:
+
+```text
+crates/agenticcrew-core/
+```
+
+Move durable product modules from `src-tauri/src/core/` into `crates/agenticcrew-core/src/`. The core crate must not depend on Electron, Node, Tauri, webview APIs, or renderer code.
+
+Acceptance:
+
+- Product state, sessions, costs, skills, gates, workspaces, git snapshots, and command handlers live in Rust core.
+- Electron main never owns product truth; it only passes app paths and typed requests into Rust.
+- Existing Rust tests move with the modules and still run under `cargo test -p agenticcrew-core`.
+
+- [ ] **Step 2: Add sidecar-first bridge**
+
+Create `crates/agenticcrew-sidecar/src/main.rs` as the first desktop bridge. It should accept typed JSON command requests over stdin/stdout or local JSON-RPC and return typed success/error envelopes.
+
+Initial commands:
+
+```text
+mission_control_snapshot
+skill_sources_snapshot
+approve_skill_source_permissions
+sync_github_skill_source
+inspect_cached_skill_source
+```
+
+Acceptance:
+
+- Unknown commands return a typed error.
+- Malformed args return a typed error.
+- State/cache paths are explicit inputs from the Electron command boundary.
+- A test proves command args are preserved exactly.
+
+- [ ] **Step 3: Add secure Electron shell**
+
+Create `electron/main.ts` and `electron/preload.ts`.
+
+Rules:
+
+- `contextIsolation: true`
+- renderer `nodeIntegration: false`
+- allowlisted IPC command names only
+- expose only `window.agenticcrew.invoke(command, args)` to the renderer
+- no product state stored in Electron main
+
+`electron/ipc/rustSidecar.ts` resolves the sidecar path differently in dev and packaged mode.
+
+- [ ] **Step 4: Replace renderer runtime adapters**
+
+Replace Tauri runtime detection with:
+
+```ts
+const isElectronRuntime = typeof window.agenticcrew?.invoke === "function";
+```
+
+Keep typed public contracts such as `InvokeMissionControl` and `InvokeSkillSources`. Implement Electron adapters by forwarding both `command` and `args`:
+
+```ts
+window.agenticcrew.invoke(command, args)
+```
+
+Acceptance:
+
+- `frontend/src` does not import `electron`, Node APIs, or `@tauri-apps/api`.
+- Browser preview still uses preview invoke adapters.
+- A regression test proves skill-source commands forward args.
+
+- [ ] **Step 5: Replace packaging, Docker, and CI assumptions**
+
+Add Electron scripts:
+
+```json
+{
+  "electron:dev": "...",
+  "electron:test": "...",
+  "desktop:test": "..."
+}
+```
+
+Update Docker and CI:
+
+- remove WebKitGTK/Tauri-only prerequisites once Tauri is gone;
+- rename `tauri_target` volume to `cargo_target`;
+- point Sonar Rust sources to `crates/agenticcrew-core/src,crates/agenticcrew-sidecar/src`;
+- package the sidecar binary per OS through Electron Builder resources.
+
+- [ ] **Step 6: Document the decision**
+
+Create an ADR for Electron as shell, Rust as product core, and sidecar-first bridge. Mark the previous Tauri desktop ADR as superseded or reference the new ADR from it.
+
+- [ ] **Step 7: Verify and commit**
+
+Run:
+
+```powershell
+cargo test -p agenticcrew-core
+cargo test -p agenticcrew-sidecar
+npm run typecheck -w frontend
+npm run test -w frontend
+npm run electron:test
+scripts\test-app.bat --quality
+```
+
+Commit:
+
+```bash
+git add electron crates frontend package.json scripts .github docker-compose.yml sonar-project.properties docs
+git commit -m "feat: migrate desktop shell to electron"
+```
+
+---
+
+## Milestone 1: Frontend Framework And Design System
 
 **Goal:** Adopt a real UI framework and codify the AgenticCrew interaction model before adding more screens.
 
@@ -370,7 +527,7 @@ git commit -m "feat: adopt frontend app framework"
 
 ---
 
-## Milestone 1: Product Shell And Route Architecture
+## Milestone 2: Product Shell And Route Architecture
 
 **Goal:** Split the current monolithic `App.tsx` so future views do not pile into one file and move navigation to TanStack Router.
 
@@ -484,22 +641,22 @@ git commit -m "refactor: split product shell from cockpit"
 
 ---
 
-## Milestone 2: Rust Schema V2 Foundation
+## Milestone 3: Rust Schema V2 Foundation
 
 **Goal:** Add durable structures for workspaces and provider config before UI depends on them.
 
 **Files:**
-- Create: `src-tauri/src/core/migrations.rs`
-- Create: `src-tauri/src/core/workspaces.rs`
-- Create: `src-tauri/src/core/provider_config.rs`
-- Modify: `src-tauri/src/core/mod.rs`
-- Modify: `src-tauri/src/core/state.rs`
-- Modify: `src-tauri/src/lib.rs`
-- Test: module tests in each new Rust file plus command tests in `src-tauri/src/lib.rs`
+- Create: `crates/agenticcrew-core/src/migrations.rs`
+- Create: `crates/agenticcrew-core/src/workspaces.rs`
+- Create: `crates/agenticcrew-core/src/provider_config.rs`
+- Modify: `crates/agenticcrew-core/src/lib.rs`
+- Modify: `crates/agenticcrew-core/src/state.rs`
+- Modify: `crates/agenticcrew-sidecar/src/main.rs`
+- Test: module tests in each new Rust file plus sidecar command contract tests
 
 - [ ] **Step 1: Add migration tests first**
 
-In `src-tauri/src/core/migrations.rs`, test that schema v1 JSON loads into v2 with defaults:
+In `crates/agenticcrew-core/src/migrations.rs`, test that schema v1 JSON loads into v2 with defaults:
 
 ```rust
 #[test]
@@ -524,7 +681,7 @@ fn schema_v1_state_migrates_to_v2_defaults() {
 
 - [ ] **Step 2: Define provider config**
 
-Create `src-tauri/src/core/provider_config.rs` with:
+Create `crates/agenticcrew-core/src/provider_config.rs` with:
 
 ```rust
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -549,7 +706,7 @@ Default provider is `openai`, display name is `ChatGPT`, initial model is a data
 
 - [ ] **Step 3: Define workspace config**
 
-Create `src-tauri/src/core/workspaces.rs` with:
+Create `crates/agenticcrew-core/src/workspaces.rs` with:
 
 ```rust
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -600,20 +757,20 @@ scripts\test-app.bat --quality
 Commit:
 
 ```bash
-git add src-tauri/src/core src-tauri/src/lib.rs
+git add crates/agenticcrew-core crates/agenticcrew-sidecar electron
 git commit -m "feat: add workspace and provider state foundation"
 ```
 
 ---
 
-## Milestone 3: ChatGPT/OpenAI Setup And API Key Storage
+## Milestone 4: ChatGPT/OpenAI Setup And API Key Storage
 
 **Goal:** Let the user configure ChatGPT/OpenAI first, choose a model, and store API keys outside JSON product state.
 
 **Files:**
-- Create: `src-tauri/src/core/secrets.rs`
-- Modify: `src-tauri/src/core/provider_config.rs`
-- Modify: `src-tauri/src/lib.rs`
+- Create: `crates/agenticcrew-core/src/secrets.rs`
+- Modify: `crates/agenticcrew-core/src/provider_config.rs`
+- Modify: `crates/agenticcrew-sidecar/src/main.rs`
 - Create: `frontend/src/features/settings/SettingsPage.tsx`
 - Create: `frontend/src/features/settings/ApiKeysPanel.tsx`
 - Create: `frontend/src/features/settings/ProviderModelSelector.tsx`
@@ -633,7 +790,7 @@ pub trait SecretStore {
 }
 ```
 
-Use an in-memory implementation for unit tests. Use Tauri/plugin-backed OS storage in desktop command wiring when available. If OS keychain integration needs a dependency decision, create the abstraction first and gate the real implementation behind the command layer.
+Use an in-memory implementation for unit tests. Use Electron/keychain-backed OS storage in desktop command wiring when available. If OS keychain integration needs a dependency decision, create the abstraction first and gate the real implementation behind the command layer.
 
 - [ ] **Step 2: Add provider commands**
 
@@ -682,20 +839,20 @@ scripts\test-app.bat --quality
 Commit:
 
 ```bash
-git add src-tauri/src frontend/src/features/settings frontend/src/shared/api frontend/src/shared/types frontend/src/i18n
+git add crates/agenticcrew-core crates/agenticcrew-sidecar electron frontend/src/features/settings frontend/src/shared/api frontend/src/shared/types frontend/src/i18n
 git commit -m "feat: add ChatGPT provider setup"
 ```
 
 ---
 
-## Milestone 4: Workspace Picker And Real Cockpit Snapshot
+## Milestone 5: Workspace Picker And Real Cockpit Snapshot
 
 **Goal:** Show a first page where the user chooses a workspace, then render cockpit values from Rust snapshots instead of `cockpitData.ts`.
 
 **Files:**
-- Create: `src-tauri/src/core/cockpit.rs`
-- Modify: `src-tauri/src/core/workspaces.rs`
-- Modify: `src-tauri/src/lib.rs`
+- Create: `crates/agenticcrew-core/src/cockpit.rs`
+- Modify: `crates/agenticcrew-core/src/workspaces.rs`
+- Modify: `crates/agenticcrew-sidecar/src/main.rs`
 - Create: `frontend/src/features/workspaces/WorkspacePicker.tsx`
 - Create: `frontend/src/features/workspaces/workspacesApi.ts`
 - Create: `frontend/src/shared/api/cockpitApi.ts`
@@ -757,22 +914,22 @@ scripts\test-app.bat --quality
 Commit:
 
 ```bash
-git add src-tauri/src frontend/src
+git add crates/agenticcrew-core crates/agenticcrew-sidecar electron frontend/src
 git commit -m "feat: load cockpit from workspace state"
 ```
 
 ---
 
-## Milestone 5: Multi-Agent Supervision Console
+## Milestone 6: Multi-Agent Supervision Console
 
 **Goal:** Make it practical to see what every agent is doing, why it is doing it, what it changed, and where the run is blocked.
 
 **Files:**
-- Create: `src-tauri/src/core/agent_events.rs`
-- Modify: `src-tauri/src/core/state.rs`
-- Modify: `src-tauri/src/core/cockpit.rs`
-- Modify: `src-tauri/src/core/mission_control.rs`
-- Modify: `src-tauri/src/lib.rs`
+- Create: `crates/agenticcrew-core/src/agent_events.rs`
+- Modify: `crates/agenticcrew-core/src/state.rs`
+- Modify: `crates/agenticcrew-core/src/cockpit.rs`
+- Modify: `crates/agenticcrew-core/src/mission_control.rs`
+- Modify: `crates/agenticcrew-sidecar/src/main.rs`
 - Create: `frontend/src/features/supervision/AgentRosterRail.tsx`
 - Create: `frontend/src/features/supervision/RunTimeline.tsx`
 - Create: `frontend/src/features/supervision/LiveActivityFeed.tsx`
@@ -829,7 +986,7 @@ The cockpit central area should support tabs: `Activity`, `Agent Terminals`, `Gr
 
 - [ ] **Step 4: Add live update strategy**
 
-Use TanStack Query polling every 2 seconds for v1. Record a follow-up to switch high-frequency event streams to Tauri events when execution starts streaming.
+Use TanStack Query polling every 2 seconds for v1. Record a follow-up to switch high-frequency activity to Electron IPC event streams when execution starts streaming.
 
 - [ ] **Step 5: Test practical visibility**
 
@@ -852,21 +1009,21 @@ scripts\test-app.bat --quality
 Commit:
 
 ```bash
-git add src-tauri/src frontend/src/features/supervision frontend/src/features/cockpit frontend/src/shared
+git add crates/agenticcrew-core crates/agenticcrew-sidecar electron frontend/src/features/supervision frontend/src/features/cockpit frontend/src/shared
 git commit -m "feat: add multi-agent supervision console"
 ```
 
 ---
 
-## Milestone 6: Git Interface V1
+## Milestone 7: Git Interface V1
 
 **Goal:** Provide a modern git surface: branch, dirty files, latest commit, remote, ahead/behind, and safe read-only status.
 
 **Files:**
-- Create: `src-tauri/src/core/git.rs`
-- Modify: `src-tauri/src/core/workspaces.rs`
-- Modify: `src-tauri/src/core/cockpit.rs`
-- Modify: `src-tauri/src/lib.rs`
+- Create: `crates/agenticcrew-core/src/git.rs`
+- Modify: `crates/agenticcrew-core/src/workspaces.rs`
+- Modify: `crates/agenticcrew-core/src/cockpit.rs`
+- Modify: `crates/agenticcrew-sidecar/src/main.rs`
 - Create: `frontend/src/features/git/GitPanel.tsx`
 - Create: `frontend/src/features/git/GitStatusBadge.tsx`
 - Create: `frontend/src/features/git/gitApi.ts`
@@ -919,24 +1076,24 @@ scripts\test-app.bat --quality
 Commit:
 
 ```bash
-git add src-tauri/src frontend/src/features/git frontend/src/shared/api frontend/src/i18n
+git add crates/agenticcrew-core crates/agenticcrew-sidecar electron frontend/src/features/git frontend/src/shared/api frontend/src/i18n
 git commit -m "feat: add workspace git status"
 ```
 
 ---
 
-## Milestone 7: Skill Route Index And Loader
+## Milestone 8: Skill Route Index And Loader
 
 **Goal:** Make every skill addressable by a stable URI that Rust can parse, search, resolve, load, permission-check, and attach to agents.
 
 **Files:**
-- Create: `src-tauri/src/core/skill_uri.rs`
-- Create: `src-tauri/src/core/skill_catalog.rs`
-- Create: `src-tauri/src/core/skill_loader.rs`
-- Create: `src-tauri/src/core/skill_search.rs`
-- Modify: `src-tauri/src/core/skills.rs`
-- Modify: `src-tauri/src/core/skill_manifest.rs`
-- Modify: `src-tauri/src/lib.rs`
+- Create: `crates/agenticcrew-core/src/skill_uri.rs`
+- Create: `crates/agenticcrew-core/src/skill_catalog.rs`
+- Create: `crates/agenticcrew-core/src/skill_loader.rs`
+- Create: `crates/agenticcrew-core/src/skill_search.rs`
+- Modify: `crates/agenticcrew-core/src/skills.rs`
+- Modify: `crates/agenticcrew-core/src/skill_manifest.rs`
+- Modify: `crates/agenticcrew-sidecar/src/main.rs`
 - Modify: `frontend/src/shared/types/core.ts`
 - Create: `frontend/src/features/skill-routes/SkillRouteBrowser.tsx`
 - Create: `frontend/src/features/skill-routes/SkillRouteDetails.tsx`
@@ -1029,23 +1186,23 @@ scripts\test-app.bat --quality
 Commit:
 
 ```bash
-git add src-tauri/src frontend/src/features/skill-routes frontend/src/shared
+git add crates/agenticcrew-core crates/agenticcrew-sidecar electron frontend/src/features/skill-routes frontend/src/shared
 git commit -m "feat: add route-addressable skill catalog"
 ```
 
 ---
 
-## Milestone 8: Skill Marketplace And Source Management
+## Milestone 9: Skill Marketplace And Source Management
 
 **Goal:** Replace the raw Skill Sources page with a marketplace-style manager for registering, syncing, inspecting, approving, activating, routing, loading, and searching skills.
 
 **Files:**
-- Modify: `src-tauri/src/core/skills.rs`
-- Modify: `src-tauri/src/core/skill_catalog.rs`
-- Modify: `src-tauri/src/core/skill_manifest.rs`
-- Modify: `src-tauri/src/lib.rs`
+- Modify: `crates/agenticcrew-core/src/skills.rs`
+- Modify: `crates/agenticcrew-core/src/skill_catalog.rs`
+- Modify: `crates/agenticcrew-core/src/skill_manifest.rs`
+- Modify: `crates/agenticcrew-sidecar/src/main.rs`
 - Modify: `frontend/src/shared/api/skillSourcesApi.ts`
-- Modify: `frontend/src/shared/api/tauriSkillSourcesInvoke.ts`
+- Modify: `frontend/src/shared/api/electronSkillSourcesInvoke.ts`
 - Create: `frontend/src/features/skill-sources/SkillSourcesPage.tsx`
 - Create: `frontend/src/features/skill-sources/SkillMarketplace.tsx`
 - Create: `frontend/src/features/skill-sources/SkillSourceSearch.tsx`
@@ -1054,7 +1211,7 @@ git commit -m "feat: add route-addressable skill catalog"
 
 - [ ] **Step 1: Fix frontend action invoke boundary**
 
-`tauriSkillSourcesInvoke.ts` must forward args for existing commands:
+`electronSkillSourcesInvoke.ts` must forward args for existing commands:
 
 ```ts
 invoke(command, args)
@@ -1114,20 +1271,20 @@ scripts\test-app.bat --quality
 Commit:
 
 ```bash
-git add src-tauri/src frontend/src/features/skill-sources frontend/src/shared/api frontend/src/shared/types frontend/src/i18n
+git add crates/agenticcrew-core crates/agenticcrew-sidecar electron frontend/src/features/skill-sources frontend/src/shared/api frontend/src/shared/types frontend/src/i18n
 git commit -m "feat: add skill marketplace workflow"
 ```
 
 ---
 
-## Milestone 9: Modern Mission Control And Real Metrics
+## Milestone 10: Modern Mission Control And Real Metrics
 
 **Goal:** Replace the definition-list Mission Control with an operational management page backed by real sessions, checkpoints, provider config, git, skills, and model cost records.
 
 **Files:**
-- Modify: `src-tauri/src/core/mission_control.rs`
-- Modify: `src-tauri/src/core/costs.rs`
-- Modify: `src-tauri/src/lib.rs`
+- Modify: `crates/agenticcrew-core/src/mission_control.rs`
+- Modify: `crates/agenticcrew-core/src/costs.rs`
+- Modify: `crates/agenticcrew-sidecar/src/main.rs`
 - Create: `frontend/src/features/mission-control/MissionControlPage.tsx`
 - Create: `frontend/src/features/mission-control/MissionTimeline.tsx`
 - Create: `frontend/src/features/mission-control/AgentRoster.tsx`
@@ -1193,13 +1350,13 @@ scripts\test-app.bat --quality
 Commit:
 
 ```bash
-git add src-tauri/src frontend/src/features/mission-control frontend/src/shared frontend/src/i18n
+git add crates/agenticcrew-core crates/agenticcrew-sidecar electron frontend/src/features/mission-control frontend/src/shared frontend/src/i18n
 git commit -m "feat: modernize mission control metrics"
 ```
 
 ---
 
-## Milestone 10: Product Power Features
+## Milestone 11: Product Power Features
 
 **Goal:** Add the practical features that make AgenticCrew better than a basic multi-agent dashboard.
 
@@ -1210,10 +1367,10 @@ git commit -m "feat: modernize mission control metrics"
 - Create: `frontend/src/features/agents/AgentTemplateLibrary.tsx`
 - Create: `frontend/src/features/safety/SafetyCenter.tsx`
 - Create: `frontend/src/features/replay/RunReplay.tsx`
-- Modify: `src-tauri/src/core/agent_events.rs`
-- Modify: `src-tauri/src/core/permissions.rs`
-- Modify: `src-tauri/src/core/state.rs`
-- Modify: `src-tauri/src/lib.rs`
+- Modify: `crates/agenticcrew-core/src/agent_events.rs`
+- Modify: `crates/agenticcrew-core/src/permissions.rs`
+- Modify: `crates/agenticcrew-core/src/state.rs`
+- Modify: `crates/agenticcrew-sidecar/src/main.rs`
 
 - [ ] **Step 1: Add command palette**
 
@@ -1285,13 +1442,13 @@ scripts\test-app.bat --quality
 Commit:
 
 ```bash
-git add src-tauri/src frontend/src/features frontend/src/shared
+git add crates/agenticcrew-core crates/agenticcrew-sidecar electron frontend/src/features frontend/src/shared
 git commit -m "feat: add agent operations power features"
 ```
 
 ---
 
-## Milestone 11: Polish, Integration, And Roadmap Cleanup
+## Milestone 12: Polish, Integration, And Roadmap Cleanup
 
 **Goal:** Make the app coherent after major feature landings and update docs so future work follows the new architecture.
 
@@ -1337,7 +1494,7 @@ scripts\test-app.bat --quality
 Commit:
 
 ```bash
-git add docs README.md frontend/src src-tauri/src
+git add docs README.md frontend/src electron crates
 git commit -m "docs: document product foundation architecture"
 ```
 
