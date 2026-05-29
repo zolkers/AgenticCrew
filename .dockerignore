@@ -1,0 +1,14 @@
+.git
+.venv
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/coverage
+**/coverage.xml
+**/dist
+**/node_modules
+**/target
+docs/message (4).md
+docs/superpowers/plans/2026-05-28-agentos-v0-1-skeleton.md

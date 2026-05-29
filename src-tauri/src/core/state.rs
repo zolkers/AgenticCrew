@@ -7,11 +7,15 @@ use std::{
 use super::{
     costs::ModelCallEstimate,
     evidence::{CommandExitCodeEvidence, Evidence},
+    permissions::ApprovedPermissionPolicy,
     sessions::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
         SessionTransitionError,
     },
-    skills::{RegisterGitHubSkillSourceRequest, SkillSource, SkillSourceError},
+    skills::{
+        DiscoveredSkillManifest, RegisterGitHubSkillSourceRequest, SkillManifestValidationError,
+        SkillSource, SkillSourceError,
+    },
 };
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
@@ -197,6 +201,80 @@ impl AgentOsState {
             })?;
 
         source.mark_validated();
+
+        Ok(())
+    }
+
+    pub fn record_skill_source_sync_success(
+        &mut self,
+        source_id: &str,
+        cache_path: String,
+        commit: String,
+    ) -> Result<(), StateMutationError> {
+        let source = self
+            .skill_sources
+            .iter_mut()
+            .find(|source| source.id == source_id)
+            .ok_or_else(|| StateMutationError::MissingSkillSource {
+                source_id: source_id.to_owned(),
+            })?;
+
+        source.record_sync_success(cache_path, commit);
+
+        Ok(())
+    }
+
+    pub fn record_skill_source_sync_failure(
+        &mut self,
+        source_id: &str,
+        error: String,
+    ) -> Result<(), StateMutationError> {
+        let source = self
+            .skill_sources
+            .iter_mut()
+            .find(|source| source.id == source_id)
+            .ok_or_else(|| StateMutationError::MissingSkillSource {
+                source_id: source_id.to_owned(),
+            })?;
+
+        source.record_sync_failure(error);
+
+        Ok(())
+    }
+
+    pub fn record_skill_source_manifest_validation(
+        &mut self,
+        source_id: &str,
+        discovered_skills: Vec<DiscoveredSkillManifest>,
+        validation_errors: Vec<SkillManifestValidationError>,
+    ) -> Result<(), StateMutationError> {
+        let source = self
+            .skill_sources
+            .iter_mut()
+            .find(|source| source.id == source_id)
+            .ok_or_else(|| StateMutationError::MissingSkillSource {
+                source_id: source_id.to_owned(),
+            })?;
+
+        source.record_manifest_validation(discovered_skills, validation_errors);
+
+        Ok(())
+    }
+
+    pub fn approve_skill_source_permissions(
+        &mut self,
+        source_id: &str,
+        policy: ApprovedPermissionPolicy,
+    ) -> Result<(), StateMutationError> {
+        let source = self
+            .skill_sources
+            .iter_mut()
+            .find(|source| source.id == source_id)
+            .ok_or_else(|| StateMutationError::MissingSkillSource {
+                source_id: source_id.to_owned(),
+            })?;
+
+        source.approve_permissions(policy);
 
         Ok(())
     }
@@ -489,6 +567,10 @@ mod tests {
             Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
             SessionTransitionError,
         },
+        permissions::{
+            ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
+            NetworkPermissionScope,
+        },
         skills::RegisterGitHubSkillSourceRequest,
     };
 
@@ -616,6 +698,119 @@ mod tests {
     }
 
     #[test]
+    fn record_skill_source_sync_success_updates_existing_source_cache_metadata() {
+        let mut state = AgentOsState::empty();
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        state
+            .record_skill_source_sync_success(
+                "superpowers",
+                "C:/AgenticCrew/cache/skills/superpowers".to_owned(),
+                "abc123".to_owned(),
+            )
+            .expect("skill source sync should record");
+
+        assert_eq!(
+            state.skill_sources[0].last_sync_status,
+            crate::core::skills::SkillSourceSyncStatus::Synced
+        );
+        assert_eq!(
+            state.skill_sources[0].local_cache_path,
+            Some("C:/AgenticCrew/cache/skills/superpowers".to_owned())
+        );
+        assert_eq!(
+            state.skill_sources[0].last_synced_commit,
+            Some("abc123".to_owned())
+        );
+        assert!(!state.skill_sources[0].active);
+    }
+
+    #[test]
+    fn record_skill_source_sync_failure_rejects_existing_source() {
+        let mut state = AgentOsState::empty();
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        state
+            .record_skill_source_sync_failure("superpowers", "git fetch failed".to_owned())
+            .expect("skill source sync failure should record");
+
+        assert_eq!(
+            state.skill_sources[0].last_sync_status,
+            crate::core::skills::SkillSourceSyncStatus::Failed
+        );
+        assert_eq!(
+            state.skill_sources[0].status,
+            crate::core::skills::SkillSourceActivationStatus::SyncFailed
+        );
+        assert_eq!(
+            state.skill_sources[0].last_sync_error,
+            Some("git fetch failed".to_owned())
+        );
+        assert!(!state.skill_sources[0].active);
+    }
+
+    #[test]
+    fn record_skill_source_manifest_validation_stores_discovered_skills() {
+        let mut state = AgentOsState::empty();
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        state
+            .record_skill_source_manifest_validation(
+                "superpowers",
+                vec![crate::core::skills::DiscoveredSkillManifest {
+                    id: "superpowers/planning".to_owned(),
+                    name: "planning".to_owned(),
+                    description: "Plan work safely".to_owned(),
+                    relative_path: "skills/planning/SKILL.md".to_owned(),
+                }],
+                Vec::new(),
+            )
+            .expect("manifest validation should record");
+
+        assert_eq!(
+            state.skill_sources[0].status,
+            crate::core::skills::SkillSourceActivationStatus::Validated
+        );
+        assert_eq!(state.skill_sources[0].discovered_skills.len(), 1);
+        assert_eq!(state.skill_sources[0].discovered_skills[0].name, "planning");
+        assert!(state.skill_sources[0].validation_errors.is_empty());
+        assert!(!state.skill_sources[0].active);
+    }
+
+    #[test]
+    fn record_skill_source_manifest_validation_stores_errors_and_rejects_source() {
+        let mut state = AgentOsState::empty();
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        state
+            .record_skill_source_manifest_validation(
+                "superpowers",
+                Vec::new(),
+                vec![crate::core::skills::SkillManifestValidationError {
+                    relative_path: "skills/bad/SKILL.md".to_owned(),
+                    message: "missing required frontmatter field 'description'".to_owned(),
+                }],
+            )
+            .expect("manifest validation errors should record");
+
+        assert_eq!(
+            state.skill_sources[0].status,
+            crate::core::skills::SkillSourceActivationStatus::Rejected
+        );
+        assert!(state.skill_sources[0].discovered_skills.is_empty());
+        assert_eq!(state.skill_sources[0].validation_errors.len(), 1);
+        assert!(!state.skill_sources[0].active);
+    }
+
+    #[test]
     fn activate_skill_source_requires_validated_source() {
         let mut state = AgentOsState::empty();
         state
@@ -636,6 +831,20 @@ mod tests {
         state
             .validate_skill_source("superpowers")
             .expect("skill source should validate");
+        let error = state
+            .activate_skill_source("superpowers")
+            .expect_err("skill source without approved permissions should not activate");
+
+        assert_eq!(
+            error,
+            StateMutationError::InvalidSkillSource(
+                crate::core::skills::SkillSourceError::PermissionsNotApproved
+            )
+        );
+
+        state
+            .approve_skill_source_permissions("superpowers", sample_permission_policy())
+            .expect("skill source permissions should approve");
         state
             .activate_skill_source("superpowers")
             .expect("validated source should activate");
@@ -656,6 +865,26 @@ mod tests {
             StateMutationError::MissingSkillSource {
                 source_id: "missing".to_owned(),
             }
+        );
+    }
+
+    #[test]
+    fn approve_skill_source_permissions_records_policy_on_existing_source() {
+        let mut state = AgentOsState::empty();
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        state
+            .approve_skill_source_permissions("superpowers", sample_permission_policy())
+            .expect("skill source permissions should approve");
+
+        assert!(state.skill_sources[0].permission_gate.approved);
+        assert_eq!(
+            state.skill_sources[0].permission_gate.policy.network,
+            vec![NetworkPermissionScope {
+                host: "api.github.com".to_owned(),
+            }]
         );
     }
 
@@ -1000,6 +1229,23 @@ mod tests {
             id: source_id.to_owned(),
             repository_url: "https://github.com/obra/superpowers".to_owned(),
             selected_ref: "main".to_owned(),
+        }
+    }
+
+    fn sample_permission_policy() -> ApprovedPermissionPolicy {
+        ApprovedPermissionPolicy {
+            file_system: vec![FileSystemPermissionScope {
+                path: "workspaces/research".to_owned(),
+                writable: true,
+            }],
+            git: true,
+            docker: false,
+            network: vec![NetworkPermissionScope {
+                host: "api.github.com".to_owned(),
+            }],
+            commands: vec![CommandPermissionScope {
+                command: "git".to_owned(),
+            }],
         }
     }
 

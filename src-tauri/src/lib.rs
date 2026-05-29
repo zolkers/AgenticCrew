@@ -9,6 +9,9 @@ use serde::Serialize;
 
 use core::{
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
+    permissions::ApprovedPermissionPolicy,
+    skill_manifest::{inspect_skill_manifests, SkillManifestInspectionError},
+    skill_sync::{sync_github_skill_source_to_cache, SkillSourceSyncError},
     skills::{
         skill_sources_snapshot_from_state, RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot,
     },
@@ -53,6 +56,18 @@ impl From<StateStoreError> for DesktopCommandError {
 
 impl From<StateMutationError> for DesktopCommandError {
     fn from(error: StateMutationError) -> Self {
+        Self::new(error.to_string())
+    }
+}
+
+impl From<SkillSourceSyncError> for DesktopCommandError {
+    fn from(error: SkillSourceSyncError) -> Self {
+        Self::new(error.to_string())
+    }
+}
+
+impl From<SkillManifestInspectionError> for DesktopCommandError {
+    fn from(error: SkillManifestInspectionError) -> Self {
         Self::new(error.to_string())
     }
 }
@@ -126,6 +141,93 @@ pub fn validate_skill_source_at_path(
     mutate_state_at_path(path, |state| state.validate_skill_source(source_id))
 }
 
+pub fn record_skill_source_sync_success_at_path(
+    path: impl AsRef<Path>,
+    source_id: &str,
+    cache_path: String,
+    commit: String,
+) -> Result<AgentOsState, DesktopCommandError> {
+    mutate_state_at_path(path, |state| {
+        state.record_skill_source_sync_success(source_id, cache_path, commit)
+    })
+}
+
+pub fn sync_github_skill_source_at_path(
+    path: impl AsRef<Path>,
+    cache_root: impl AsRef<Path>,
+    source_id: &str,
+) -> Result<AgentOsState, DesktopCommandError> {
+    let store = JsonStateStore::new(path.as_ref());
+    let mut state = store.load()?;
+    let source = state
+        .skill_sources
+        .iter()
+        .find(|source| source.id == source_id)
+        .cloned()
+        .ok_or_else(|| StateMutationError::MissingSkillSource {
+            source_id: source_id.to_owned(),
+        })?;
+
+    match sync_github_skill_source_to_cache(&source, cache_root) {
+        Ok(outcome) => {
+            state.record_skill_source_sync_success(
+                source_id,
+                outcome.cache_path.display().to_string(),
+                outcome.commit,
+            )?;
+        }
+        Err(error) => {
+            state.record_skill_source_sync_failure(source_id, error.to_string())?;
+            store.save(&state)?;
+            return Err(error.into());
+        }
+    }
+
+    store.save(&state)?;
+
+    Ok(state)
+}
+
+pub fn inspect_cached_skill_source_at_path(
+    path: impl AsRef<Path>,
+    source_id: &str,
+) -> Result<AgentOsState, DesktopCommandError> {
+    let store = JsonStateStore::new(path.as_ref());
+    let mut state = store.load()?;
+    let cache_path = state
+        .skill_sources
+        .iter()
+        .find(|source| source.id == source_id)
+        .ok_or_else(|| StateMutationError::MissingSkillSource {
+            source_id: source_id.to_owned(),
+        })?
+        .local_cache_path
+        .clone()
+        .ok_or_else(|| {
+            DesktopCommandError::new(format!("skill source '{source_id}' has no local cache"))
+        })?;
+
+    let inspection = inspect_skill_manifests(cache_path, source_id)?;
+    state.record_skill_source_manifest_validation(
+        source_id,
+        inspection.discovered_skills,
+        inspection.validation_errors,
+    )?;
+    store.save(&state)?;
+
+    Ok(state)
+}
+
+pub fn approve_skill_source_permissions_at_path(
+    path: impl AsRef<Path>,
+    source_id: &str,
+    policy: ApprovedPermissionPolicy,
+) -> Result<AgentOsState, DesktopCommandError> {
+    mutate_state_at_path(path, |state| {
+        state.approve_skill_source_permissions(source_id, policy)
+    })
+}
+
 pub fn activate_skill_source_at_path(
     path: impl AsRef<Path>,
     source_id: &str,
@@ -153,13 +255,17 @@ mod commands {
 
     use crate::{
         activate_skill_source_at_path, add_checkpoint_at_path, close_feature_session_at_path,
+        approve_skill_source_permissions_at_path,
+        core::permissions::ApprovedPermissionPolicy,
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
         create_feature_session_at_path, durable_state_snapshot_at_path,
-        mission_control_snapshot_at_path, record_command_evidence_at_path,
+        inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
+        record_command_evidence_at_path,
         register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
-        validate_skill_source_at_path, CreateCheckpointRequest, CreateFeatureSessionRequest,
-        DesktopCommandError, MissionControlSnapshot, RecordCommandEvidenceRequest,
+        sync_github_skill_source_at_path, validate_skill_source_at_path,
+        CreateCheckpointRequest, CreateFeatureSessionRequest, DesktopCommandError,
+        MissionControlSnapshot, RecordCommandEvidenceRequest,
     };
 
     #[tauri::command]
@@ -233,11 +339,42 @@ mod commands {
     }
 
     #[tauri::command]
+    pub fn sync_github_skill_source(
+        app: tauri::AppHandle,
+        source_id: String,
+    ) -> Result<AgentOsState, DesktopCommandError> {
+        let cache_root = app
+            .path()
+            .app_cache_dir()
+            .map_err(|error| DesktopCommandError::new(error.to_string()))?
+            .join("skill-sources");
+
+        sync_github_skill_source_at_path(app_state_path(&app)?, cache_root, &source_id)
+    }
+
+    #[tauri::command]
+    pub fn inspect_cached_skill_source(
+        app: tauri::AppHandle,
+        source_id: String,
+    ) -> Result<AgentOsState, DesktopCommandError> {
+        inspect_cached_skill_source_at_path(app_state_path(&app)?, &source_id)
+    }
+
+    #[tauri::command]
     pub fn activate_skill_source(
         app: tauri::AppHandle,
         source_id: String,
     ) -> Result<AgentOsState, DesktopCommandError> {
         activate_skill_source_at_path(app_state_path(&app)?, &source_id)
+    }
+
+    #[tauri::command]
+    pub fn approve_skill_source_permissions(
+        app: tauri::AppHandle,
+        source_id: String,
+        policy: ApprovedPermissionPolicy,
+    ) -> Result<AgentOsState, DesktopCommandError> {
+        approve_skill_source_permissions_at_path(app_state_path(&app)?, &source_id, policy)
     }
 
     fn app_state_path(app: &tauri::AppHandle) -> Result<PathBuf, DesktopCommandError> {
@@ -261,6 +398,9 @@ pub fn run() {
             commands::close_feature_session,
             commands::register_github_skill_source,
             commands::validate_skill_source,
+            commands::sync_github_skill_source,
+            commands::inspect_cached_skill_source,
+            commands::approve_skill_source_permissions,
             commands::activate_skill_source
         ])
         .run(tauri::generate_context!())
@@ -275,16 +415,18 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use std::{
-        env,
+        env, fs,
         path::{Path, PathBuf},
         time::{SystemTime, UNIX_EPOCH},
     };
 
     use super::{
         activate_skill_source_at_path, add_checkpoint_at_path, app_name,
-        close_feature_session_at_path, create_feature_session_at_path,
-        durable_state_snapshot_at_path, mission_control_snapshot_at_path,
-        record_command_evidence_at_path, register_github_skill_source_at_path,
+        approve_skill_source_permissions_at_path, close_feature_session_at_path,
+        create_feature_session_at_path, durable_state_snapshot_at_path,
+        inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
+        record_command_evidence_at_path, record_skill_source_sync_success_at_path,
+        register_github_skill_source_at_path,
         skill_sources_snapshot_at_path, state_file_path, validate_skill_source_at_path,
         STATE_FILE_NAME,
     };
@@ -293,6 +435,10 @@ mod tests {
         skills::RegisterGitHubSkillSourceRequest,
         state::{
             CreateCheckpointRequest, CreateFeatureSessionRequest, RecordCommandEvidenceRequest,
+        },
+        permissions::{
+            ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
+            NetworkPermissionScope,
         },
     };
 
@@ -444,12 +590,98 @@ mod tests {
         );
         assert!(!validated.skill_sources[0].active);
 
+        let error = activate_skill_source_at_path(&path, "superpowers")
+            .expect_err("validated source without approved permissions should not activate");
+        assert_eq!(
+            error.message,
+            "invalid skill source: skill source permissions must be approved before activation"
+        );
+
+        let approved = approve_skill_source_permissions_at_path(
+            &path,
+            "superpowers",
+            sample_permission_policy(),
+        )
+        .expect("skill source permissions should persist");
+        assert!(approved.skill_sources[0].permission_gate.approved);
+
         let activated = activate_skill_source_at_path(&path, "superpowers")
             .expect("skill source should activate");
         let loaded = durable_state_snapshot_at_path(&path).expect("state should load");
 
         assert_eq!(activated, loaded);
         assert!(loaded.skill_sources[0].active);
+    }
+
+    #[test]
+    fn record_skill_source_sync_success_command_persists_cache_metadata() {
+        let path = test_path(
+            "record_skill_source_sync_success_command_persists_cache_metadata",
+            "state.json",
+        );
+        register_github_skill_source_at_path(&path, github_skill_source_request())
+            .expect("github skill source should save");
+
+        let synced = record_skill_source_sync_success_at_path(
+            &path,
+            "superpowers",
+            "C:/AgenticCrew/cache/skills/superpowers".to_owned(),
+            "abc123".to_owned(),
+        )
+        .expect("skill source sync should persist");
+        let loaded = durable_state_snapshot_at_path(&path).expect("state should load");
+
+        assert_eq!(synced, loaded);
+        assert_eq!(
+            loaded.skill_sources[0].local_cache_path,
+            Some("C:/AgenticCrew/cache/skills/superpowers".to_owned())
+        );
+        assert_eq!(
+            loaded.skill_sources[0].last_synced_commit,
+            Some("abc123".to_owned())
+        );
+    }
+
+    #[test]
+    fn inspect_cached_skill_source_command_persists_discovered_manifests() {
+        let path = test_path(
+            "inspect_cached_skill_source_command_persists_discovered_manifests",
+            "state.json",
+        );
+        let cache_path = test_path(
+            "inspect_cached_skill_source_command_persists_discovered_manifests",
+            "cache",
+        );
+        let skill_path = cache_path.join("skills/planning/SKILL.md");
+        fs::create_dir_all(skill_path.parent().expect("skill parent")).expect("create skill dir");
+        fs::write(
+            &skill_path,
+            "---\nname: planning\ndescription: Plan work safely\n---\n\nBody",
+        )
+        .expect("write skill manifest");
+        register_github_skill_source_at_path(&path, github_skill_source_request())
+            .expect("github skill source should save");
+        record_skill_source_sync_success_at_path(
+            &path,
+            "superpowers",
+            cache_path.display().to_string(),
+            "abc123".to_owned(),
+        )
+        .expect("sync metadata should save");
+
+        let inspected = inspect_cached_skill_source_at_path(&path, "superpowers")
+            .expect("cached skill source should inspect");
+
+        assert_eq!(
+            inspected.skill_sources[0].status,
+            crate::core::skills::SkillSourceActivationStatus::Validated
+        );
+        assert_eq!(inspected.skill_sources[0].discovered_skills.len(), 1);
+        assert_eq!(
+            inspected.skill_sources[0].discovered_skills[0].id,
+            "superpowers/planning"
+        );
+        assert!(!inspected.skill_sources[0].active);
     }
 
     fn create_session_request() -> CreateFeatureSessionRequest {
@@ -491,6 +723,23 @@ mod tests {
             id: "superpowers".to_owned(),
             repository_url: "https://github.com/obra/superpowers".to_owned(),
             selected_ref: "main".to_owned(),
+        }
+    }
+
+    fn sample_permission_policy() -> ApprovedPermissionPolicy {
+        ApprovedPermissionPolicy {
+            file_system: vec![FileSystemPermissionScope {
+                path: "workspaces/research".to_owned(),
+                writable: true,
+            }],
+            git: true,
+            docker: false,
+            network: vec![NetworkPermissionScope {
+                host: "api.github.com".to_owned(),
+            }],
+            commands: vec![CommandPermissionScope {
+                command: "git".to_owned(),
+            }],
         }
     }
 

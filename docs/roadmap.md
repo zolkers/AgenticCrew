@@ -10,13 +10,15 @@ AgenticCrew is a local-first desktop product with a Rust-owned core, a React UI,
 - Desktop tooling, Rust core session invariants, evidence harness, cost primitive, Mission Control command, frontend adapter boundary, worker boundary, and ADR baseline.
 - Durable Rust state v1 with JSON persistence, schema validation, atomic temp-file saves, and read-only Tauri snapshots.
 - State-backed feature session mutations for creation, checkpoints, command evidence, close gates, and Mission Control derived from persisted state.
-- External GitHub skill source registration with provenance, selected ref, trust level, last sync status, inactive-by-default behavior, Rust-owned validation, and activation gated on validation.
+- External GitHub skill source registration, sync, cache inspection, manifest validation, provenance, selected ref, trust level, last sync status, inactive-by-default behavior, Rust-owned validation, and activation gated on validation and approved permissions.
+- Docker-backed desktop test workflow for Windows machines without local MSVC Build Tools or GNU MinGW prerequisites.
+- Restrained workspace navigation shell between Mission Control and Skill Sources.
 - AgenticCrew technical naming across npm, Rust, Python worker, and Sonar project metadata.
 
 **Next focus:**
-- External skill source sync/inspection v1: fetch a pinned GitHub source into a local cache, parse skill manifests safely, record validation evidence, and surface validation errors without activating untrusted code.
-- Permission gates v1: model user-approved filesystem, Git, Docker, network, and command scopes before external skills can execute anything.
-- UI shell v1: introduce a restrained workspace layout/navigation once there are at least two operational surfaces that need repeated use.
+- External skill sources workflow UI: register a GitHub source from the app, trigger sync/inspection, surface validation errors, and approve permission gates without activating untrusted code prematurely.
+- Team/agent model v1: encode hierarchical agent/team configuration in Rust-owned state before adding terminal execution.
+- Terminal-first UI foundation: add the visual system and terminal surfaces once the team/agent model gives them real product data.
 
 ## Task Roadmap
 

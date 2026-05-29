@@ -27,6 +27,28 @@ npm run quality
 npm run desktop:test
 ```
 
+Run desktop Rust tests in Docker when local Windows MSVC/MinGW prerequisites are not installed:
+
+```bash
+npm run docker:desktop:test
+```
+
+The Docker workflow mounts the current workspace into the container and keeps `node_modules`, Cargo registry/git cache, and `src-tauri/target` in Docker volumes so repeated checks do not need a full image rebuild. Compose clears the mounted `node_modules` volumes before `npm ci` so the lockfile stays authoritative.
+
+Run the frontend quickly in Docker:
+
+```bash
+npm run docker:frontend
+```
+
+Docker Desktop or a Docker-compatible daemon must be running. Then open `http://localhost:5173`. This launches the React frontend preview; the native Tauri desktop shell still runs on the host OS because it needs the platform WebView.
+
+Run Linux quality gates in Docker:
+
+```bash
+npm run docker:quality
+```
+
 Run specific gates:
 
 ```bash

@@ -1,4 +1,8 @@
 {
+  "app": {
+    "mainLabel": "Espace de travail",
+    "navigationLabel": "Navigation de l'espace de travail"
+  },
   "missionControl": {
     "humanGateStatus": {
       "blocked": "Bloque",
@@ -28,12 +32,18 @@
       "local": "Locale"
     },
     "labels": {
+      "discoveredSkills": "Skills decouverts",
       "kind": "Type",
+      "lastSyncError": "Erreur de sync",
       "lastSyncStatus": "Derniere sync",
+      "lastSyncedCommit": "Commit",
+      "localCachePath": "Cache",
+      "permissionGate": "Permissions",
       "ref": "Ref",
       "repository": "Depot",
       "status": "Statut",
-      "trustLevel": "Confiance"
+      "trustLevel": "Confiance",
+      "validationErrors": "Erreurs de validation"
     },
     "status": {
       "pending_validation": "Validation en attente",
@@ -45,6 +55,10 @@
       "failed": "Echouee",
       "never_synced": "Jamais synchronisee",
       "synced": "Synchronisee"
+    },
+    "permissionGate": {
+      "approved": "Approuvees",
+      "pending": "Approbation en attente"
     },
     "title": "Sources de skills",
     "trustLevel": {

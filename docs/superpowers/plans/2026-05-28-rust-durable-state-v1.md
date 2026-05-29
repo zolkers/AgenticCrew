@@ -98,7 +98,7 @@ Commit message: `feat(desktop): expose durable state snapshot`
 Run:
 
 ```powershell
-$env:Path='C:\Users\riege\AppData\Local\Programs\Python\Python312;' + $env:Path; npm run quality
+$env:Path='<python-install-dir>;' + $env:Path; npm run quality
 npm run desktop:test
 npm audit --audit-level=high
 cargo fmt --check

@@ -1,4 +1,8 @@
 {
+  "app": {
+    "mainLabel": "Workspace",
+    "navigationLabel": "Workspace navigation"
+  },
   "missionControl": {
     "humanGateStatus": {
       "blocked": "Blocked",
@@ -28,12 +32,18 @@
       "local": "Local"
     },
     "labels": {
+      "discoveredSkills": "Discovered skills",
       "kind": "Kind",
+      "lastSyncError": "Sync error",
       "lastSyncStatus": "Last sync",
+      "lastSyncedCommit": "Commit",
+      "localCachePath": "Cache",
+      "permissionGate": "Permissions",
       "ref": "Ref",
       "repository": "Repository",
       "status": "Status",
-      "trustLevel": "Trust"
+      "trustLevel": "Trust",
+      "validationErrors": "Validation errors"
     },
     "status": {
       "pending_validation": "Pending validation",
@@ -45,6 +55,10 @@
       "failed": "Failed",
       "never_synced": "Never synced",
       "synced": "Synced"
+    },
+    "permissionGate": {
+      "approved": "Approved",
+      "pending": "Pending approval"
     },
     "title": "Skill Sources",
     "trustLevel": {

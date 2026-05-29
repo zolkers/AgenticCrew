@@ -15,15 +15,59 @@ export type SkillSourceTrustLevel = "built_in" | "local" | "external";
 export type SkillSourceActivationStatus = "pending_validation" | "validated" | "rejected" | "sync_failed";
 export type SkillSourceSyncStatus = "never_synced" | "synced" | "failed";
 
+export type FileSystemPermissionScope = {
+  path: string;
+  writable: boolean;
+};
+
+export type NetworkPermissionScope = {
+  host: string;
+};
+
+export type CommandPermissionScope = {
+  command: string;
+};
+
+export type ApprovedPermissionPolicy = {
+  commands: CommandPermissionScope[];
+  docker: boolean;
+  fileSystem: FileSystemPermissionScope[];
+  git: boolean;
+  network: NetworkPermissionScope[];
+};
+
+export type PermissionGate = {
+  approved: boolean;
+  policy: ApprovedPermissionPolicy;
+};
+
+export type DiscoveredSkillManifest = {
+  description: string;
+  id: string;
+  name: string;
+  relativePath: string;
+};
+
+export type SkillManifestValidationError = {
+  message: string;
+  relativePath: string;
+};
+
 export type SkillSource = {
   active: boolean;
+  discoveredSkills?: DiscoveredSkillManifest[];
   id: string;
   kind: SkillSourceKind;
+  lastSyncError?: string | null;
   lastSyncStatus: SkillSourceSyncStatus;
+  lastSyncedCommit?: string | null;
+  localCachePath?: string | null;
+  permissionGate: PermissionGate;
   repositoryUrl: string;
   selectedRef: string;
   status: SkillSourceActivationStatus;
   trustLevel: SkillSourceTrustLevel;
+  validationErrors?: SkillManifestValidationError[];
 };
 
 export type SkillSourcesSnapshot = {
