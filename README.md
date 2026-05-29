@@ -43,6 +43,18 @@ npm run docker:frontend
 
 Docker Desktop or a Docker-compatible daemon must be running. Then open `http://localhost:5173`. This launches the React frontend preview; the native Tauri desktop shell still runs on the host OS because it needs the platform WebView.
 
+Use the convenience scripts from the repository root:
+
+```bash
+scripts/test-app.sh
+scripts/test-app.sh --quality
+```
+
+```bat
+scripts\test-app.bat
+scripts\test-app.bat --quality
+```
+
 Run Linux quality gates in Docker:
 
 ```bash
