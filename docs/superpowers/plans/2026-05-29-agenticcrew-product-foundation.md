@@ -46,6 +46,20 @@ The experience must answer four questions at all times:
 3. Which skills/tools/routes are loaded, trusted, or blocked?
 4. What changed in files, git, costs, checkpoints, and artifacts?
 
+### Icon-First Density Rule
+
+AgenticCrew should not explain itself with paragraphs inside the app. The default UI pattern is icon-first:
+
+- Use icons for primary navigation, agent actions, git actions, skill actions, settings, API keys, search, filters, run control, pause, resume, kill, approve, reject, load, sync, inspect, copy, open, and route links.
+- Pair icons with short labels only when the action is not obvious or when the control is first-level navigation.
+- Use tooltips for secondary explanation instead of visible instructional text.
+- Use badges, chips, counters, progress bars, timelines, tabs, segmented controls, tables, and status dots with text labels for dense state.
+- Avoid explanatory paragraphs in Mission Control, Skill Sources, cockpit, settings, and git views. Empty states may have one concise sentence plus one clear action.
+- Long text belongs in drawers, details panels, markdown previews, logs, artifact viewers, or documentation, not in the main operational layout.
+- Every icon-only button must have an accessible label and a tooltip.
+
+This keeps the app closer to Codex-style operational tooling: fast scanning first, details on demand.
+
 ### Framework Choice
 
 Adopt Mantine as the application UI framework, with TanStack Router and TanStack Query:
@@ -1310,6 +1324,7 @@ git commit -m "docs: document product foundation architecture"
 - Cockpit data comes from Rust snapshots in desktop runtime.
 - Browser preview remains deterministic but is isolated behind preview adapters.
 - The app uses Mantine, Tabler Icons, TanStack Router, and TanStack Query for the main app framework.
+- The app follows the icon-first density rule: no long explanatory text in primary operational surfaces, and icon-only controls have accessible labels plus tooltips.
 - The user can see what every agent is doing through roster, timeline, activity feed, checkpoint board, gates, and artifacts.
 - Mission Control is a modern management view with real sessions, checkpoints, costs, provider/model, skills, and git summaries.
 - Skill Sources becomes a marketplace-like manager with search, registration, sync, inspection, permission review, route loading, and activation.
