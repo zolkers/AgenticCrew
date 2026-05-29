@@ -101,6 +101,14 @@ export type WorkspaceCheckpoint = {
   state: "done" | "queued" | "running";
 };
 
+export type WorkspaceGitHistoryEntry = {
+  author: string;
+  branch: string;
+  hash: string;
+  message: string;
+  relativeTime: string;
+};
+
 export type WorkspaceRecord = {
   activeAgentId: string;
   agents: WorkspaceAgent[];
@@ -116,6 +124,7 @@ export type WorkspaceRecord = {
   selectedAgentTemplateId?: string | null;
   selectedHarnessProfileId?: string | null;
   skills: string[];
+  gitHistory?: WorkspaceGitHistoryEntry[];
   gitStatus?: WorkspaceGitStatus;
   status: "configured" | "observing" | "running";
 };

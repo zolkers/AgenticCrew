@@ -320,6 +320,15 @@ export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
             { label: request?.mission ?? "Start a new agent mission", state: "running" },
             { label: "First run validation", state: "queued" }
           ],
+          gitHistory: [
+            {
+              author: "Codex",
+              branch: request?.branch ?? "main",
+              hash: "preview",
+              message: `workspace: create ${id}`,
+              relativeTime: "Just now"
+            }
+          ],
           id,
           logs: [
             `$ agenticcrew attach ${id} --workspace ${request?.path ?? "local"}`,

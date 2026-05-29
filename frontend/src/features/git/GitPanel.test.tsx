@@ -26,6 +26,15 @@ describe("GitPanel", () => {
         lastRefreshedAt: "2026-05-29T12:00:00Z",
         remoteBranch: "origin/codex/settings"
       },
+      gitHistory: [
+        {
+          author: "Codex",
+          branch: "codex/settings",
+          hash: "abc1234",
+          message: "feat(settings): wire provider panel",
+          relativeTime: "5 minutes ago"
+        }
+      ],
       id: "settings-workspace",
       logs: [],
       mission: "Wire settings",
@@ -39,14 +48,17 @@ describe("GitPanel", () => {
 
     expect(screen.getByRole("heading", { name: "Git Panel" })).toBeInTheDocument();
     expect(screen.getAllByText("codex/settings").length).toBeGreaterThan(0);
-    expect(screen.getByText("C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew")).toBeInTheDocument();
+    expect(screen.queryByText("C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew")).not.toBeInTheDocument();
     expect(screen.getByText("Working tree dirty")).toBeInTheDocument();
     expect(screen.getByText("origin/codex/settings")).toBeInTheDocument();
     expect(screen.getByText("2 ahead / 1 behind")).toBeInTheDocument();
     expect(screen.getByText("2026-05-29T12:00:00Z")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
+    expect(screen.getByText("feat(settings): wire provider panel")).toBeInTheDocument();
+    expect(screen.getByText("abc1234 · Codex · 5 minutes ago")).toBeInTheDocument();
   });
 
-  it("submits selected branch and workspace path edits", () => {
+  it("submits selected branch while preserving the internal workspace path", () => {
     const workspace: CockpitWorkspace = {
       activeAgentId: "dev",
       agents: [],
@@ -74,12 +86,12 @@ describe("GitPanel", () => {
     );
 
     fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "feature/new-shell" } });
-    fireEvent.change(screen.getByLabelText("Workspace path"), { target: { value: "D:\\work\\AgenticCrew" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save Git context" }));
+    expect(screen.queryByLabelText("Workspace path")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save branch" }));
 
     expect(onWorkspaceChange).toHaveBeenCalledWith({
       branch: "feature/new-shell",
-      path: "D:\\work\\AgenticCrew"
+      path: "C:\\repo\\AgenticCrew"
     });
   });
 
@@ -147,7 +159,7 @@ describe("GitPanel", () => {
         workspace={secondWorkspace}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save Git context" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save branch" }));
 
     expect(onWorkspaceChange).toHaveBeenCalledWith({
       branch: "release",

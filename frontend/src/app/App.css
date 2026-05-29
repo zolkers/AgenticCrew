@@ -1528,12 +1528,103 @@ section[aria-label="Settings"] {
 
 .git-context-form {
   display: grid;
-  grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.4fr) auto;
+  grid-template-columns: minmax(220px, 1fr) auto;
   gap: 0.6rem;
   align-items: end;
   margin-top: 0.85rem;
   padding-top: 0.85rem;
   border-top: 1px solid var(--color-border);
+}
+
+.git-history-panel {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.git-history-panel > header {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.git-history-panel > header svg {
+  color: var(--color-teal);
+}
+
+.git-history-panel h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.git-history-panel header span,
+.empty-state {
+  color: var(--color-muted);
+}
+
+.git-history-list {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  list-style: none;
+  background: var(--color-terminal);
+}
+
+.git-history-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(120px, auto);
+  gap: 0.65rem;
+  align-items: center;
+  min-width: 0;
+  padding: 0.65rem 0.75rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.git-history-list li:first-child {
+  border-top: 0;
+}
+
+.git-history-node {
+  width: 0.65rem;
+  height: 0.65rem;
+  border: 2px solid var(--color-teal);
+  border-radius: 999px;
+  background: var(--color-terminal);
+}
+
+.git-history-list div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.git-history-list strong,
+.git-history-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-history-list span {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.git-history-list code {
+  justify-self: end;
+  max-width: 22rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--color-border-soft);
+  color: var(--color-codex);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--color-panel);
 }
 
 .git-status-strip {

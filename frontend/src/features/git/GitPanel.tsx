@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FolderOpen, GitBranch, GitCommit, GitPullRequest, RefreshCcw, Save, ShieldCheck } from "lucide-react";
+import { GitBranch, GitCommit, GitPullRequest, History, RefreshCcw, Save, ShieldCheck } from "lucide-react";
 import type { CockpitWorkspace } from "../../shared/preview/cockpitData";
 import { uniqueStrings } from "../../shared/strings";
 
@@ -26,6 +26,7 @@ export function GitPanel({ branchOptions, onRefreshGitStatus, onWorkspaceChange,
       ]),
     [branchOptions, gitStatus?.branch, gitStatus?.remoteBranch, workspace.branch]
   );
+  const historyEntries = workspace.gitHistory ?? [];
 
   return (
     <section aria-label="Git Panel">
@@ -45,11 +46,6 @@ export function GitPanel({ branchOptions, onRefreshGitStatus, onWorkspaceChange,
           <GitBranch aria-hidden="true" size={20} />
           <strong>Branch</strong>
           <span>{workspace.branch}</span>
-        </article>
-        <article className="surface-card">
-          <FolderOpen aria-hidden="true" size={20} />
-          <strong>Path</strong>
-          <span>{workspace.path}</span>
         </article>
         <article className="surface-card">
           <GitCommit aria-hidden="true" size={20} />
@@ -90,6 +86,34 @@ export function GitPanel({ branchOptions, onRefreshGitStatus, onWorkspaceChange,
         onSubmit={onWorkspaceChange}
         path={workspace.path}
       />
+
+      <section className="git-history-panel" aria-labelledby="git-history-title">
+        <header>
+          <History aria-hidden="true" size={18} />
+          <div>
+            <h3 id="git-history-title">History</h3>
+            <span>{historyEntries.length === 0 ? "No local history loaded" : `${String(historyEntries.length)} commits`}</span>
+          </div>
+        </header>
+        {historyEntries.length === 0 ? (
+          <p className="empty-state">Commit history will appear here once this workspace reports Git log data.</p>
+        ) : (
+          <ol className="git-history-list">
+            {historyEntries.map((entry) => (
+              <li key={`${entry.hash}:${entry.message}`}>
+                <span className="git-history-node" aria-hidden="true" />
+                <div>
+                  <strong>{entry.message}</strong>
+                  <span>
+                    {entry.hash} · {entry.author} · {entry.relativeTime}
+                  </span>
+                </div>
+                <code>{entry.branch}</code>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
     </section>
   );
 }
@@ -103,7 +127,6 @@ type GitContextFormProps = Readonly<{
 
 function GitContextForm({ branch: initialBranch, branchOptions, onSubmit, path: initialPath }: GitContextFormProps) {
   const [branch, setBranch] = useState(initialBranch);
-  const [path, setPath] = useState(initialPath);
 
   return (
     <form
@@ -112,7 +135,7 @@ function GitContextForm({ branch: initialBranch, branchOptions, onSubmit, path: 
         event.preventDefault();
         onSubmit({
           branch,
-          path
+          path: initialPath
         });
       }}
     >
@@ -131,18 +154,9 @@ function GitContextForm({ branch: initialBranch, branchOptions, onSubmit, path: 
           ))}
         </select>
       </label>
-      <label>
-        <span>Workspace path</span>
-        <input
-          onChange={(event) => {
-            setPath(event.target.value);
-          }}
-          value={path}
-        />
-      </label>
       <button type="submit">
         <Save aria-hidden="true" size={16} />
-        <span>Save Git context</span>
+        <span>Save branch</span>
       </button>
     </form>
   );
