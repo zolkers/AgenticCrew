@@ -3,6 +3,7 @@ const COMMANDS = new Set([
   "workspace_snapshot",
   "create_workspace",
   "update_workspace_git_context",
+  "refresh_workspace_git_status",
   "update_workspace_loadout",
   "skill_sources_snapshot",
   "harness_studio_snapshot",

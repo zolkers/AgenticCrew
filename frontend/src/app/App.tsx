@@ -30,6 +30,7 @@ import { loadSkillSourcesSnapshot, type InvokeSkillSources } from "../shared/api
 import {
   createWorkspace as createWorkspaceRecord,
   loadWorkspaceSnapshot,
+  refreshWorkspaceGitStatus,
   updateWorkspaceGitContext,
   updateWorkspaceLoadout,
   type InvokeWorkspace
@@ -232,6 +233,12 @@ export function App({
     });
     replaceWorkspaceSnapshot(workspaceSnapshot);
   };
+  const refreshActiveGitStatus = async () => {
+    const workspaceSnapshot = await refreshWorkspaceGitStatus(workspaceInvoke, {
+      workspaceId: activeWorkspace.id
+    });
+    replaceWorkspaceSnapshot(workspaceSnapshot);
+  };
   const updateActiveLoadout = async (loadout: WorkspaceLoadout) => {
     const workspaceSnapshot = await updateWorkspaceLoadout(workspaceInvoke, {
       agentTemplateId: loadout.agentTemplateId,
@@ -383,6 +390,9 @@ export function App({
         ) : null}
         {activeView === "gitPanel" ? (
           <GitPanel
+            onRefreshGitStatus={() => {
+              void refreshActiveGitStatus();
+            }}
             onWorkspaceChange={(changes) => {
               void updateActiveWorkspace(changes);
             }}

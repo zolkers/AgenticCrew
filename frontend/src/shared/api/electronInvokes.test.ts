@@ -72,6 +72,11 @@ describe("electronInvokes", () => {
       })
     ).resolves.toBeUndefined();
     await expect(
+      electronWorkspaceInvoke("refresh_workspace_git_status", {
+        request: { workspaceId: "repo" }
+      })
+    ).resolves.toBeUndefined();
+    await expect(
       electronWorkspaceInvoke("update_workspace_loadout", {
         request: {
           agentTemplateId: "developer-pi",
@@ -106,6 +111,9 @@ describe("electronInvokes", () => {
     });
     expect(invoke).toHaveBeenCalledWith("update_workspace_git_context", {
       request: { branch: "main", path: "D:\\repo", workspaceId: "repo" }
+    });
+    expect(invoke).toHaveBeenCalledWith("refresh_workspace_git_status", {
+      request: { workspaceId: "repo" }
     });
     expect(invoke).toHaveBeenCalledWith("update_workspace_loadout", {
       request: {

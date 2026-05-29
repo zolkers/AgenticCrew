@@ -1,15 +1,21 @@
 import { useState } from "react";
-import { FolderOpen, GitBranch, GitCommit, GitPullRequest, Save, ShieldCheck } from "lucide-react";
+import { FolderOpen, GitBranch, GitCommit, GitPullRequest, RefreshCcw, Save, ShieldCheck } from "lucide-react";
 import type { CockpitWorkspace } from "../../shared/preview/cockpitData";
 
 type GitPanelProps = Readonly<{
+  onRefreshGitStatus: () => void;
   onWorkspaceChange: (changes: Pick<CockpitWorkspace, "branch" | "path">) => void;
   workspace: CockpitWorkspace;
 }>;
 
-export function GitPanel({ onWorkspaceChange, workspace }: GitPanelProps) {
+export function GitPanel({ onRefreshGitStatus, onWorkspaceChange, workspace }: GitPanelProps) {
   const [branch, setBranch] = useState(workspace.branch);
   const [path, setPath] = useState(workspace.path);
+  const gitStatus = workspace.gitStatus;
+  const aheadCount = gitStatus?.aheadCount ?? 0;
+  const behindCount = gitStatus?.behindCount ?? 0;
+  const isDirty = gitStatus?.isDirty ?? false;
+  const hasDivergence = aheadCount + behindCount > 0;
 
   function saveGitContext() {
     onWorkspaceChange({
@@ -25,7 +31,10 @@ export function GitPanel({ onWorkspaceChange, workspace }: GitPanelProps) {
           <p className="eyebrow">Repository</p>
           <h2>Git Panel</h2>
         </div>
-        <strong>{workspace.branch}</strong>
+        <button className="icon-action" onClick={onRefreshGitStatus} type="button">
+          <RefreshCcw aria-hidden="true" size={16} />
+          <span>Refresh</span>
+        </button>
       </header>
 
       <div className="surface-grid">
@@ -42,19 +51,34 @@ export function GitPanel({ onWorkspaceChange, workspace }: GitPanelProps) {
         <article className="surface-card">
           <GitCommit aria-hidden="true" size={20} />
           <strong>Status</strong>
-          <span>{workspace.status}</span>
+          <span>{isDirty ? "Working tree dirty" : "Working tree clean"}</span>
         </article>
         <article className="surface-card">
           <GitPullRequest aria-hidden="true" size={20} />
-          <strong>Review</strong>
-          <span>PR workflow ready</span>
+          <strong>Remote</strong>
+          <span>{gitStatus?.remoteBranch ?? "No upstream"}</span>
         </article>
         <article className="surface-card">
           <ShieldCheck aria-hidden="true" size={20} />
-          <strong>Gate</strong>
-          <span>Evidence required</span>
+          <strong>Sync</strong>
+          <span>{hasDivergence ? `${String(aheadCount)} ahead / ${String(behindCount)} behind` : "In sync"}</span>
         </article>
       </div>
+
+      <dl className="git-status-strip" aria-label="Git status details">
+        <div>
+          <dt>Untracked</dt>
+          <dd>{gitStatus?.hasUntracked ? "Yes" : "No"}</dd>
+        </div>
+        <div>
+          <dt>Last refresh</dt>
+          <dd>{gitStatus?.lastRefreshedAt ?? "Never"}</dd>
+        </div>
+        <div>
+          <dt>Health</dt>
+          <dd>{gitStatus?.lastError ?? "Ready"}</dd>
+        </div>
+      </dl>
 
       <form
         className="git-context-form"

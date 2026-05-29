@@ -94,7 +94,19 @@ export type WorkspaceRecord = {
   selectedAgentTemplateId?: string | null;
   selectedHarnessProfileId?: string | null;
   skills: string[];
+  gitStatus?: WorkspaceGitStatus;
   status: "configured" | "observing" | "running";
+};
+
+export type WorkspaceGitStatus = {
+  aheadCount: number;
+  behindCount: number;
+  branch: string;
+  hasUntracked: boolean;
+  isDirty: boolean;
+  lastError?: string | null;
+  lastRefreshedAt?: string | null;
+  remoteBranch?: string | null;
 };
 
 export type WorkspaceSnapshot = {
@@ -118,6 +130,10 @@ export type UpdateWorkspaceGitContextRequest = {
 export type UpdateWorkspaceLoadoutRequest = {
   agentTemplateId?: string | null;
   harnessProfileId?: string | null;
+  workspaceId: string;
+};
+
+export type RefreshWorkspaceGitStatusRequest = {
   workspaceId: string;
 };
 
@@ -364,6 +380,7 @@ export type ElectronCommandMap = {
   harness_studio_snapshot: HarnessStudioSnapshot;
   inspect_cached_skill_source: unknown;
   mission_control_snapshot: MissionControlSnapshot;
+  refresh_workspace_git_status: WorkspaceSnapshot;
   settings_snapshot: SettingsSnapshot;
   set_agent_template_active: AgentStudioSnapshot;
   set_harness_profile_active: HarnessStudioSnapshot;

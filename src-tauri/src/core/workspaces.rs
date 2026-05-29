@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::process::Command;
 
 use super::state::AgentOsState;
 
@@ -26,6 +27,8 @@ pub struct WorkspaceRecord {
     pub logs: Vec<String>,
     #[serde(default)]
     pub skills: Vec<String>,
+    #[serde(default)]
+    pub git_status: WorkspaceGitStatus,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -59,6 +62,34 @@ pub enum WorkspaceAgentStatus {
 pub struct WorkspaceCheckpoint {
     pub label: String,
     pub state: WorkspaceCheckpointState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceGitStatus {
+    pub ahead_count: u32,
+    pub behind_count: u32,
+    pub branch: String,
+    pub has_untracked: bool,
+    pub is_dirty: bool,
+    pub last_error: Option<String>,
+    pub last_refreshed_at: Option<String>,
+    pub remote_branch: Option<String>,
+}
+
+impl Default for WorkspaceGitStatus {
+    fn default() -> Self {
+        Self {
+            ahead_count: 0,
+            behind_count: 0,
+            branch: String::new(),
+            has_untracked: false,
+            is_dirty: false,
+            last_error: None,
+            last_refreshed_at: None,
+            remote_branch: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -99,6 +130,12 @@ pub struct UpdateWorkspaceLoadoutRequest {
     pub workspace_id: String,
     pub agent_template_id: Option<String>,
     pub harness_profile_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RefreshWorkspaceGitStatusRequest {
+    pub workspace_id: String,
 }
 
 pub fn workspace_snapshot_from_state(state: &AgentOsState) -> WorkspaceSnapshot {
@@ -161,6 +198,10 @@ impl WorkspaceRecord {
                 "superpowers:tdd".to_owned(),
                 "git:workspace-context".to_owned(),
             ],
+            git_status: WorkspaceGitStatus {
+                branch,
+                ..WorkspaceGitStatus::default()
+            },
             status: WorkspaceStatus::Configured,
         })
     }
@@ -171,9 +212,25 @@ impl WorkspaceRecord {
     ) -> Result<(), WorkspaceError> {
         self.path = validate_required("workspace path", request.path)?;
         self.branch = validate_required("workspace branch", request.branch)?;
+        self.git_status.branch = self.branch.clone();
+        self.git_status.last_error = None;
         self.logs.push(format!("git context updated: {}", self.branch));
 
         Ok(())
+    }
+
+    pub fn refresh_git_status(&mut self, refreshed_at: String) {
+        self.git_status = read_git_status(&self.path, refreshed_at);
+        if self.git_status.last_error.is_none() && !self.git_status.branch.is_empty() {
+            self.branch = self.git_status.branch.clone();
+        }
+        self.logs.push(format!(
+            "git status refreshed: {}",
+            self.git_status
+                .last_error
+                .as_deref()
+                .unwrap_or(self.git_status.branch.as_str())
+        ));
     }
 
     pub fn update_loadout(
@@ -252,6 +309,11 @@ impl WorkspaceRecord {
                 "electron".to_owned(),
                 "superpowers:tdd".to_owned(),
             ],
+            git_status: WorkspaceGitStatus {
+                branch: "dev".to_owned(),
+                remote_branch: Some("origin/dev".to_owned()),
+                ..WorkspaceGitStatus::default()
+            },
             status: WorkspaceStatus::Running,
         }
     }
@@ -296,7 +358,96 @@ impl WorkspaceRecord {
             name: "Mobile QA".to_owned(),
             path: "C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew".to_owned(),
             skills: vec!["playwright".to_owned(), "qa".to_owned()],
+            git_status: WorkspaceGitStatus {
+                branch: "qa/device-smoke".to_owned(),
+                remote_branch: Some("origin/qa/device-smoke".to_owned()),
+                ..WorkspaceGitStatus::default()
+            },
             status: WorkspaceStatus::Running,
+        }
+    }
+}
+
+fn read_git_status(path: &str, refreshed_at: String) -> WorkspaceGitStatus {
+    match Command::new("git")
+        .args(["-C", path, "status", "--short", "--branch"])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            parse_git_status(&String::from_utf8_lossy(&output.stdout), refreshed_at)
+        }
+        Ok(output) => {
+            let message = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+            WorkspaceGitStatus {
+                last_error: Some(if message.is_empty() {
+                    "git status failed".to_owned()
+                } else {
+                    message
+                }),
+                last_refreshed_at: Some(refreshed_at),
+                ..WorkspaceGitStatus::default()
+            }
+        }
+        Err(error) => WorkspaceGitStatus {
+            last_error: Some(format!("git unavailable: {error}")),
+            last_refreshed_at: Some(refreshed_at),
+            ..WorkspaceGitStatus::default()
+        },
+    }
+}
+
+fn parse_git_status(output: &str, refreshed_at: String) -> WorkspaceGitStatus {
+    let mut lines = output.lines();
+    let header = lines.next().unwrap_or_default();
+    let mut status = WorkspaceGitStatus {
+        last_refreshed_at: Some(refreshed_at),
+        ..WorkspaceGitStatus::default()
+    };
+
+    if let Some(branch_summary) = header.strip_prefix("## ") {
+        parse_branch_summary(branch_summary, &mut status);
+    }
+
+    for line in lines {
+        let marker = line.get(0..2).unwrap_or_default();
+        if marker == "??" {
+            status.has_untracked = true;
+        }
+        if !line.trim().is_empty() {
+            status.is_dirty = true;
+        }
+    }
+
+    status
+}
+
+fn parse_branch_summary(summary: &str, status: &mut WorkspaceGitStatus) {
+    let mut parts = summary.splitn(2, "...");
+    status.branch = parts
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .trim_end_matches(" [gone]")
+        .to_owned();
+
+    let Some(remote_summary) = parts.next() else {
+        return;
+    };
+    let mut remote_parts = remote_summary.splitn(2, " [");
+    let remote_branch = remote_parts.next().unwrap_or_default().trim();
+    if !remote_branch.is_empty() {
+        status.remote_branch = Some(remote_branch.to_owned());
+    }
+
+    let Some(divergence) = remote_parts.next() else {
+        return;
+    };
+    for item in divergence.trim_end_matches(']').split(", ") {
+        if let Some(value) = item.strip_prefix("ahead ") {
+            status.ahead_count = value.parse().unwrap_or(0);
+        }
+        if let Some(value) = item.strip_prefix("behind ") {
+            status.behind_count = value.parse().unwrap_or(0);
         }
     }
 }
@@ -369,8 +520,9 @@ fn normalize_optional_identifier(
 #[cfg(test)]
 mod tests {
     use super::{
-        workspace_snapshot_from_state, CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest,
-        UpdateWorkspaceLoadoutRequest, WorkspaceRecord, WorkspaceStatus,
+        parse_git_status, workspace_snapshot_from_state, CreateWorkspaceRequest,
+        UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest, WorkspaceRecord,
+        WorkspaceStatus,
     };
     use crate::core::state::AgentOsState;
 
@@ -405,6 +557,7 @@ mod tests {
         assert_eq!(workspace.name, "API Workspace");
         assert_eq!(workspace.path, "C:\\work\\api");
         assert_eq!(workspace.branch, "feature/workspace");
+        assert_eq!(workspace.git_status.branch, "feature/workspace");
         assert_eq!(workspace.active_agent_id, "director");
         assert_eq!(workspace.selected_agent_template_id, None);
         assert_eq!(workspace.selected_harness_profile_id, None);
@@ -433,6 +586,7 @@ mod tests {
 
         assert_eq!(workspace.branch, "feature/api");
         assert_eq!(workspace.path, "D:\\api");
+        assert_eq!(workspace.git_status.branch, "feature/api");
         assert!(workspace.logs.last().expect("log").contains("feature/api"));
     }
 
@@ -464,5 +618,24 @@ mod tests {
             Some("pi-execution-discipline".to_owned())
         );
         assert!(workspace.logs.last().expect("log").contains("developer-pi"));
+    }
+
+    #[test]
+    fn parses_git_status_branch_dirty_and_divergence() {
+        let status = parse_git_status(
+            "## dev...origin/dev [ahead 2, behind 1]\n M src/main.rs\n?? docs/PLAN.md\n",
+            "2026-05-29T12:00:00Z".to_owned(),
+        );
+
+        assert_eq!(status.branch, "dev");
+        assert_eq!(status.remote_branch, Some("origin/dev".to_owned()));
+        assert_eq!(status.ahead_count, 2);
+        assert_eq!(status.behind_count, 1);
+        assert!(status.is_dirty);
+        assert!(status.has_untracked);
+        assert_eq!(
+            status.last_refreshed_at,
+            Some("2026-05-29T12:00:00Z".to_owned())
+        );
     }
 }

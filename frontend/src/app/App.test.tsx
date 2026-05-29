@@ -626,7 +626,10 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Git" }));
     expect(await screen.findByRole("heading", { name: "Git Panel" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workspace/fullstack-app/git");
-    expect(screen.getByText("PR workflow ready")).toBeInTheDocument();
+    expect(screen.getByText("Working tree clean")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText("Working tree dirty")).toBeInTheDocument();
+    expect(screen.getByText("1 ahead / 0 behind")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "feature/manual-branch" } });
     fireEvent.click(screen.getByRole("button", { name: "Save Git context" }));
     await waitFor(() => {

@@ -32,8 +32,8 @@ use core::{
         RecordCommandEvidenceRequest, StateMutationError, StateStoreError,
     },
     workspaces::{
-        workspace_snapshot_from_state, CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest,
-        UpdateWorkspaceLoadoutRequest, WorkspaceSnapshot,
+        workspace_snapshot_from_state, CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest,
+        UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest, WorkspaceSnapshot,
     },
 };
 
@@ -156,6 +156,18 @@ pub fn update_workspace_git_context_at_path(
     request: UpdateWorkspaceGitContextRequest,
 ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
     let state = mutate_state_at_path(path, |state| state.update_workspace_git_context(request))?;
+
+    Ok(workspace_snapshot_from_state(&state))
+}
+
+pub fn refresh_workspace_git_status_at_path(
+    path: impl AsRef<Path>,
+    request: RefreshWorkspaceGitStatusRequest,
+) -> Result<WorkspaceSnapshot, DesktopCommandError> {
+    let refreshed_at = current_unix_timestamp_string()?;
+    let state = mutate_state_at_path(path, |state| {
+        state.refresh_workspace_git_status(request, refreshed_at)
+    })?;
 
     Ok(workspace_snapshot_from_state(&state))
 }
@@ -427,17 +439,18 @@ mod commands {
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
         core::workspaces::{
-            CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
-            WorkspaceSnapshot,
+            CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest,
+            UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest, WorkspaceSnapshot,
         },
         core::{agents::AgentStudioSnapshot, harnesses::HarnessStudioSnapshot},
         create_agent_template_at_path, create_feature_session_at_path,
         create_harness_profile_at_path, create_workspace_at_path, durable_state_snapshot_at_path,
         harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
         mission_control_snapshot_at_path, record_command_evidence_at_path,
-        register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
-        set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
-        sync_github_skill_source_at_path, sync_provider_models_at_path, update_agent_template_at_path,
+        refresh_workspace_git_status_at_path, register_github_skill_source_at_path,
+        skill_sources_snapshot_at_path, state_file_path, set_agent_template_active_at_path,
+        set_harness_profile_active_at_path, settings_snapshot_at_path, sync_github_skill_source_at_path,
+        sync_provider_models_at_path, update_agent_template_at_path,
         update_ai_provider_settings_at_path, update_harness_profile_at_path,
         update_workspace_git_context_at_path, update_workspace_loadout_at_path,
         validate_skill_source_at_path,
@@ -481,6 +494,14 @@ mod commands {
         request: UpdateWorkspaceGitContextRequest,
     ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
         update_workspace_git_context_at_path(app_state_path(&app)?, request)
+    }
+
+    #[tauri::command]
+    pub fn refresh_workspace_git_status(
+        app: tauri::AppHandle,
+        request: RefreshWorkspaceGitStatusRequest,
+    ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
+        refresh_workspace_git_status_at_path(app_state_path(&app)?, request)
     }
 
     #[tauri::command]
@@ -688,6 +709,7 @@ pub fn run() {
             commands::workspace_snapshot,
             commands::create_workspace,
             commands::update_workspace_git_context,
+            commands::refresh_workspace_git_status,
             commands::update_workspace_loadout,
             commands::skill_sources_snapshot,
             commands::harness_studio_snapshot,
@@ -736,6 +758,7 @@ mod tests {
         create_harness_profile_at_path, create_workspace_at_path, durable_state_snapshot_at_path,
         harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
         record_command_evidence_at_path, record_skill_source_sync_success_at_path,
+        refresh_workspace_git_status_at_path,
         register_github_skill_source_at_path, set_agent_template_active_at_path,
         set_harness_profile_active_at_path, skill_sources_snapshot_at_path, state_file_path,
         update_agent_template_at_path, update_harness_profile_at_path,
@@ -759,7 +782,8 @@ mod tests {
             CreateCheckpointRequest, CreateFeatureSessionRequest, RecordCommandEvidenceRequest,
         },
         workspaces::{
-            CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
+            CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest,
+            UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
         },
     };
 
@@ -913,6 +937,20 @@ mod tests {
             .expect("workspace should exist");
         assert_eq!(workspace.branch, "feature/manual");
         assert_eq!(workspace.path, "D:\\manual");
+        let snapshot = refresh_workspace_git_status_at_path(
+            &path,
+            RefreshWorkspaceGitStatusRequest {
+                workspace_id: "api-platform".to_owned(),
+            },
+        )
+        .expect("workspace git status should refresh");
+        let workspace = snapshot
+            .workspaces
+            .iter()
+            .find(|workspace| workspace.id == "api-platform")
+            .expect("workspace should exist");
+        assert!(workspace.git_status.last_refreshed_at.is_some());
+        assert!(workspace.git_status.last_error.is_some());
         let snapshot = update_workspace_loadout_at_path(
             &path,
             UpdateWorkspaceLoadoutRequest {

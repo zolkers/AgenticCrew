@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createWorkspace,
   loadWorkspaceSnapshot,
+  refreshWorkspaceGitStatus,
   updateWorkspaceGitContext,
   updateWorkspaceLoadout,
   type InvokeWorkspace
@@ -46,11 +47,13 @@ describe("workspaceApi", () => {
 
     await createWorkspace(invoke, createRequest);
     await updateWorkspaceGitContext(invoke, updateRequest);
+    await refreshWorkspaceGitStatus(invoke, { workspaceId: "api" });
     await updateWorkspaceLoadout(invoke, loadoutRequest);
 
     expect(calls).toEqual([
       ["create_workspace", { request: createRequest }],
       ["update_workspace_git_context", { request: updateRequest }],
+      ["refresh_workspace_git_status", { request: { workspaceId: "api" } }],
       ["update_workspace_loadout", { request: loadoutRequest }]
     ]);
   });

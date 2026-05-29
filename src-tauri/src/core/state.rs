@@ -29,8 +29,8 @@ use super::{
         SkillSource, SkillSourceError,
     },
     workspaces::{
-        CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
-        WorkspaceError, WorkspaceRecord,
+        CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest, UpdateWorkspaceGitContextRequest,
+        UpdateWorkspaceLoadoutRequest, WorkspaceError, WorkspaceRecord,
     },
 };
 
@@ -528,6 +528,24 @@ impl AgentOsState {
         workspace
             .update_git_context(request)
             .map_err(StateMutationError::InvalidWorkspace)?;
+
+        Ok(())
+    }
+
+    pub fn refresh_workspace_git_status(
+        &mut self,
+        request: RefreshWorkspaceGitStatusRequest,
+        refreshed_at: String,
+    ) -> Result<(), StateMutationError> {
+        let workspace = self
+            .workspaces
+            .iter_mut()
+            .find(|workspace| workspace.id == request.workspace_id)
+            .ok_or_else(|| StateMutationError::MissingWorkspace {
+                workspace_id: request.workspace_id.clone(),
+            })?;
+
+        workspace.refresh_git_status(refreshed_at);
 
         Ok(())
     }

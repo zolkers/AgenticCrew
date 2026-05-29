@@ -800,6 +800,18 @@ button {
   background: var(--color-panel-strong);
 }
 
+.icon-action {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  min-height: 2.1rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
+  color: var(--color-text);
+  background: var(--color-terminal);
+}
+
 .training-lane {
   display: grid;
   gap: 0.75rem;
@@ -1198,6 +1210,33 @@ section[aria-label="Settings"] {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--color-border-soft);
+}
+
+.git-status-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+}
+
+.git-status-strip div {
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 6px;
+  background: var(--color-panel-strong);
+}
+
+.git-status-strip dt {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.git-status-strip dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
 }
 
 .surface-list > li {

@@ -10,14 +10,16 @@ use agenticcrew_desktop::{
     },
     core::permissions::ApprovedPermissionPolicy,
     core::settings::{SyncProviderModelsRequest, UpdateAiProviderSettingsRequest},
-    core::workspaces::{CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest},
+    core::workspaces::{
+        CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest, UpdateWorkspaceGitContextRequest,
+    },
     create_agent_template_at_path, create_harness_profile_at_path, harness_studio_snapshot_at_path,
     inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
     set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
     skill_sources_snapshot_at_path, sync_github_skill_source_at_path, sync_provider_models_at_path,
     update_agent_template_at_path, update_ai_provider_settings_at_path, update_harness_profile_at_path,
-    create_workspace_at_path, update_workspace_git_context_at_path, workspace_snapshot_at_path,
-    DesktopCommandError,
+    create_workspace_at_path, refresh_workspace_git_status_at_path,
+    update_workspace_git_context_at_path, workspace_snapshot_at_path, DesktopCommandError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -100,6 +102,12 @@ struct UpdateWorkspaceGitContextArgs {
     request: UpdateWorkspaceGitContextRequest,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RefreshWorkspaceGitStatusArgs {
+    request: RefreshWorkspaceGitStatusRequest,
+}
+
 fn main() {
     if let Err(error) = run() {
         print_error(error);
@@ -155,6 +163,14 @@ fn run() -> Result<(), DesktopCommandError> {
             let args = parse_args::<UpdateWorkspaceGitContextArgs>(&args_json)?;
 
             print_json(&update_workspace_git_context_at_path(
+                state_path,
+                args.request,
+            )?)
+        }
+        "refresh_workspace_git_status" => {
+            let args = parse_args::<RefreshWorkspaceGitStatusArgs>(&args_json)?;
+
+            print_json(&refresh_workspace_git_status_at_path(
                 state_path,
                 args.request,
             )?)

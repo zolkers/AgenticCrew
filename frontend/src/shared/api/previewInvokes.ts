@@ -188,6 +188,16 @@ export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
             `workspace resolved: ${id} / branch ${request?.branch ?? "main"}`,
             `mission: ${request?.mission ?? "Start a new agent mission"}`
           ],
+          gitStatus: {
+            aheadCount: 0,
+            behindCount: 0,
+            branch: request?.branch ?? "main",
+            hasUntracked: false,
+            isDirty: false,
+            lastError: null,
+            lastRefreshedAt: null,
+            remoteBranch: null
+          },
           mission: request?.mission ?? "Start a new agent mission",
           name: request?.name ?? "Preview Workspace",
           path: request?.path ?? "local",
@@ -209,7 +219,36 @@ export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
           ? {
               ...workspace,
               branch: request.branch ?? workspace.branch,
+              gitStatus: {
+                ...(workspace.gitStatus ?? emptyGitStatus(workspace.branch)),
+                branch: request.branch ?? workspace.branch,
+                lastError: null
+              },
               path: request.path ?? workspace.path
+            }
+          : workspace
+      )
+    });
+  }
+
+  if (command === "refresh_workspace_git_status") {
+    const request = args?.request as { workspaceId?: string } | undefined;
+
+    return Promise.resolve({
+      workspaces: previewWorkspaceSnapshot.workspaces.map((workspace) =>
+        workspace.id === request?.workspaceId
+          ? {
+              ...workspace,
+              gitStatus: {
+                aheadCount: 1,
+                behindCount: 0,
+                branch: workspace.branch,
+                hasUntracked: true,
+                isDirty: true,
+                lastError: null,
+                lastRefreshedAt: "preview",
+                remoteBranch: `origin/${workspace.branch}`
+              }
             }
           : workspace
       )
@@ -433,6 +472,19 @@ export const previewAgentStudioInvoke: InvokeAgentStudio = (command, args) => {
 
 function incrementStringVersion(version: string): string {
   return String(Number.parseInt(version, 10) + 1);
+}
+
+function emptyGitStatus(branch: string) {
+  return {
+    aheadCount: 0,
+    behindCount: 0,
+    branch,
+    hasUntracked: false,
+    isDirty: false,
+    lastError: null,
+    lastRefreshedAt: null,
+    remoteBranch: null
+  };
 }
 
 export const previewSkillSourcesInvoke: InvokeSkillSources = (command) => {
