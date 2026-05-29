@@ -230,7 +230,38 @@ export function AgentStudio({
         </>
       )}
       {snapshot.trainingRuns.length > 0 ? (
-        <p>{snapshot.trainingRuns.length} training run queued</p>
+        <section aria-labelledby="training-lane-title" className="training-lane">
+          <header>
+            <FlaskConical aria-hidden="true" size={18} />
+            <h3 id="training-lane-title">Training lane</h3>
+          </header>
+          <ul className="surface-list">
+            {snapshot.trainingRuns.map((run) => (
+              <li key={run.id}>
+                <div>
+                  <strong>{run.datasetId}</strong>
+                  <span>
+                    {run.agentTemplateId} / {run.status}
+                  </span>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Critic</dt>
+                    <dd>{run.criticScore ?? "Pending"}</dd>
+                  </div>
+                  <div>
+                    <dt>Promoted</dt>
+                    <dd>
+                      {run.promotedVersion === null || run.promotedVersion === undefined
+                        ? "No"
+                        : `v${String(run.promotedVersion)}`}
+                    </dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
       <form
         className="agent-form"

@@ -77,6 +77,14 @@ const templateSnapshot: AgentStudioSnapshot = {
       id: "train-1",
       promotedVersion: null,
       status: "draft"
+    },
+    {
+      agentTemplateId: "loose-agent",
+      criticScore: 0.91,
+      datasetId: "release-regression",
+      id: "train-2",
+      promotedVersion: 3,
+      status: "promoted"
     }
   ]
 };
@@ -104,7 +112,13 @@ describe("AgentStudio", () => {
 
     expect(screen.getByText("Loose Agent")).toBeInTheDocument();
     expect(screen.getAllByText("None").length).toBeGreaterThan(0);
-    expect(screen.getByText("1 training run queued")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Training lane" })).toBeInTheDocument();
+    expect(screen.getByText("smoke")).toBeInTheDocument();
+    expect(screen.getByText("loose-agent / draft")).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+    expect(screen.getByText("release-regression")).toBeInTheDocument();
+    expect(screen.getByText("0.91")).toBeInTheDocument();
+    expect(screen.getByText("v3")).toBeInTheDocument();
   });
 
   it("keeps legacy template models selectable when the provider registry omits them", () => {
