@@ -23,6 +23,8 @@ for (const requiredFragment of [
   "/workspace/frontend/node_modules",
   "/workspace/src-tauri/target",
   "desktop-test:",
+  "find node_modules frontend/node_modules",
+  "npm ci",
   "npm run desktop:test",
   "quality:"
 ]) {

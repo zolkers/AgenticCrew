@@ -231,7 +231,8 @@ impl std::error::Error for SkillSourceError {}
 #[cfg(test)]
 mod tests {
     use super::{
-        skill_sources_snapshot_from_state, RegisterGitHubSkillSourceRequest, SkillSource,
+        skill_sources_snapshot_from_state, DiscoveredSkillManifest,
+        RegisterGitHubSkillSourceRequest, SkillManifestValidationError, SkillSource,
         SkillSourceActivationStatus, SkillSourceKind, SkillSourceSyncStatus, SkillSourceTrustLevel,
     };
     use crate::core::permissions::{
