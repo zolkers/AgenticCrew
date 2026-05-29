@@ -6,16 +6,14 @@ const { assertCommand } = require("./contracts.cjs");
 
 const repoRoot = resolve(__dirname, "..", "..");
 const statePath = join(app.getPath("userData"), "agenticcrew-state.json");
+const cacheRoot = join(app.getPath("userData"), "skill-sources");
 
 function invokeRust(command, args) {
   assertCommand(command);
 
-  if (args !== undefined && Object.keys(args).length > 0) {
-    throw new Error(`Command '${command}' does not accept arguments yet`);
-  }
-
   return new Promise((resolveValue, reject) => {
-    const child = spawn(resolveSidecarCommand(), resolveSidecarArgs(command), {
+    const sidecarCommand = resolveSidecarCommand();
+    const child = spawn(sidecarCommand, resolveSidecarArgs(sidecarCommand, command, args), {
       cwd: repoRoot,
       shell: process.platform === "win32"
     });
@@ -57,9 +55,19 @@ function resolveSidecarCommand() {
   return "cargo";
 }
 
-function resolveSidecarArgs(command) {
-  if (resolveSidecarCommand() !== "cargo") {
-    return ["--state-path", statePath, command];
+function resolveSidecarArgs(sidecarCommand, command, args) {
+  const sidecarArgs = [
+    "--state-path",
+    statePath,
+    command,
+    "--args-json",
+    JSON.stringify(args ?? {}),
+    "--cache-root",
+    cacheRoot
+  ];
+
+  if (sidecarCommand !== "cargo") {
+    return sidecarArgs;
   }
 
   return [
@@ -70,9 +78,7 @@ function resolveSidecarArgs(command) {
     "--bin",
     "agenticcrew-sidecar",
     "--",
-    "--state-path",
-    statePath,
-    command
+    ...sidecarArgs
   ];
 }
 
