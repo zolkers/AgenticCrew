@@ -17,8 +17,13 @@ for (const [name, command] of Object.entries(expectedScripts)) {
 
 for (const requiredFragment of [
   "dockerfile: docker/Dockerfile",
+  "target: dev",
+  ".:/workspace",
+  "/workspace/node_modules",
+  "/workspace/frontend/node_modules",
+  "/workspace/src-tauri/target",
   "desktop-test:",
-  "command: npm run desktop:test",
+  "npm run desktop:test",
   "quality:"
 ]) {
   if (!compose.includes(requiredFragment)) {

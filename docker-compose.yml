@@ -1,22 +1,37 @@
 name: agenticcrew
 
 services:
-  frontend:
+  app-base: &app-base
     build:
       context: .
       dockerfile: docker/Dockerfile
+      target: dev
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - node_modules:/workspace/node_modules
+      - frontend_node_modules:/workspace/frontend/node_modules
+      - cargo_registry:/root/.cargo/registry
+      - cargo_git:/root/.cargo/git
+      - tauri_target:/workspace/src-tauri/target
+
+  frontend:
+    <<: *app-base
     command: npm run dev:docker -w frontend
     ports:
       - "5173:5173"
 
   desktop-test:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    command: npm run desktop:test
+    <<: *app-base
+    command: sh -lc "npm ci && npm run desktop:test"
 
   quality:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    command: sh -lc "npm run quality && npm run desktop:test"
+    <<: *app-base
+    command: sh -lc "npm ci && python3.12 -m pip install --break-system-packages -e 'workers/python[dev]' && npm run quality && npm run desktop:test"
+
+volumes:
+  cargo_git:
+  cargo_registry:
+  frontend_node_modules:
+  node_modules:
+  tauri_target:

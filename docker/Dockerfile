@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:24.04 AS dev
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -30,17 +30,6 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /workspace
 
-COPY package.json package-lock.json ./
-COPY frontend/package.json frontend/package.json
-RUN npm ci
-
-COPY workers/python/pyproject.toml workers/python/pyproject.toml
-COPY workers/python/agenticcrew_worker workers/python/agenticcrew_worker
-COPY workers/python/tests workers/python/tests
-RUN python3.12 -m pip install --break-system-packages -e "workers/python[dev]"
-
-COPY . .
-
 EXPOSE 5173
 
-CMD ["npm", "run", "dev:docker", "-w", "frontend"]
+CMD ["sh", "-lc", "npm ci && python3.12 -m pip install --break-system-packages -e 'workers/python[dev]' && npm run dev:docker -w frontend"]

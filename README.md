@@ -33,6 +33,8 @@ Run desktop Rust tests in Docker when local Windows MSVC/MinGW prerequisites are
 npm run docker:desktop:test
 ```
 
+The Docker workflow mounts the current workspace into the container and keeps `node_modules`, Cargo registry/git cache, and `src-tauri/target` in Docker volumes so repeated checks do not need a full image rebuild.
+
 Run the frontend quickly in Docker:
 
 ```bash
