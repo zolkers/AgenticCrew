@@ -251,7 +251,16 @@ export type HarnessBinding = {
 export type HarnessStudioSnapshot = {
   activeProfileCount: number;
   bindings: HarnessBinding[];
+  effectiveHarnesses?: EffectiveHarnessPreview[];
   profiles: HarnessProfile[];
+};
+
+export type EffectiveHarnessPreview = {
+  enabledModuleCount: number;
+  preview: string;
+  profileId: string;
+  profileName: string;
+  skillRouteCount: number;
 };
 
 export type CreateHarnessProfileRequest = {

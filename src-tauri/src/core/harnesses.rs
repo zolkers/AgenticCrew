@@ -78,6 +78,17 @@ pub struct HarnessStudioSnapshot {
     pub profiles: Vec<HarnessProfile>,
     pub bindings: Vec<HarnessBinding>,
     pub active_profile_count: u64,
+    pub effective_harnesses: Vec<EffectiveHarnessPreview>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EffectiveHarnessPreview {
+    pub profile_id: String,
+    pub profile_name: String,
+    pub enabled_module_count: u64,
+    pub skill_route_count: u64,
+    pub preview: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -111,15 +122,41 @@ pub struct UpdateHarnessProfileRequest {
 }
 
 pub fn harness_studio_snapshot_from_state(state: &AgentOsState) -> HarnessStudioSnapshot {
+    let profiles = state.harness_profiles.clone();
     HarnessStudioSnapshot {
-        profiles: state.harness_profiles.clone(),
+        active_profile_count: profiles.iter().filter(|profile| profile.active).count() as u64,
+        effective_harnesses: effective_harness_previews(&profiles),
+        profiles,
         bindings: state.harness_bindings.clone(),
-        active_profile_count: state
-            .harness_profiles
-            .iter()
-            .filter(|profile| profile.active)
-            .count() as u64,
     }
+}
+
+fn effective_harness_previews(profiles: &[HarnessProfile]) -> Vec<EffectiveHarnessPreview> {
+    profiles
+        .iter()
+        .filter(|profile| profile.active)
+        .map(|profile| {
+            let enabled_modules = profile
+                .modules
+                .iter()
+                .filter(|module| module.enabled)
+                .collect::<Vec<_>>();
+            let preview = enabled_modules
+                .iter()
+                .map(|module| module.content.trim())
+                .filter(|content| !content.is_empty())
+                .collect::<Vec<_>>()
+                .join("\n\n");
+
+            EffectiveHarnessPreview {
+                enabled_module_count: enabled_modules.len() as u64,
+                preview,
+                profile_id: profile.id.clone(),
+                profile_name: profile.name.clone(),
+                skill_route_count: profile.skill_routes.len() as u64,
+            }
+        })
+        .collect()
 }
 
 impl HarnessProfile {
@@ -292,6 +329,14 @@ mod tests {
 
         assert_eq!(snapshot.active_profile_count, 1);
         assert_eq!(snapshot.profiles[0].id, "pi-execution-discipline");
+        assert_eq!(snapshot.effective_harnesses.len(), 1);
+        assert_eq!(
+            snapshot.effective_harnesses[0].profile_id,
+            "pi-execution-discipline"
+        );
+        assert!(snapshot.effective_harnesses[0]
+            .preview
+            .contains("Use targeted inspection"));
     }
 
     #[test]

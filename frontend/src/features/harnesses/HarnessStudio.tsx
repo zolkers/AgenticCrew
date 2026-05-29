@@ -24,6 +24,7 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
   const [saving, setSaving] = useState(false);
   const [skillRoutesText, setSkillRoutesText] = useState("");
   const selectedSkillRoutes = splitSkillRoutes(skillRoutesText);
+  const effectiveHarnesses = snapshot.effectiveHarnesses ?? effectiveHarnessPreviews(snapshot.profiles);
   const generatedId = useMemo(() => slugify(name), [name]);
   const submitLabel = saving ? "Saving" : getHarnessSubmitLabel(editingProfileId);
 
@@ -133,6 +134,35 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
             <span>workspace / agent / run</span>
           </article>
         </div>
+        {effectiveHarnesses.length > 0 ? (
+          <section aria-labelledby="effective-harness-title" className="effective-harness-panel">
+            <header>
+              <Layers3 aria-hidden="true" size={18} />
+              <h3 id="effective-harness-title">Effective harness</h3>
+            </header>
+            <ul className="surface-list">
+              {effectiveHarnesses.map((harness) => (
+                <li key={harness.profileId}>
+                  <div>
+                    <strong>{harness.profileName}</strong>
+                    <span>{harness.profileId}</span>
+                  </div>
+                  <dl>
+                    <div>
+                      <dt>Enabled modules</dt>
+                      <dd>{harness.enabledModuleCount}</dd>
+                    </div>
+                    <div>
+                      <dt>Skill routes</dt>
+                      <dd>{harness.skillRouteCount}</dd>
+                    </div>
+                  </dl>
+                  <p>{harness.preview || "No enabled module content"}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
         <ul className="surface-list">
           {snapshot.profiles.map((profile) => (
             <li key={profile.id}>
@@ -315,6 +345,22 @@ function splitSkillRoutes(value: string): string[] {
     .split("\n")
     .map((route) => route.trim())
     .filter((route) => route.length > 0);
+}
+
+function effectiveHarnessPreviews(profiles: readonly HarnessProfile[]) {
+  return profiles
+    .filter((profile) => profile.active)
+    .map((profile) => {
+      const enabledModules = profile.modules.filter((module) => module.enabled);
+
+      return {
+        enabledModuleCount: enabledModules.length,
+        preview: enabledModules.map((module) => module.content.trim()).filter(Boolean).join("\n\n"),
+        profileId: profile.id,
+        profileName: profile.name,
+        skillRouteCount: profile.skillRoutes.length
+      };
+    });
 }
 
 function isSlugCharacter(character: string): boolean {

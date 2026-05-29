@@ -76,6 +76,49 @@ describe("HarnessStudio", () => {
     expect(screen.getByText("agenticcrew://skills/review")).toBeInTheDocument();
   });
 
+  it("renders Rust-provided effective harness previews", () => {
+    render(
+      <HarnessStudio
+        invoke={vi.fn()}
+        snapshot={{
+          activeProfileCount: 1,
+          bindings: [],
+          effectiveHarnesses: [
+            {
+              enabledModuleCount: 2,
+              preview: "Use project rules.\n\nRequire validation.",
+              profileId: "profile-on",
+              profileName: "Profile On",
+              skillRouteCount: 1
+            }
+          ],
+          profiles: [profileFixture("profile-on", true)]
+        }}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Effective harness" })).toBeInTheDocument();
+    expect(screen.getByText("Profile On")).toBeInTheDocument();
+    expect(screen.getByText(/Use project rules/u)).toBeInTheDocument();
+  });
+
+  it("derives an effective harness preview when older snapshots omit it", () => {
+    const profile = profileFixture("profile-on", true);
+
+    render(
+      <HarnessStudio
+        invoke={vi.fn()}
+        snapshot={{
+          activeProfileCount: 1,
+          bindings: [],
+          profiles: [{ ...profile, modules: [{ ...profile.modules[0], content: "" }] }]
+        }}
+      />
+    );
+
+    expect(screen.getByText("No enabled module content")).toBeInTheDocument();
+  });
+
   it("creates a local harness profile", async () => {
     const nextSnapshot: HarnessStudioSnapshot = {
       activeProfileCount: 2,

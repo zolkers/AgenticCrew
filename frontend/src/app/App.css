@@ -818,6 +818,32 @@ button {
   margin-top: 1rem;
 }
 
+.effective-harness-panel {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  background: var(--color-terminal);
+}
+
+.effective-harness-panel > header {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.effective-harness-panel h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.effective-harness-panel svg {
+  color: var(--color-teal);
+}
+
 .training-lane > header {
   display: flex;
   gap: 0.5rem;

@@ -481,7 +481,8 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Harness Studio" }));
 
     expect(await screen.findByRole("heading", { name: "Harness Studio" })).toBeInTheDocument();
-    expect(screen.getByText("Pi Execution Discipline")).toBeInTheDocument();
+    expect(screen.getAllByText("Pi Execution Discipline").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Effective harness" })).toBeInTheDocument();
     expect(screen.getByText("Execution Discipline")).toBeInTheDocument();
   });
 
@@ -537,7 +538,9 @@ describe("App", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Create harness" }));
 
-    expect(await screen.findByText("Review Harness")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText("Review Harness").length).toBeGreaterThan(0);
+    });
     expect(screen.getByText("2 active")).toBeInTheDocument();
   });
 
