@@ -105,6 +105,43 @@ describe("SkillSources", () => {
     expect(screen.getByText("missing required frontmatter field 'description'")).toBeInTheDocument();
   });
 
+  it("renders approved permission gates", () => {
+    const snapshot: SkillSourcesSnapshot = {
+      activeSourceCount: 1,
+      sources: [
+        {
+          active: true,
+          discoveredSkills: [],
+          id: "local",
+          kind: "local",
+          lastSyncError: null,
+          lastSyncStatus: "synced",
+          lastSyncedCommit: null,
+          localCachePath: null,
+          permissionGate: {
+            approved: true,
+            policy: {
+              commands: [],
+              docker: false,
+              fileSystem: [],
+              git: false,
+              network: []
+            }
+          },
+          repositoryUrl: "https://github.com/obra/superpowers",
+          selectedRef: "main",
+          status: "validated",
+          trustLevel: "local",
+          validationErrors: []
+        }
+      ]
+    };
+
+    render(<SkillSources snapshot={snapshot} />);
+
+    expect(screen.getByText("Approved")).toBeInTheDocument();
+  });
+
   it("renders the empty state", () => {
     render(<SkillSources snapshot={{ activeSourceCount: 0, sources: [] }} />);
 
