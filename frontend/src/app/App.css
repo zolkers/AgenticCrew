@@ -797,6 +797,11 @@ button {
   outline: 0;
 }
 
+.marketplace-filters {
+  grid-template-columns: minmax(220px, 1.6fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr);
+  align-items: end;
+}
+
 .settings-actions {
   display: flex;
   flex-wrap: wrap;
@@ -935,6 +940,75 @@ section[aria-label="Settings"] {
 
 .surface-card span {
   color: var(--color-muted);
+}
+
+.marketplace-list {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0;
+  margin: 1rem 0 0;
+  list-style: none;
+}
+
+.marketplace-source {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  background: var(--color-terminal);
+}
+
+.marketplace-source > header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.marketplace-source > header div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.marketplace-source > header span,
+.marketplace-routes span {
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+.marketplace-source > header svg {
+  flex: 0 0 auto;
+  color: var(--color-teal);
+}
+
+.marketplace-routes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.65rem;
+}
+
+.marketplace-routes article {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 6px;
+  background: var(--color-panel);
+}
+
+.marketplace-routes code {
+  color: var(--color-copper);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 780px) {
+  .marketplace-filters {
+    grid-template-columns: 1fr;
+  }
 }
 
 .git-context-form {

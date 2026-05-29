@@ -412,7 +412,7 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Skill Sources" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Mission Control" })).not.toBeInTheDocument();
     expect(screen.getByText("superpowers")).toBeInTheDocument();
-    expect(screen.getByText("Pending validation")).toBeInTheDocument();
+    expect(screen.getAllByText("Pending validation").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
 
