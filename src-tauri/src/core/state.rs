@@ -5,7 +5,10 @@ use std::{
 };
 
 use super::{
-    agents::{AgentTemplate, AgentTrainingRun},
+    agents::{
+        AgentTemplate, AgentTemplateError, AgentTrainingRun, CreateAgentTemplateRequest,
+        SetAgentTemplateActiveRequest,
+    },
     costs::ModelCallEstimate,
     evidence::{CommandExitCodeEvidence, Evidence},
     harnesses::{
@@ -353,6 +356,57 @@ impl AgentOsState {
         Ok(())
     }
 
+    pub fn create_agent_template(
+        &mut self,
+        request: CreateAgentTemplateRequest,
+    ) -> Result<(), StateMutationError> {
+        if self
+            .agent_templates
+            .iter()
+            .any(|template| template.id == request.id)
+        {
+            return Err(StateMutationError::DuplicateAgentTemplate {
+                template_id: request.id,
+            });
+        }
+
+        if let Some(harness_profile_id) = request.harness_profile_id.as_deref() {
+            let harness_profile_id = harness_profile_id.trim();
+            if !harness_profile_id.is_empty()
+                && !self
+                    .harness_profiles
+                    .iter()
+                    .any(|profile| profile.id == harness_profile_id)
+            {
+                return Err(StateMutationError::MissingHarnessProfile {
+                    profile_id: harness_profile_id.to_owned(),
+                });
+            }
+        }
+
+        self.agent_templates
+            .push(AgentTemplate::local(request).map_err(StateMutationError::InvalidAgentTemplate)?);
+
+        Ok(())
+    }
+
+    pub fn set_agent_template_active(
+        &mut self,
+        request: SetAgentTemplateActiveRequest,
+    ) -> Result<(), StateMutationError> {
+        let template = self
+            .agent_templates
+            .iter_mut()
+            .find(|template| template.id == request.template_id)
+            .ok_or_else(|| StateMutationError::MissingAgentTemplate {
+                template_id: request.template_id.clone(),
+            })?;
+
+        template.active = request.active;
+
+        Ok(())
+    }
+
     pub fn update_ai_provider_settings(
         &mut self,
         request: UpdateAiProviderSettingsRequest,
@@ -435,8 +489,15 @@ pub enum StateMutationError {
     MissingHarnessProfile {
         profile_id: String,
     },
+    DuplicateAgentTemplate {
+        template_id: String,
+    },
+    MissingAgentTemplate {
+        template_id: String,
+    },
     InvalidSkillSource(SkillSourceError),
     InvalidHarnessProfile(HarnessProfileError),
+    InvalidAgentTemplate(AgentTemplateError),
     InvalidDesktopSettings(SettingsValidationError),
     CheckpointNotPassed(SessionTransitionError),
 }
@@ -480,11 +541,20 @@ impl fmt::Display for StateMutationError {
             StateMutationError::MissingHarnessProfile { profile_id } => {
                 write!(formatter, "harness profile '{profile_id}' does not exist")
             }
+            StateMutationError::DuplicateAgentTemplate { template_id } => {
+                write!(formatter, "agent template '{template_id}' already exists")
+            }
+            StateMutationError::MissingAgentTemplate { template_id } => {
+                write!(formatter, "agent template '{template_id}' does not exist")
+            }
             StateMutationError::InvalidSkillSource(error) => {
                 write!(formatter, "invalid skill source: {error}")
             }
             StateMutationError::InvalidHarnessProfile(error) => {
                 write!(formatter, "invalid harness profile: {error}")
+            }
+            StateMutationError::InvalidAgentTemplate(error) => {
+                write!(formatter, "invalid agent template: {error}")
             }
             StateMutationError::InvalidDesktopSettings(error) => {
                 write!(formatter, "invalid desktop settings: {error}")
@@ -651,7 +721,7 @@ mod tests {
         CURRENT_SCHEMA_VERSION,
     };
     use crate::core::{
-        agents::AgentTemplate,
+        agents::{AgentTemplate, CreateAgentTemplateRequest, SetAgentTemplateActiveRequest},
         costs::ModelCallEstimate,
         evidence::{CommandExitCodeEvidence, Evidence},
         harnesses::{
@@ -797,6 +867,75 @@ mod tests {
             .expect("profile should update");
 
         assert!(!state.harness_profiles[0].active);
+    }
+
+    #[test]
+    fn create_agent_template_adds_local_agent_bound_to_harness() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .create_agent_template(CreateAgentTemplateRequest {
+                active: true,
+                budget_cents: 450,
+                description: "Reviews pull requests".to_owned(),
+                harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                id: "review-agent".to_owned(),
+                model_id: "gpt-5.2".to_owned(),
+                name: "Review Agent".to_owned(),
+                provider_id: "openai".to_owned(),
+                role: "reviewer".to_owned(),
+                skill_routes: vec!["agenticcrew://skills/review".to_owned()],
+            })
+            .expect("agent should create");
+
+        let template = state
+            .agent_templates
+            .iter()
+            .find(|template| template.id == "review-agent")
+            .expect("agent should exist");
+        assert_eq!(template.harness_profile_id.as_deref(), Some("pi-execution-discipline"));
+        assert_eq!(template.budget_cents, 450);
+    }
+
+    #[test]
+    fn create_agent_template_rejects_missing_harness() {
+        let mut state = AgentOsState::empty();
+
+        let error = state
+            .create_agent_template(CreateAgentTemplateRequest {
+                active: true,
+                budget_cents: 450,
+                description: "Reviews pull requests".to_owned(),
+                harness_profile_id: Some("missing-harness".to_owned()),
+                id: "review-agent".to_owned(),
+                model_id: "gpt-5.2".to_owned(),
+                name: "Review Agent".to_owned(),
+                provider_id: "openai".to_owned(),
+                role: "reviewer".to_owned(),
+                skill_routes: Vec::new(),
+            })
+            .expect_err("missing harness should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::MissingHarnessProfile {
+                profile_id: "missing-harness".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn set_agent_template_active_updates_existing_agent() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .set_agent_template_active(SetAgentTemplateActiveRequest {
+                active: false,
+                template_id: "developer-pi".to_owned(),
+            })
+            .expect("agent should update");
+
+        assert!(!state.agent_templates[0].active);
     }
 
     #[test]

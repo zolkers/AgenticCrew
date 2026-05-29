@@ -16,8 +16,8 @@ function invokeElectron<Command extends keyof ElectronCommandMap>(
   return window.agenticcrew.invoke(command, args);
 }
 
-export const electronAgentStudioInvoke: InvokeAgentStudio = (command) =>
-  invokeElectron(command);
+export const electronAgentStudioInvoke: InvokeAgentStudio = (command, args) =>
+  invokeElectron(command, args);
 
 export const electronHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =>
   invokeElectron(command, args);

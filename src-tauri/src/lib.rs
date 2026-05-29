@@ -8,7 +8,10 @@ use std::{
 use serde::Serialize;
 
 use core::{
-    agents::{agent_studio_snapshot_from_state, AgentStudioSnapshot},
+    agents::{
+        agent_studio_snapshot_from_state, AgentStudioSnapshot, CreateAgentTemplateRequest,
+        SetAgentTemplateActiveRequest,
+    },
     harnesses::{
         harness_studio_snapshot_from_state, CreateHarnessProfileRequest, HarnessStudioSnapshot,
         SetHarnessProfileActiveRequest,
@@ -122,6 +125,24 @@ pub fn agent_studio_snapshot_at_path(
     path: impl Into<PathBuf>,
 ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
     let state = durable_state_snapshot_at_path(path)?;
+
+    Ok(agent_studio_snapshot_from_state(&state))
+}
+
+pub fn create_agent_template_at_path(
+    path: impl AsRef<Path>,
+    request: CreateAgentTemplateRequest,
+) -> Result<AgentStudioSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.create_agent_template(request))?;
+
+    Ok(agent_studio_snapshot_from_state(&state))
+}
+
+pub fn set_agent_template_active_at_path(
+    path: impl AsRef<Path>,
+    request: SetAgentTemplateActiveRequest,
+) -> Result<AgentStudioSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.set_agent_template_active(request))?;
 
     Ok(agent_studio_snapshot_from_state(&state))
 }
@@ -319,18 +340,19 @@ mod commands {
     use crate::{
         activate_skill_source_at_path, add_checkpoint_at_path, agent_studio_snapshot_at_path,
         approve_skill_source_permissions_at_path, close_feature_session_at_path,
+        core::agents::{CreateAgentTemplateRequest, SetAgentTemplateActiveRequest},
         core::harnesses::{CreateHarnessProfileRequest, SetHarnessProfileActiveRequest},
         core::permissions::ApprovedPermissionPolicy,
         core::settings::{SettingsSnapshot, UpdateAiProviderSettingsRequest},
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
         core::{agents::AgentStudioSnapshot, harnesses::HarnessStudioSnapshot},
-        create_feature_session_at_path, create_harness_profile_at_path,
-        durable_state_snapshot_at_path,
+        create_agent_template_at_path, create_feature_session_at_path,
+        create_harness_profile_at_path, durable_state_snapshot_at_path,
         harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
         mission_control_snapshot_at_path, record_command_evidence_at_path,
         register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
-        set_harness_profile_active_at_path, settings_snapshot_at_path,
+        set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
         sync_github_skill_source_at_path, update_ai_provider_settings_at_path,
         validate_skill_source_at_path, CreateCheckpointRequest, CreateFeatureSessionRequest,
         DesktopCommandError, MissionControlSnapshot, RecordCommandEvidenceRequest,
@@ -385,6 +407,22 @@ mod commands {
         app: tauri::AppHandle,
     ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
         agent_studio_snapshot_at_path(app_state_path(&app)?)
+    }
+
+    #[tauri::command]
+    pub fn create_agent_template(
+        app: tauri::AppHandle,
+        request: CreateAgentTemplateRequest,
+    ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
+        create_agent_template_at_path(app_state_path(&app)?, request)
+    }
+
+    #[tauri::command]
+    pub fn set_agent_template_active(
+        app: tauri::AppHandle,
+        request: SetAgentTemplateActiveRequest,
+    ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
+        set_agent_template_active_at_path(app_state_path(&app)?, request)
     }
 
     #[tauri::command]
@@ -509,6 +547,8 @@ pub fn run() {
             commands::create_harness_profile,
             commands::set_harness_profile_active,
             commands::agent_studio_snapshot,
+            commands::create_agent_template,
+            commands::set_agent_template_active,
             commands::settings_snapshot,
             commands::create_feature_session,
             commands::add_checkpoint,
@@ -542,15 +582,16 @@ mod tests {
     use super::{
         activate_skill_source_at_path, add_checkpoint_at_path, agent_studio_snapshot_at_path,
         app_name, approve_skill_source_permissions_at_path, close_feature_session_at_path,
-        create_feature_session_at_path, create_harness_profile_at_path,
-        durable_state_snapshot_at_path, harness_studio_snapshot_at_path,
+        create_agent_template_at_path, create_feature_session_at_path,
+        create_harness_profile_at_path, durable_state_snapshot_at_path, harness_studio_snapshot_at_path,
         inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
         record_command_evidence_at_path, record_skill_source_sync_success_at_path,
-        register_github_skill_source_at_path, set_harness_profile_active_at_path,
-        skill_sources_snapshot_at_path, state_file_path, validate_skill_source_at_path,
+        register_github_skill_source_at_path, set_agent_template_active_at_path,
+        set_harness_profile_active_at_path, skill_sources_snapshot_at_path, state_file_path, validate_skill_source_at_path,
         STATE_FILE_NAME,
     };
     use crate::core::{
+        agents::{CreateAgentTemplateRequest, SetAgentTemplateActiveRequest},
         harnesses::{CreateHarnessProfileRequest, SetHarnessProfileActiveRequest},
         permissions::{
             ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
@@ -761,6 +802,44 @@ mod tests {
             snapshot.templates[0].harness_profile_id.as_deref(),
             Some("pi-execution-discipline")
         );
+    }
+
+    #[test]
+    fn agent_template_commands_persist_local_agents() {
+        let path = test_path("agent_template_commands_persist_local_agents", "state.json");
+
+        let snapshot = create_agent_template_at_path(
+            &path,
+            CreateAgentTemplateRequest {
+                active: true,
+                budget_cents: 525,
+                description: "Review local changes".to_owned(),
+                harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                id: "review-agent".to_owned(),
+                model_id: "gpt-5.2".to_owned(),
+                name: "Review Agent".to_owned(),
+                provider_id: "openai".to_owned(),
+                role: "reviewer".to_owned(),
+                skill_routes: vec!["agenticcrew://skills/review".to_owned()],
+            },
+        )
+        .expect("agent should persist");
+
+        assert_eq!(snapshot.templates.len(), 2);
+        assert_eq!(snapshot.active_template_count, 2);
+
+        let snapshot = set_agent_template_active_at_path(
+            &path,
+            SetAgentTemplateActiveRequest {
+                active: false,
+                template_id: "review-agent".to_owned(),
+            },
+        )
+        .expect("agent status should persist");
+
+        assert_eq!(snapshot.active_template_count, 1);
+        let loaded = agent_studio_snapshot_at_path(&path).expect("snapshot should load");
+        assert_eq!(snapshot, loaded);
     }
 
     #[test]

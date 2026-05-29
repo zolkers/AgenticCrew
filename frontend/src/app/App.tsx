@@ -300,7 +300,19 @@ export function App({
             snapshot={loadState.harnessStudioSnapshot}
           />
         ) : null}
-        {activeView === "agentStudio" ? <AgentStudio snapshot={loadState.agentStudioSnapshot} /> : null}
+        {activeView === "agentStudio" ? (
+          <AgentStudio
+            harnessSnapshot={loadState.harnessStudioSnapshot}
+            invoke={agentStudioInvoke}
+            onSnapshotChange={(agentStudioSnapshot) => {
+              setLoadState({
+                ...loadState,
+                agentStudioSnapshot
+              });
+            }}
+            snapshot={loadState.agentStudioSnapshot}
+          />
+        ) : null}
         {activeView === "gitPanel" ? <GitPanel workspace={activeWorkspace} /> : null}
         {activeView === "settings" ? (
           <SettingsPanel

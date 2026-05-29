@@ -38,10 +38,18 @@ describe("electronInvokes", () => {
     await expect(electronHarnessStudioInvoke("set_harness_profile_active", {
       request: { active: false, profileId: "local" }
     })).resolves.toBeUndefined();
+    await expect(
+      electronAgentStudioInvoke("set_agent_template_active", {
+        request: { active: false, templateId: "review-agent" }
+      })
+    ).resolves.toBeUndefined();
 
     expect(invoke).toHaveBeenCalledWith("sync_github_skill_source", { sourceId: "superpowers" });
     expect(invoke).toHaveBeenCalledWith("set_harness_profile_active", {
       request: { active: false, profileId: "local" }
+    });
+    expect(invoke).toHaveBeenCalledWith("set_agent_template_active", {
+      request: { active: false, templateId: "review-agent" }
     });
   });
 

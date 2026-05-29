@@ -577,6 +577,7 @@ button {
   border-top: 1px solid var(--color-border-soft);
 }
 
+.agent-form,
 .harness-form {
   display: grid;
   gap: 0.9rem;
@@ -585,18 +586,23 @@ button {
   border-top: 1px solid var(--color-border-soft);
 }
 
+.agent-form label,
 .harness-form label {
   display: grid;
   gap: 0.4rem;
   min-width: 0;
 }
 
+.agent-form label span,
 .harness-form label span {
   color: var(--color-muted);
   font-size: 0.78rem;
   text-transform: uppercase;
 }
 
+.agent-form input,
+.agent-form select,
+.agent-form textarea,
 .harness-form input,
 .harness-form textarea {
   width: 100%;
@@ -608,6 +614,7 @@ button {
   background: var(--color-terminal);
 }
 
+.agent-form textarea,
 .harness-form textarea {
   min-height: 6rem;
   resize: vertical;

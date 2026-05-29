@@ -170,6 +170,24 @@ export type AgentStudioSnapshot = {
   trainingRuns: AgentTrainingRun[];
 };
 
+export type CreateAgentTemplateRequest = {
+  active: boolean;
+  budgetCents: number;
+  description: string;
+  harnessProfileId?: string | null;
+  id: string;
+  modelId: string;
+  name: string;
+  providerId: string;
+  role: string;
+  skillRoutes: string[];
+};
+
+export type SetAgentTemplateActiveRequest = {
+  active: boolean;
+  templateId: string;
+};
+
 export type AiProviderSettings = {
   apiKeyConfigured: boolean;
   apiKeyLastFour?: string | null;
@@ -191,11 +209,13 @@ export type UpdateAiProviderSettingsRequest = {
 export type ElectronCommandMap = {
   approve_skill_source_permissions: unknown;
   agent_studio_snapshot: AgentStudioSnapshot;
+  create_agent_template: AgentStudioSnapshot;
   create_harness_profile: HarnessStudioSnapshot;
   harness_studio_snapshot: HarnessStudioSnapshot;
   inspect_cached_skill_source: unknown;
   mission_control_snapshot: MissionControlSnapshot;
   settings_snapshot: SettingsSnapshot;
+  set_agent_template_active: AgentStudioSnapshot;
   set_harness_profile_active: HarnessStudioSnapshot;
   skill_sources_snapshot: SkillSourcesSnapshot;
   sync_github_skill_source: unknown;

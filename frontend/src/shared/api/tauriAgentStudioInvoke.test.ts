@@ -20,6 +20,24 @@ describe("tauriAgentStudioInvoke", () => {
       trainingRuns: []
     });
 
-    expect(invoke).toHaveBeenCalledWith("agent_studio_snapshot");
+    expect(invoke).toHaveBeenCalledWith("agent_studio_snapshot", undefined);
+  });
+
+  it("forwards agent studio command args", async () => {
+    vi.mocked(invoke).mockResolvedValue({ activeTemplateCount: 0, templates: [], trainingRuns: [] });
+
+    await expect(
+      tauriAgentStudioInvoke("set_agent_template_active", {
+        request: { active: false, templateId: "review-agent" }
+      })
+    ).resolves.toEqual({
+      activeTemplateCount: 0,
+      templates: [],
+      trainingRuns: []
+    });
+
+    expect(invoke).toHaveBeenCalledWith("set_agent_template_active", {
+      request: { active: false, templateId: "review-agent" }
+    });
   });
 });

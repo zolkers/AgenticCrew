@@ -5,6 +5,8 @@ const COMMANDS = new Set([
   "create_harness_profile",
   "set_harness_profile_active",
   "agent_studio_snapshot",
+  "create_agent_template",
+  "set_agent_template_active",
   "settings_snapshot",
   "approve_skill_source_permissions",
   "inspect_cached_skill_source",

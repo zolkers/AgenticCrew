@@ -110,6 +110,83 @@ describe("previewInvokes", () => {
     });
   });
 
+  it("handles preview agent creation and activation toggles", async () => {
+    await expect(
+      previewAgentStudioInvoke("create_agent_template", {
+        request: {
+          active: true,
+          budgetCents: 500,
+          description: "Reviews changes",
+          harnessProfileId: "pi-execution-discipline",
+          id: "review-agent",
+          modelId: "gpt-5.2",
+          name: "Review Agent",
+          providerId: "openai",
+          role: "reviewer",
+          skillRoutes: ["agenticcrew://skills/review"]
+        }
+      })
+    ).resolves.toMatchObject({
+      activeTemplateCount: 2,
+      templates: [
+        { id: "developer-pi" },
+        {
+          active: true,
+          budgetCents: 500,
+          harnessProfileId: "pi-execution-discipline",
+          id: "review-agent",
+          skillRoutes: ["agenticcrew://skills/review"]
+        }
+      ]
+    });
+
+    await expect(
+      previewAgentStudioInvoke("set_agent_template_active", {
+        request: {
+          active: false,
+          templateId: "developer-pi"
+        }
+      })
+    ).resolves.toMatchObject({
+      activeTemplateCount: 0,
+      templates: [{ active: false, id: "developer-pi" }]
+    });
+  });
+
+  it("uses preview agent fallbacks when action args are absent", async () => {
+    await expect(previewAgentStudioInvoke("create_agent_template")).resolves.toMatchObject({
+      activeTemplateCount: 1,
+      templates: [
+        { id: "developer-pi" },
+        {
+          active: false,
+          budgetCents: 200,
+          description: "Preview local agent",
+          harnessProfileId: null,
+          id: "preview-agent",
+          name: "Preview Agent",
+          skillRoutes: []
+        }
+      ]
+    });
+
+    await expect(previewAgentStudioInvoke("set_agent_template_active")).resolves.toMatchObject({
+      activeTemplateCount: 1,
+      templates: [{ active: true, id: "developer-pi" }]
+    });
+
+    await expect(
+      previewAgentStudioInvoke("set_agent_template_active", {
+        request: {
+          templateId: "developer-pi"
+        }
+      })
+    ).resolves.toMatchObject({
+      activeTemplateCount: 1,
+      templates: [{ active: true, id: "developer-pi" }]
+    });
+  });
+
   it("returns and updates preview settings metadata", async () => {
     await expect(previewSettingsInvoke("settings_snapshot")).resolves.toMatchObject({
       aiProvider: {

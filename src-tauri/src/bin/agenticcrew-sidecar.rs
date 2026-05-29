@@ -2,12 +2,14 @@ use std::{env, path::PathBuf, process};
 
 use agenticcrew_desktop::{
     agent_studio_snapshot_at_path, approve_skill_source_permissions_at_path,
+    core::agents::{CreateAgentTemplateRequest, SetAgentTemplateActiveRequest},
     core::harnesses::{CreateHarnessProfileRequest, SetHarnessProfileActiveRequest},
     core::permissions::ApprovedPermissionPolicy, core::settings::UpdateAiProviderSettingsRequest,
-    create_harness_profile_at_path, harness_studio_snapshot_at_path,
+    create_agent_template_at_path, create_harness_profile_at_path, harness_studio_snapshot_at_path,
     inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
-    set_harness_profile_active_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
-    sync_github_skill_source_at_path, update_ai_provider_settings_at_path, DesktopCommandError,
+    set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
+    skill_sources_snapshot_at_path, sync_github_skill_source_at_path,
+    update_ai_provider_settings_at_path, DesktopCommandError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -46,6 +48,18 @@ struct CreateHarnessProfileArgs {
 #[serde(rename_all = "camelCase")]
 struct SetHarnessProfileActiveArgs {
     request: SetHarnessProfileActiveRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateAgentTemplateArgs {
+    request: CreateAgentTemplateRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SetAgentTemplateActiveArgs {
+    request: SetAgentTemplateActiveRequest,
 }
 
 fn main() {
@@ -109,6 +123,16 @@ fn run() -> Result<(), DesktopCommandError> {
             )?)
         }
         "agent_studio_snapshot" => print_json(&agent_studio_snapshot_at_path(state_path)?),
+        "create_agent_template" => {
+            let args = parse_args::<CreateAgentTemplateArgs>(&args_json)?;
+
+            print_json(&create_agent_template_at_path(state_path, args.request)?)
+        }
+        "set_agent_template_active" => {
+            let args = parse_args::<SetAgentTemplateActiveArgs>(&args_json)?;
+
+            print_json(&set_agent_template_active_at_path(state_path, args.request)?)
+        }
         "settings_snapshot" => print_json(&settings_snapshot_at_path(state_path)?),
         "sync_github_skill_source" => {
             let args = parse_args::<SourceIdArgs>(&args_json)?;

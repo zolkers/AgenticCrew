@@ -176,8 +176,63 @@ export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =
   return Promise.resolve(previewHarnessStudioSnapshot);
 };
 
-export const previewAgentStudioInvoke: InvokeAgentStudio = () =>
-  Promise.resolve(previewAgentStudioSnapshot);
+export const previewAgentStudioInvoke: InvokeAgentStudio = (command, args) => {
+  if (command === "create_agent_template") {
+    const request = args?.request as
+      | {
+          active?: boolean;
+          budgetCents?: number;
+          description?: string;
+          harnessProfileId?: null | string;
+          id?: string;
+          modelId?: string;
+          name?: string;
+          providerId?: string;
+          role?: string;
+          skillRoutes?: string[];
+        }
+      | undefined;
+    const id = request?.id ?? "preview-agent";
+
+    return Promise.resolve({
+      ...previewAgentStudioSnapshot,
+      activeTemplateCount: previewAgentStudioSnapshot.activeTemplateCount + (request?.active ? 1 : 0),
+      templates: [
+        ...previewAgentStudioSnapshot.templates,
+        {
+          active: request?.active ?? false,
+          budgetCents: request?.budgetCents ?? 200,
+          description: request?.description ?? "Preview local agent",
+          harnessProfileId: request?.harnessProfileId ?? null,
+          id,
+          modelId: request?.modelId ?? "gpt-5.2",
+          name: request?.name ?? "Preview Agent",
+          providerId: request?.providerId ?? "openai",
+          role: request?.role ?? "developer",
+          skillRoutes: request?.skillRoutes ?? [],
+          version: 1
+        }
+      ]
+    });
+  }
+
+  if (command === "set_agent_template_active") {
+    const request = args?.request as { active?: boolean; templateId?: string } | undefined;
+    const templateId = request?.templateId;
+    const active = request?.active;
+    const templates = previewAgentStudioSnapshot.templates.map((template) =>
+      template.id === templateId ? { ...template, active: active ?? template.active } : template
+    );
+
+    return Promise.resolve({
+      ...previewAgentStudioSnapshot,
+      activeTemplateCount: templates.filter((template) => template.active).length,
+      templates
+    });
+  }
+
+  return Promise.resolve(previewAgentStudioSnapshot);
+};
 
 export const previewSkillSourcesInvoke: InvokeSkillSources = (command) => {
   if (command === "skill_sources_snapshot") {

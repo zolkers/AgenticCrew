@@ -375,6 +375,54 @@ describe("App", () => {
     expect(screen.getByText("pi-execution-discipline")).toBeInTheDocument();
   });
 
+  it("keeps Agent Studio in sync after creating a local agent", async () => {
+    const updatedAgentSnapshot: AgentStudioSnapshot = {
+      activeTemplateCount: 2,
+      templates: [
+        ...agentStudioSnapshot.templates,
+        {
+          active: true,
+          budgetCents: 200,
+          description: "Reviews changes before merge.",
+          harnessProfileId: "pi-execution-discipline",
+          id: "review-agent",
+          modelId: "gpt-5.2",
+          name: "Review Agent",
+          providerId: "openai",
+          role: "reviewer",
+          skillRoutes: ["agenticcrew://skills/review"],
+          version: 1
+        }
+      ],
+      trainingRuns: []
+    };
+    const interactiveAgentInvoke = (command: string) =>
+      Promise.resolve(command === "agent_studio_snapshot" ? agentStudioSnapshot : updatedAgentSnapshot);
+
+    render(
+      <App
+        agentStudioInvoke={interactiveAgentInvoke}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Agent Studio" }));
+    fireEvent.change(await screen.findByLabelText("Description"), {
+      target: { value: "Reviews changes before merge." }
+    });
+    fireEvent.change(screen.getByLabelText("Skill routes"), {
+      target: { value: "agenticcrew://skills/review" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create agent" }));
+
+    expect(await screen.findByText("Review Agent")).toBeInTheDocument();
+    expect(screen.getByText("2 active")).toBeInTheDocument();
+  });
+
   it("opens Git and Settings through stable workspace routes", async () => {
     render(
       <App
