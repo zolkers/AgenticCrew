@@ -3,6 +3,7 @@ import type {
   HarnessStudioSnapshot,
   MissionControlSnapshot,
   SettingsSnapshot,
+  SkillSource,
   SkillSourcesSnapshot,
   WorkspaceSnapshot
 } from "../types/core";
@@ -11,7 +12,7 @@ import type { InvokeAgentStudio } from "./agentStudioApi";
 import type { InvokeHarnessStudio } from "./harnessStudioApi";
 import type { InvokeMissionControl } from "./missionControlApi";
 import type { InvokeSettings } from "./settingsApi";
-import type { InvokeSkillSources } from "./skillSourcesApi";
+import type { InvokeSkillSources, SkillSourcesCommand } from "./skillSourcesApi";
 import type { InvokeWorkspace } from "./workspaceApi";
 
 const previewMissionControlSnapshot: MissionControlSnapshot = {
@@ -108,10 +109,13 @@ const previewHarnessStudioSnapshot: HarnessStudioSnapshot = {
   ]
 };
 
+let currentPreviewSkillSourcesSnapshot = previewSkillSourcesSnapshot;
+
 let currentPreviewHarnessStudioSnapshot = previewHarnessStudioSnapshot;
 
 export function resetPreviewInvokesForTests() {
   currentPreviewHarnessStudioSnapshot = previewHarnessStudioSnapshot;
+  currentPreviewSkillSourcesSnapshot = previewSkillSourcesSnapshot;
 }
 
 function withEffectiveHarnesses(snapshot: HarnessStudioSnapshot): HarnessStudioSnapshot {
@@ -657,13 +661,124 @@ function emptyGitStatus(branch: string) {
   };
 }
 
-export const previewSkillSourcesInvoke: InvokeSkillSources = (command) => {
+export const previewSkillSourcesInvoke: InvokeSkillSources = (command, args) => {
   if (command === "skill_sources_snapshot") {
-    return Promise.resolve(previewSkillSourcesSnapshot);
+    return Promise.resolve(currentPreviewSkillSourcesSnapshot);
   }
+
+  previewSkillSourceActions[command]?.(args);
 
   return Promise.resolve(undefined);
 };
+
+const previewSkillSourceActions: Partial<Record<SkillSourcesCommand, (args: Parameters<InvokeSkillSources>[1]) => void>> = {
+  activate_skill_source: (args) => {
+    activatePreviewSkillSource(args && "sourceId" in args ? args.sourceId : "");
+  },
+  approve_skill_source_permissions: (args) => {
+    approvePreviewSkillSource(
+      args && "sourceId" in args ? args.sourceId : "",
+      args && "policy" in args ? args.policy : undefined
+    );
+  },
+  inspect_cached_skill_source: (args) => {
+    syncPreviewSkillSource(args && "sourceId" in args ? args.sourceId : "");
+  },
+  register_github_skill_source: (args) => {
+    registerPreviewSkillSource(args && "request" in args ? args.request : undefined);
+  },
+  sync_github_skill_source: (args) => {
+    syncPreviewSkillSource(args && "sourceId" in args ? args.sourceId : "");
+  }
+};
+
+function registerPreviewSkillSource(request: { id: string; repositoryUrl: string; selectedRef: string } | undefined) {
+  currentPreviewSkillSourcesSnapshot = {
+    ...currentPreviewSkillSourcesSnapshot,
+    sources: [
+      ...currentPreviewSkillSourcesSnapshot.sources,
+      {
+        active: false,
+        discoveredSkills: [],
+        id: request?.id ?? "preview-source",
+        kind: "git_hub",
+        lastSyncError: null,
+        lastSyncStatus: "never_synced",
+        lastSyncedCommit: null,
+        localCachePath: null,
+        permissionGate: {
+          approved: false,
+          policy: {
+            commands: [],
+            docker: false,
+            fileSystem: [],
+            git: false,
+            network: []
+          }
+        },
+        repositoryUrl: request?.repositoryUrl ?? "https://github.com/preview/skills",
+        selectedRef: request?.selectedRef ?? "main",
+        status: "pending_validation",
+        trustLevel: "external",
+        validationErrors: []
+      }
+    ]
+  };
+}
+
+function syncPreviewSkillSource(sourceId: string) {
+  currentPreviewSkillSourcesSnapshot = updatePreviewSkillSources((source) =>
+    source.id === sourceId
+      ? {
+          ...source,
+          discoveredSkills: [
+            {
+              description: "Preview synced skill",
+              id: `${source.id}/planning`,
+              name: "planning",
+              relativePath: "skills/planning/SKILL.md",
+              route: `agenticcrew://skills/${source.id}/planning`
+            }
+          ],
+          lastSyncError: null,
+          lastSyncStatus: "synced",
+          lastSyncedCommit: "preview",
+          localCachePath: `preview/skill-sources/${source.id}`,
+          status: "validated",
+          validationErrors: []
+        }
+      : source
+  );
+}
+
+function approvePreviewSkillSource(sourceId: string, policy: SkillSource["permissionGate"]["policy"] | undefined) {
+  currentPreviewSkillSourcesSnapshot = updatePreviewSkillSources((source) =>
+    source.id === sourceId
+      ? {
+          ...source,
+          permissionGate: {
+            approved: true,
+            policy: policy ?? source.permissionGate.policy
+          }
+        }
+      : source
+  );
+}
+
+function activatePreviewSkillSource(sourceId: string) {
+  currentPreviewSkillSourcesSnapshot = updatePreviewSkillSources((source) =>
+    source.id === sourceId ? { ...source, active: true } : source
+  );
+}
+
+function updatePreviewSkillSources(update: (source: SkillSource) => SkillSource): SkillSourcesSnapshot {
+  const sources = currentPreviewSkillSourcesSnapshot.sources.map(update);
+
+  return {
+    activeSourceCount: sources.filter((source) => source.active).length,
+    sources
+  };
+}
 
 export const previewSettingsInvoke: InvokeSettings = (command, args) => {
   if (command === "sync_provider_models") {

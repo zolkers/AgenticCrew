@@ -39,6 +39,7 @@ pub enum SkillSourceSyncStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RegisterGitHubSkillSourceRequest {
     pub id: String,
     pub repository_url: String,

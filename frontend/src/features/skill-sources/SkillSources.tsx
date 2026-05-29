@@ -1,16 +1,32 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, CheckCircle2, Route, Search, ShieldCheck } from "lucide-react";
+import { Box, CheckCircle2, Download, Play, Plus, Route, Search, ShieldCheck } from "lucide-react";
+import {
+  activateSkillSource,
+  approveSkillSourcePermissions,
+  inspectCachedSkillSource,
+  loadSkillSourcesSnapshot,
+  registerGitHubSkillSource,
+  syncGitHubSkillSource,
+  type InvokeSkillSources
+} from "../../shared/api/skillSourcesApi";
 import type { SkillSourceActivationStatus, SkillSourceTrustLevel, SkillSourcesSnapshot } from "../../shared/types/core";
 
 type SkillSourcesProps = Readonly<{
+  invoke?: InvokeSkillSources;
+  onSnapshotChange?: (snapshot: SkillSourcesSnapshot) => void;
   snapshot: SkillSourcesSnapshot;
 }>;
 
-export function SkillSources({ snapshot }: SkillSourcesProps) {
+export function SkillSources({ invoke, onSnapshotChange, snapshot }: SkillSourcesProps) {
   const { t } = useTranslation();
   const title = t("skillSources.title", { defaultValue: "Skill Sources" });
+  const [error, setError] = useState<null | string>(null);
+  const [formId, setFormId] = useState("superpowers");
+  const [formRef, setFormRef] = useState("main");
+  const [formRepositoryUrl, setFormRepositoryUrl] = useState("https://github.com/obra/superpowers");
   const [query, setQuery] = useState("");
+  const [saving, setSaving] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | SkillSourceActivationStatus>("all");
   const [trustFilter, setTrustFilter] = useState<"all" | SkillSourceTrustLevel>("all");
   const discoveredSkillCount = snapshot.sources.reduce(
@@ -139,6 +155,60 @@ export function SkillSources({ snapshot }: SkillSourcesProps) {
                 ))}
               </div>
             ) : null}
+            {invoke === undefined ? null : (
+              <div className="settings-actions">
+                <button
+                  className="inline-action"
+                  disabled={saving}
+                  onClick={() => {
+                    void runSourceAction(() => syncGitHubSkillSource(invoke, source.id), "Skill source sync failed");
+                  }}
+                  type="button"
+                >
+                  <Download aria-hidden="true" size={16} />
+                  <span>Sync</span>
+                </button>
+                <button
+                  className="inline-action"
+                  disabled={saving || source.localCachePath === null || source.localCachePath === undefined}
+                  onClick={() => {
+                    void runSourceAction(
+                      () => inspectCachedSkillSource(invoke, source.id),
+                      "Skill source inspection failed"
+                    );
+                  }}
+                  type="button"
+                >
+                  <Search aria-hidden="true" size={16} />
+                  <span>Inspect</span>
+                </button>
+                <button
+                  className="inline-action"
+                  disabled={saving || source.permissionGate.approved}
+                  onClick={() => {
+                    void runSourceAction(
+                      () => approveSkillSourcePermissions(invoke, source.id, defaultExternalPermissionPolicy()),
+                      "Permission approval failed"
+                    );
+                  }}
+                  type="button"
+                >
+                  <ShieldCheck aria-hidden="true" size={16} />
+                  <span>Approve</span>
+                </button>
+                <button
+                  className="inline-action"
+                  disabled={saving || source.active || source.status !== "validated" || !source.permissionGate.approved}
+                  onClick={() => {
+                    void runSourceAction(() => activateSkillSource(invoke, source.id), "Skill source activation failed");
+                  }}
+                  type="button"
+                >
+                  <Play aria-hidden="true" size={16} />
+                  <span>Activate</span>
+                </button>
+              </div>
+            )}
           </li>
         ))}
       </ul>
@@ -177,6 +247,50 @@ export function SkillSources({ snapshot }: SkillSourcesProps) {
         </article>
       </div>
       <div className="settings-form marketplace-filters">
+        {invoke === undefined ? null : (
+          <>
+            <label>
+              <span>Source id</span>
+              <input
+                disabled={saving}
+                onChange={(event) => {
+                  setFormId(event.target.value);
+                }}
+                value={formId}
+              />
+            </label>
+            <label>
+              <span>Repository URL</span>
+              <input
+                disabled={saving}
+                onChange={(event) => {
+                  setFormRepositoryUrl(event.target.value);
+                }}
+                value={formRepositoryUrl}
+              />
+            </label>
+            <label>
+              <span>Ref</span>
+              <input
+                disabled={saving}
+                onChange={(event) => {
+                  setFormRef(event.target.value);
+                }}
+                value={formRef}
+              />
+            </label>
+            <button
+              disabled={saving || formId.trim().length === 0 || formRepositoryUrl.trim().length === 0 || formRef.trim().length === 0}
+              onClick={() => {
+                void registerSource();
+              }}
+              type="button"
+            >
+              <Plus aria-hidden="true" size={16} />
+              <span>Register</span>
+            </button>
+          </>
+        )}
         <label>
           <span>Search</span>
           <input
@@ -221,7 +335,55 @@ export function SkillSources({ snapshot }: SkillSourcesProps) {
           </select>
         </label>
       </div>
+      {error ? (
+        <output aria-live="polite" className="settings-error">
+          {error}
+        </output>
+      ) : null}
       {sourcesContent}
     </section>
   );
+
+  async function registerSource() {
+    if (invoke === undefined) {
+      return;
+    }
+
+    await runSourceAction(
+      () =>
+        registerGitHubSkillSource(invoke, {
+          id: formId.trim(),
+          repositoryUrl: formRepositoryUrl.trim(),
+          selectedRef: formRef.trim()
+        }),
+      "Skill source registration failed"
+    );
+  }
+
+  async function runSourceAction(action: () => Promise<void>, errorMessage: string) {
+    if (invoke === undefined) {
+      return;
+    }
+
+    setError(null);
+    setSaving(true);
+    try {
+      await action();
+      onSnapshotChange?.(await loadSkillSourcesSnapshot(invoke));
+    } catch {
+      setError(errorMessage);
+    } finally {
+      setSaving(false);
+    }
+  }
+}
+
+function defaultExternalPermissionPolicy() {
+  return {
+    commands: [{ command: "git" }],
+    docker: false,
+    fileSystem: [{ path: "skill-sources", writable: true }],
+    git: true,
+    network: [{ host: "github.com" }]
+  };
 }

@@ -38,6 +38,17 @@ describe("electronInvokes", () => {
 
     await expect(electronSkillSourcesInvoke("sync_github_skill_source", { sourceId: "superpowers" })).resolves
       .toBeUndefined();
+    await expect(
+      electronSkillSourcesInvoke("register_github_skill_source", {
+        request: {
+          id: "superpowers",
+          repositoryUrl: "https://github.com/obra/superpowers",
+          selectedRef: "main"
+        }
+      })
+    ).resolves.toBeUndefined();
+    await expect(electronSkillSourcesInvoke("activate_skill_source", { sourceId: "superpowers" })).resolves
+      .toBeUndefined();
     await expect(electronHarnessStudioInvoke("set_harness_profile_active", {
       request: { active: false, profileId: "local" }
     })).resolves.toBeUndefined();
@@ -92,6 +103,14 @@ describe("electronInvokes", () => {
     ).resolves.toBeUndefined();
 
     expect(invoke).toHaveBeenCalledWith("sync_github_skill_source", { sourceId: "superpowers" });
+    expect(invoke).toHaveBeenCalledWith("register_github_skill_source", {
+      request: {
+        id: "superpowers",
+        repositoryUrl: "https://github.com/obra/superpowers",
+        selectedRef: "main"
+      }
+    });
+    expect(invoke).toHaveBeenCalledWith("activate_skill_source", { sourceId: "superpowers" });
     expect(invoke).toHaveBeenCalledWith("set_harness_profile_active", {
       request: { active: false, profileId: "local" }
     });

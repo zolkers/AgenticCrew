@@ -203,6 +203,12 @@ export type SkillSourcesSnapshot = {
   sources: SkillSource[];
 };
 
+export type RegisterGitHubSkillSourceRequest = {
+  id: string;
+  repositoryUrl: string;
+  selectedRef: string;
+};
+
 export type HarnessModuleKind =
   | "base_policy"
   | "behavior_rule"
@@ -438,11 +444,13 @@ export type ElectronCommandMap = {
   mission_control_snapshot: MissionControlSnapshot;
   promote_agent_training_run: AgentStudioSnapshot;
   refresh_workspace_git_status: WorkspaceSnapshot;
+  register_github_skill_source: unknown;
   settings_snapshot: SettingsSnapshot;
   set_agent_template_active: AgentStudioSnapshot;
   set_harness_profile_active: HarnessStudioSnapshot;
   set_pi_extension_active: HarnessStudioSnapshot;
   skill_sources_snapshot: SkillSourcesSnapshot;
+  activate_skill_source: unknown;
   sync_github_skill_source: unknown;
   sync_provider_models: SettingsSnapshot;
   update_agent_template: AgentStudioSnapshot;

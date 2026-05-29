@@ -125,6 +125,42 @@ describe("previewInvokes", () => {
       .toBeUndefined();
   });
 
+  it("mutates preview skill source workflow state", async () => {
+    await previewSkillSourcesInvoke("register_github_skill_source", {
+      request: {
+        id: "preview-market",
+        repositoryUrl: "https://github.com/preview/market",
+        selectedRef: "main"
+      }
+    });
+    await previewSkillSourcesInvoke("sync_github_skill_source", { sourceId: "preview-market" });
+    await previewSkillSourcesInvoke("approve_skill_source_permissions", {
+      policy: {
+        commands: [{ command: "git" }],
+        docker: false,
+        fileSystem: [],
+        git: true,
+        network: [{ host: "github.com" }]
+      },
+      sourceId: "preview-market"
+    });
+    await previewSkillSourcesInvoke("activate_skill_source", { sourceId: "preview-market" });
+
+    await expect(previewSkillSourcesInvoke("skill_sources_snapshot")).resolves.toMatchObject({
+      activeSourceCount: 1,
+      sources: [
+        { id: "preview-superpowers" },
+        {
+          active: true,
+          discoveredSkills: [{ name: "planning" }],
+          id: "preview-market",
+          permissionGate: { approved: true },
+          status: "validated"
+        }
+      ]
+    });
+  });
+
   it("returns Harness Studio preview data for browser previews", async () => {
     await expect(previewHarnessStudioInvoke("harness_studio_snapshot")).resolves.toMatchObject({
       activeProfileCount: 1,

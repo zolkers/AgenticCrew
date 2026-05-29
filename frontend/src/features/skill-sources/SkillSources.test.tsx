@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SkillSourcesSnapshot } from "../../shared/types/core";
 import "../../i18n";
 import { SkillSources } from "./SkillSources";
@@ -275,5 +275,122 @@ describe("SkillSources", () => {
     render(<SkillSources snapshot={{ activeSourceCount: 0, sources: [] }} />);
 
     expect(screen.getByText("No external skill source registered")).toBeInTheDocument();
+  });
+
+  it("registers, syncs, approves, and activates sources through the command boundary", async () => {
+    const source = {
+      active: false,
+      discoveredSkills: [],
+      id: "superpowers",
+      kind: "git_hub" as const,
+      lastSyncError: null,
+      lastSyncStatus: "never_synced" as const,
+      lastSyncedCommit: null,
+      localCachePath: null,
+      permissionGate: {
+        approved: false,
+        policy: {
+          commands: [],
+          docker: false,
+          fileSystem: [],
+          git: false,
+          network: []
+        }
+      },
+      repositoryUrl: "https://github.com/obra/superpowers",
+      selectedRef: "main",
+      status: "pending_validation" as const,
+      trustLevel: "external" as const,
+      validationErrors: []
+    };
+    let snapshot: SkillSourcesSnapshot = { activeSourceCount: 0, sources: [] };
+    const calls: unknown[] = [];
+    const invoke = (command: string, args?: unknown) => {
+      calls.push({ args, command });
+      if (command === "register_github_skill_source") {
+        snapshot = { activeSourceCount: 0, sources: [source] };
+      }
+      if (command === "sync_github_skill_source" || command === "inspect_cached_skill_source") {
+        snapshot = {
+          activeSourceCount: 0,
+          sources: [
+            {
+              ...source,
+              discoveredSkills: [
+                {
+                  description: "Plan work safely",
+                  id: "superpowers/planning",
+                  name: "planning",
+                  relativePath: "skills/planning/SKILL.md",
+                  route: "agenticcrew://skills/superpowers/planning"
+                }
+              ],
+              lastSyncStatus: "synced",
+              localCachePath: "cache/superpowers",
+              status: "validated"
+            }
+          ]
+        };
+      }
+      if (command === "approve_skill_source_permissions") {
+        snapshot = {
+          ...snapshot,
+          sources: snapshot.sources.map((item) => ({
+            ...item,
+            permissionGate: { ...item.permissionGate, approved: true }
+          }))
+        };
+      }
+      if (command === "activate_skill_source") {
+        snapshot = {
+          activeSourceCount: 1,
+          sources: snapshot.sources.map((item) => ({ ...item, active: true }))
+        };
+      }
+      if (command === "skill_sources_snapshot") {
+        return Promise.resolve(snapshot);
+      }
+      return Promise.resolve({});
+    };
+    const onSnapshotChange = vi.fn((nextSnapshot: SkillSourcesSnapshot) => {
+      snapshot = nextSnapshot;
+    });
+    const { rerender } = render(
+      <SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+    await waitFor(() => {
+      expect(onSnapshotChange).toHaveBeenCalledWith({ activeSourceCount: 0, sources: [source] });
+    });
+
+    rerender(<SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />);
+    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
+    await waitFor(() => {
+      expect(snapshot.sources[0].discoveredSkills?.[0]?.name).toBe("planning");
+    });
+    rerender(<SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />);
+    expect(screen.getByText("planning")).toBeInTheDocument();
+
+    rerender(<SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />);
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    await waitFor(() => {
+      expect(snapshot.sources[0].permissionGate.approved).toBe(true);
+    });
+
+    rerender(<SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />);
+    fireEvent.click(screen.getByRole("button", { name: "Activate" }));
+    await waitFor(() => {
+      expect(snapshot.activeSourceCount).toBe(1);
+    });
+
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ command: "register_github_skill_source" }),
+        expect.objectContaining({ command: "sync_github_skill_source" }),
+        expect.objectContaining({ command: "approve_skill_source_permissions" }),
+        expect.objectContaining({ command: "activate_skill_source" })
+      ])
+    );
   });
 });

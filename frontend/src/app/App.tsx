@@ -358,7 +358,16 @@ export function App({
           <MissionControl snapshot={loadState.missionControlSnapshot} />
         ) : null}
         {activeView === "skillSources" ? (
-          <SkillSources snapshot={loadState.skillSourcesSnapshot} />
+          <SkillSources
+            invoke={skillSourcesInvoke}
+            onSnapshotChange={(skillSourcesSnapshot) => {
+              setLoadState({
+                ...loadState,
+                skillSourcesSnapshot
+              });
+            }}
+            snapshot={loadState.skillSourcesSnapshot}
+          />
         ) : null}
         {activeView === "harnessStudio" ? (
           <HarnessStudio

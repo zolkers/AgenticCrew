@@ -6,7 +6,8 @@ use std::{
 };
 
 use agenticcrew_core::{
-    agent_studio_snapshot_at_path, approve_skill_source_permissions_at_path,
+    activate_skill_source_at_path, agent_studio_snapshot_at_path,
+    approve_skill_source_permissions_at_path,
     core::agents::{
         CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest,
         UpdateAgentTemplateRequest,
@@ -20,6 +21,7 @@ use agenticcrew_core::{
         AiModelRecord, ProviderModelCatalog, ProviderModelCatalogError, SyncProviderModelsRequest,
         UpdateAiProviderSettingsRequest,
     },
+    core::skills::RegisterGitHubSkillSourceRequest,
     core::workspaces::{
         CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest, UpdateWorkspaceGitContextRequest,
         UpdateWorkspaceLoadoutRequest,
@@ -28,12 +30,13 @@ use agenticcrew_core::{
     harness_studio_snapshot_at_path, import_pi_extension_at_path,
     inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
     promote_agent_training_run_at_path, refresh_workspace_git_status_at_path,
-    set_agent_template_active_at_path, set_harness_profile_active_at_path,
-    set_pi_extension_active_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
-    sync_github_skill_source_at_path, sync_provider_models_at_path_with_catalog,
-    update_agent_template_at_path, update_ai_provider_settings_at_path,
-    update_harness_profile_at_path, update_workspace_git_context_at_path,
-    update_workspace_loadout_at_path, workspace_snapshot_at_path, DesktopCommandError,
+    register_github_skill_source_at_path, set_agent_template_active_at_path,
+    set_harness_profile_active_at_path, set_pi_extension_active_at_path, settings_snapshot_at_path,
+    skill_sources_snapshot_at_path, sync_github_skill_source_at_path,
+    sync_provider_models_at_path_with_catalog, update_agent_template_at_path,
+    update_ai_provider_settings_at_path, update_harness_profile_at_path,
+    update_workspace_git_context_at_path, update_workspace_loadout_at_path,
+    workspace_snapshot_at_path, DesktopCommandError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -47,6 +50,12 @@ struct SidecarError {
 #[serde(rename_all = "camelCase")]
 struct SourceIdArgs {
     source_id: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RegisterGitHubSkillSourceArgs {
+    request: RegisterGitHubSkillSourceRequest,
 }
 
 #[derive(Deserialize)]
@@ -370,6 +379,14 @@ fn run() -> Result<(), DesktopCommandError> {
             )?)
         }
         "settings_snapshot" => print_json(&settings_snapshot_at_path(state_path)?),
+        "register_github_skill_source" => {
+            let args = parse_args::<RegisterGitHubSkillSourceArgs>(&args_json)?;
+
+            print_json(&register_github_skill_source_at_path(
+                state_path,
+                args.request,
+            )?)
+        }
         "sync_github_skill_source" => {
             let args = parse_args::<SourceIdArgs>(&args_json)?;
             let cache_root = cache_root
@@ -397,6 +414,11 @@ fn run() -> Result<(), DesktopCommandError> {
                 &args.source_id,
                 args.policy,
             )?)
+        }
+        "activate_skill_source" => {
+            let args = parse_args::<SourceIdArgs>(&args_json)?;
+
+            print_json(&activate_skill_source_at_path(state_path, &args.source_id)?)
         }
         "update_ai_provider_settings" => {
             let args = parse_args::<UpdateSettingsArgs>(&args_json)?;

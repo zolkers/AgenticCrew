@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   approveSkillSourcePermissions,
+  activateSkillSource,
   inspectCachedSkillSource,
   loadSkillSourcesSnapshot,
+  registerGitHubSkillSource,
   syncGitHubSkillSource
 } from "./skillSourcesApi";
 import type { ApprovedPermissionPolicy, SkillSourcesSnapshot } from "../types/core";
@@ -20,6 +22,27 @@ describe("loadSkillSourcesSnapshot", () => {
     });
 
     expect(snapshot).toEqual(rustSnapshot);
+  });
+
+  it("registers a GitHub skill source through the Rust command", async () => {
+    const calls: unknown[] = [];
+    const request = {
+      id: "superpowers",
+      repositoryUrl: "https://github.com/obra/superpowers",
+      selectedRef: "main"
+    };
+
+    await registerGitHubSkillSource((command, args) => {
+      calls.push({ args, command });
+      return Promise.resolve({});
+    }, request);
+
+    expect(calls).toEqual([
+      {
+        args: { request },
+        command: "register_github_skill_source"
+      }
+    ]);
   });
 
   it("approves permission scopes for a skill source through the Rust command", async () => {
@@ -77,6 +100,22 @@ describe("loadSkillSourcesSnapshot", () => {
       {
         args: { sourceId: "superpowers" },
         command: "inspect_cached_skill_source"
+      }
+    ]);
+  });
+
+  it("activates a skill source through the Rust command", async () => {
+    const calls: unknown[] = [];
+
+    await activateSkillSource((command, args) => {
+      calls.push({ args, command });
+      return Promise.resolve({});
+    }, "superpowers");
+
+    expect(calls).toEqual([
+      {
+        args: { sourceId: "superpowers" },
+        command: "activate_skill_source"
       }
     ]);
   });
