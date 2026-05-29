@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { approveSkillSourcePermissions, loadSkillSourcesSnapshot, syncGitHubSkillSource } from "./skillSourcesApi";
+import {
+  approveSkillSourcePermissions,
+  inspectCachedSkillSource,
+  loadSkillSourcesSnapshot,
+  syncGitHubSkillSource
+} from "./skillSourcesApi";
 import type { ApprovedPermissionPolicy, SkillSourcesSnapshot } from "../types/core";
 
 describe("loadSkillSourcesSnapshot", () => {
@@ -56,6 +61,22 @@ describe("loadSkillSourcesSnapshot", () => {
       {
         args: { sourceId: "superpowers" },
         command: "sync_github_skill_source"
+      }
+    ]);
+  });
+
+  it("inspects cached skill manifests through the Rust command", async () => {
+    const calls: unknown[] = [];
+
+    await inspectCachedSkillSource((command, args) => {
+      calls.push({ args, command });
+      return Promise.resolve({});
+    }, "superpowers");
+
+    expect(calls).toEqual([
+      {
+        args: { sourceId: "superpowers" },
+        command: "inspect_cached_skill_source"
       }
     ]);
   });

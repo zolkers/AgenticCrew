@@ -60,6 +60,36 @@ export function SkillSources({ snapshot }: SkillSourcesProps) {
                     <dd>{source.lastSyncError}</dd>
                   </div>
                 ) : null}
+                {source.discoveredSkills && source.discoveredSkills.length > 0 ? (
+                  <div>
+                    <dt>{t("skillSources.labels.discoveredSkills", { defaultValue: "Discovered skills" })}</dt>
+                    <dd>
+                      <ul>
+                        {source.discoveredSkills.map((skill) => (
+                          <li key={skill.id}>
+                            <strong>{skill.name}</strong>
+                            <span>{skill.description}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </dd>
+                  </div>
+                ) : null}
+                {source.validationErrors && source.validationErrors.length > 0 ? (
+                  <div>
+                    <dt>{t("skillSources.labels.validationErrors", { defaultValue: "Validation errors" })}</dt>
+                    <dd>
+                      <ul>
+                        {source.validationErrors.map((error) => (
+                          <li key={`${error.relativePath}:${error.message}`}>
+                            <strong>{error.relativePath}</strong>
+                            <span>{error.message}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt>{t("skillSources.labels.permissionGate", { defaultValue: "Permissions" })}</dt>
                   <dd>

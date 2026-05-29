@@ -11,6 +11,7 @@ describe("SkillSources", () => {
       sources: [
         {
           active: false,
+          discoveredSkills: [],
           id: "superpowers",
           kind: "git_hub",
           lastSyncError: null,
@@ -30,7 +31,8 @@ describe("SkillSources", () => {
           repositoryUrl: "https://github.com/obra/superpowers",
           selectedRef: "main",
           status: "pending_validation",
-          trustLevel: "external"
+          trustLevel: "external",
+          validationErrors: []
         }
       ]
     };
@@ -53,6 +55,14 @@ describe("SkillSources", () => {
       sources: [
         {
           active: false,
+          discoveredSkills: [
+            {
+              description: "Plan work safely",
+              id: "superpowers/planning",
+              name: "planning",
+              relativePath: "skills/planning/SKILL.md"
+            }
+          ],
           id: "superpowers",
           kind: "git_hub",
           lastSyncError: "git fetch failed",
@@ -72,7 +82,13 @@ describe("SkillSources", () => {
           repositoryUrl: "https://github.com/obra/superpowers",
           selectedRef: "main",
           status: "sync_failed",
-          trustLevel: "external"
+          trustLevel: "external",
+          validationErrors: [
+            {
+              message: "missing required frontmatter field 'description'",
+              relativePath: "skills/bad/SKILL.md"
+            }
+          ]
         }
       ]
     };
@@ -83,6 +99,10 @@ describe("SkillSources", () => {
     expect(screen.getByText("abc123")).toBeInTheDocument();
     expect(screen.getByText("C:/AgenticCrew/cache/skills/superpowers")).toBeInTheDocument();
     expect(screen.getByText("git fetch failed")).toBeInTheDocument();
+    expect(screen.getByText("planning")).toBeInTheDocument();
+    expect(screen.getByText("Plan work safely")).toBeInTheDocument();
+    expect(screen.getByText("skills/bad/SKILL.md")).toBeInTheDocument();
+    expect(screen.getByText("missing required frontmatter field 'description'")).toBeInTheDocument();
   });
 
   it("renders the empty state", () => {

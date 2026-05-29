@@ -41,8 +41,21 @@ export type PermissionGate = {
   policy: ApprovedPermissionPolicy;
 };
 
+export type DiscoveredSkillManifest = {
+  description: string;
+  id: string;
+  name: string;
+  relativePath: string;
+};
+
+export type SkillManifestValidationError = {
+  message: string;
+  relativePath: string;
+};
+
 export type SkillSource = {
   active: boolean;
+  discoveredSkills?: DiscoveredSkillManifest[];
   id: string;
   kind: SkillSourceKind;
   lastSyncError?: string | null;
@@ -54,6 +67,7 @@ export type SkillSource = {
   selectedRef: string;
   status: SkillSourceActivationStatus;
   trustLevel: SkillSourceTrustLevel;
+  validationErrors?: SkillManifestValidationError[];
 };
 
 export type SkillSourcesSnapshot = {

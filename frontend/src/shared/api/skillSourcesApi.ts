@@ -3,6 +3,7 @@ import type { ApprovedPermissionPolicy, SkillSourcesSnapshot } from "../types/co
 export type SkillSourcesCommand =
   | "skill_sources_snapshot"
   | "approve_skill_source_permissions"
+  | "inspect_cached_skill_source"
   | "sync_github_skill_source";
 
 export type InvokeSkillSources = (
@@ -24,4 +25,8 @@ export async function approveSkillSourcePermissions(
 
 export async function syncGitHubSkillSource(invoke: InvokeSkillSources, sourceId: string): Promise<void> {
   await invoke("sync_github_skill_source", { sourceId });
+}
+
+export async function inspectCachedSkillSource(invoke: InvokeSkillSources, sourceId: string): Promise<void> {
+  await invoke("inspect_cached_skill_source", { sourceId });
 }

@@ -63,8 +63,28 @@ pub struct SkillSource {
     #[serde(default)]
     pub last_sync_error: Option<String>,
     #[serde(default)]
+    pub discovered_skills: Vec<DiscoveredSkillManifest>,
+    #[serde(default)]
+    pub validation_errors: Vec<SkillManifestValidationError>,
+    #[serde(default)]
     pub permission_gate: PermissionGate,
     pub active: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveredSkillManifest {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub relative_path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillManifestValidationError {
+    pub relative_path: String,
+    pub message: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -106,6 +126,8 @@ impl SkillSource {
             local_cache_path: None,
             last_synced_commit: None,
             last_sync_error: None,
+            discovered_skills: Vec::new(),
+            validation_errors: Vec::new(),
             permission_gate: PermissionGate::default(),
             active: false,
         })
@@ -121,6 +143,8 @@ impl SkillSource {
         self.local_cache_path = Some(cache_path);
         self.last_synced_commit = Some(commit);
         self.last_sync_error = None;
+        self.discovered_skills.clear();
+        self.validation_errors.clear();
     }
 
     pub fn record_sync_failure(&mut self, error: String) {
@@ -129,7 +153,25 @@ impl SkillSource {
         self.local_cache_path = None;
         self.last_synced_commit = None;
         self.last_sync_error = Some(error);
+        self.discovered_skills.clear();
+        self.validation_errors.clear();
         self.active = false;
+    }
+
+    pub fn record_manifest_validation(
+        &mut self,
+        discovered_skills: Vec<DiscoveredSkillManifest>,
+        validation_errors: Vec<SkillManifestValidationError>,
+    ) {
+        self.discovered_skills = discovered_skills;
+        self.validation_errors = validation_errors;
+        self.active = false;
+
+        if self.validation_errors.is_empty() {
+            self.status = SkillSourceActivationStatus::Validated;
+        } else {
+            self.status = SkillSourceActivationStatus::Rejected;
+        }
     }
 
     pub fn activate(&mut self) -> Result<(), SkillSourceError> {
@@ -220,6 +262,8 @@ mod tests {
         assert_eq!(source.local_cache_path, None);
         assert_eq!(source.last_synced_commit, None);
         assert_eq!(source.last_sync_error, None);
+        assert!(source.discovered_skills.is_empty());
+        assert!(source.validation_errors.is_empty());
         assert!(!source.active);
         assert!(!source.permission_gate.approved);
         assert!(source.permission_gate.policy.file_system.is_empty());
@@ -274,6 +318,51 @@ mod tests {
         assert_eq!(source.local_cache_path, None);
         assert_eq!(source.last_synced_commit, None);
         assert_eq!(source.last_sync_error, Some("git fetch failed".to_owned()));
+        assert!(source.discovered_skills.is_empty());
+        assert!(source.validation_errors.is_empty());
+        assert!(!source.active);
+    }
+
+    #[test]
+    fn manifest_validation_records_discovered_skills_without_activating() {
+        let mut source = github_skill_source();
+
+        source.record_manifest_validation(
+            vec![DiscoveredSkillManifest {
+                id: "superpowers/planning".to_owned(),
+                name: "planning".to_owned(),
+                description: "Plan work safely".to_owned(),
+                relative_path: "skills/planning/SKILL.md".to_owned(),
+            }],
+            Vec::new(),
+        );
+
+        assert_eq!(source.status, SkillSourceActivationStatus::Validated);
+        assert_eq!(source.discovered_skills.len(), 1);
+        assert_eq!(source.discovered_skills[0].name, "planning");
+        assert!(source.validation_errors.is_empty());
+        assert!(!source.active);
+    }
+
+    #[test]
+    fn manifest_validation_errors_reject_source_without_activating() {
+        let mut source = github_skill_source();
+        source
+            .approve_permissions(sample_permission_policy());
+        source.mark_validated();
+        source.activate().expect("source should activate before rejection");
+
+        source.record_manifest_validation(
+            Vec::new(),
+            vec![SkillManifestValidationError {
+                relative_path: "skills/bad/SKILL.md".to_owned(),
+                message: "missing required frontmatter field 'description'".to_owned(),
+            }],
+        );
+
+        assert_eq!(source.status, SkillSourceActivationStatus::Rejected);
+        assert!(source.discovered_skills.is_empty());
+        assert_eq!(source.validation_errors.len(), 1);
         assert!(!source.active);
     }
 

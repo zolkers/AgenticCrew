@@ -18,6 +18,7 @@ const skillSourcesSnapshot: SkillSourcesSnapshot = {
   sources: [
     {
       active: false,
+      discoveredSkills: [],
       id: "superpowers",
       kind: "git_hub",
       lastSyncError: null,
@@ -37,7 +38,8 @@ const skillSourcesSnapshot: SkillSourcesSnapshot = {
       repositoryUrl: "https://github.com/obra/superpowers",
       selectedRef: "main",
       status: "pending_validation",
-      trustLevel: "external"
+      trustLevel: "external",
+      validationErrors: []
     }
   ]
 };

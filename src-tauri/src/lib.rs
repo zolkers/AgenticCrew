@@ -10,6 +10,7 @@ use serde::Serialize;
 use core::{
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
     permissions::ApprovedPermissionPolicy,
+    skill_manifest::{inspect_skill_manifests, SkillManifestInspectionError},
     skill_sync::{sync_github_skill_source_to_cache, SkillSourceSyncError},
     skills::{
         skill_sources_snapshot_from_state, RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot,
@@ -61,6 +62,12 @@ impl From<StateMutationError> for DesktopCommandError {
 
 impl From<SkillSourceSyncError> for DesktopCommandError {
     fn from(error: SkillSourceSyncError) -> Self {
+        Self::new(error.to_string())
+    }
+}
+
+impl From<SkillManifestInspectionError> for DesktopCommandError {
+    fn from(error: SkillManifestInspectionError) -> Self {
         Self::new(error.to_string())
     }
 }
@@ -181,6 +188,36 @@ pub fn sync_github_skill_source_at_path(
     Ok(state)
 }
 
+pub fn inspect_cached_skill_source_at_path(
+    path: impl AsRef<Path>,
+    source_id: &str,
+) -> Result<AgentOsState, DesktopCommandError> {
+    let store = JsonStateStore::new(path.as_ref());
+    let mut state = store.load()?;
+    let cache_path = state
+        .skill_sources
+        .iter()
+        .find(|source| source.id == source_id)
+        .ok_or_else(|| StateMutationError::MissingSkillSource {
+            source_id: source_id.to_owned(),
+        })?
+        .local_cache_path
+        .clone()
+        .ok_or_else(|| {
+            DesktopCommandError::new(format!("skill source '{source_id}' has no local cache"))
+        })?;
+
+    let inspection = inspect_skill_manifests(cache_path, source_id)?;
+    state.record_skill_source_manifest_validation(
+        source_id,
+        inspection.discovered_skills,
+        inspection.validation_errors,
+    )?;
+    store.save(&state)?;
+
+    Ok(state)
+}
+
 pub fn approve_skill_source_permissions_at_path(
     path: impl AsRef<Path>,
     source_id: &str,
@@ -223,7 +260,8 @@ mod commands {
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
         create_feature_session_at_path, durable_state_snapshot_at_path,
-        mission_control_snapshot_at_path, record_command_evidence_at_path,
+        inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
+        record_command_evidence_at_path,
         register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
         sync_github_skill_source_at_path, validate_skill_source_at_path,
         CreateCheckpointRequest, CreateFeatureSessionRequest, DesktopCommandError,
@@ -315,6 +353,14 @@ mod commands {
     }
 
     #[tauri::command]
+    pub fn inspect_cached_skill_source(
+        app: tauri::AppHandle,
+        source_id: String,
+    ) -> Result<AgentOsState, DesktopCommandError> {
+        inspect_cached_skill_source_at_path(app_state_path(&app)?, &source_id)
+    }
+
+    #[tauri::command]
     pub fn activate_skill_source(
         app: tauri::AppHandle,
         source_id: String,
@@ -353,6 +399,7 @@ pub fn run() {
             commands::register_github_skill_source,
             commands::validate_skill_source,
             commands::sync_github_skill_source,
+            commands::inspect_cached_skill_source,
             commands::approve_skill_source_permissions,
             commands::activate_skill_source
         ])
@@ -368,7 +415,7 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use std::{
-        env,
+        env, fs,
         path::{Path, PathBuf},
         time::{SystemTime, UNIX_EPOCH},
     };
@@ -377,8 +424,8 @@ mod tests {
         activate_skill_source_at_path, add_checkpoint_at_path, app_name,
         approve_skill_source_permissions_at_path, close_feature_session_at_path,
         create_feature_session_at_path, durable_state_snapshot_at_path,
-        mission_control_snapshot_at_path, record_command_evidence_at_path,
-        record_skill_source_sync_success_at_path,
+        inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
+        record_command_evidence_at_path, record_skill_source_sync_success_at_path,
         register_github_skill_source_at_path,
         skill_sources_snapshot_at_path, state_file_path, validate_skill_source_at_path,
         STATE_FILE_NAME,
@@ -593,6 +640,48 @@ mod tests {
             loaded.skill_sources[0].last_synced_commit,
             Some("abc123".to_owned())
         );
+    }
+
+    #[test]
+    fn inspect_cached_skill_source_command_persists_discovered_manifests() {
+        let path = test_path(
+            "inspect_cached_skill_source_command_persists_discovered_manifests",
+            "state.json",
+        );
+        let cache_path = test_path(
+            "inspect_cached_skill_source_command_persists_discovered_manifests",
+            "cache",
+        );
+        let skill_path = cache_path.join("skills/planning/SKILL.md");
+        fs::create_dir_all(skill_path.parent().expect("skill parent")).expect("create skill dir");
+        fs::write(
+            &skill_path,
+            "---\nname: planning\ndescription: Plan work safely\n---\n\nBody",
+        )
+        .expect("write skill manifest");
+        register_github_skill_source_at_path(&path, github_skill_source_request())
+            .expect("github skill source should save");
+        record_skill_source_sync_success_at_path(
+            &path,
+            "superpowers",
+            cache_path.display().to_string(),
+            "abc123".to_owned(),
+        )
+        .expect("sync metadata should save");
+
+        let inspected = inspect_cached_skill_source_at_path(&path, "superpowers")
+            .expect("cached skill source should inspect");
+
+        assert_eq!(
+            inspected.skill_sources[0].status,
+            crate::core::skills::SkillSourceActivationStatus::Validated
+        );
+        assert_eq!(inspected.skill_sources[0].discovered_skills.len(), 1);
+        assert_eq!(
+            inspected.skill_sources[0].discovered_skills[0].id,
+            "superpowers/planning"
+        );
+        assert!(!inspected.skill_sources[0].active);
     }
 
     fn create_session_request() -> CreateFeatureSessionRequest {

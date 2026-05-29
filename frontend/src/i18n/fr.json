@@ -28,6 +28,7 @@
       "local": "Locale"
     },
     "labels": {
+      "discoveredSkills": "Skills decouverts",
       "kind": "Type",
       "lastSyncError": "Erreur de sync",
       "lastSyncStatus": "Derniere sync",
@@ -37,7 +38,8 @@
       "ref": "Ref",
       "repository": "Depot",
       "status": "Statut",
-      "trustLevel": "Confiance"
+      "trustLevel": "Confiance",
+      "validationErrors": "Erreurs de validation"
     },
     "status": {
       "pending_validation": "Validation en attente",
