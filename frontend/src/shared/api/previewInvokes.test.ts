@@ -84,4 +84,22 @@ describe("previewInvokes", () => {
       }
     });
   });
+
+  it("clears preview settings api key metadata when an empty key is provided", async () => {
+    await expect(
+      previewSettingsInvoke("update_ai_provider_settings", {
+        request: {
+          apiKey: "",
+          providerId: "openai",
+          selectedModelId: "gpt-5.2"
+        }
+      })
+    ).resolves.toMatchObject({
+      aiProvider: {
+        apiKeyConfigured: false,
+        apiKeyLastFour: null,
+        selectedModelId: "gpt-5.2"
+      }
+    });
+  });
 });

@@ -343,6 +343,39 @@ describe("App", () => {
     expect(screen.getByText("ChatGPT provider selected")).toBeInTheDocument();
   });
 
+  it("keeps provider settings in sync after saving from Settings", async () => {
+    const updatedSettingsSnapshot: SettingsSnapshot = {
+      aiProvider: {
+        apiKeyConfigured: true,
+        apiKeyLastFour: "9999",
+        displayName: "OpenAI",
+        providerId: "openai",
+        selectedModelId: "gpt-5.2"
+      }
+    };
+    const interactiveSettingsInvoke = (command: string) =>
+      Promise.resolve(command === "settings_snapshot" ? settingsSnapshot : updatedSettingsSnapshot);
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={interactiveSettingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.change(await screen.findByLabelText("Model"), { target: { value: "gpt-5.2" } });
+    fireEvent.change(screen.getByLabelText("API key"), { target: { value: "sk-proj-secret9999" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("Configured ending in 9999")).toBeInTheDocument();
+    expect(screen.getByText("gpt-5.2")).toBeInTheDocument();
+  });
+
   it("can return to the workspace launchpad from the topbar", async () => {
     render(
       <App

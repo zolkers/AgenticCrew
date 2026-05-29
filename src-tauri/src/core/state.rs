@@ -317,8 +317,9 @@ impl AgentOsState {
         &mut self,
         request: UpdateAiProviderSettingsRequest,
     ) -> Result<(), StateMutationError> {
+        let previous = self.desktop_settings.ai_provider.clone();
         self.desktop_settings.ai_provider = request
-            .into_settings()
+            .into_settings(&previous)
             .map_err(StateMutationError::InvalidDesktopSettings)?;
 
         Ok(())
@@ -669,6 +670,33 @@ mod tests {
             .expect("settings should update");
 
         assert_eq!(state.desktop_settings.ai_provider.selected_model_id, "gpt-5.1");
+        assert!(state.desktop_settings.ai_provider.api_key_configured);
+        assert_eq!(
+            state.desktop_settings.ai_provider.api_key_last_four,
+            Some("5678".to_owned())
+        );
+    }
+
+    #[test]
+    fn update_ai_provider_settings_preserves_key_when_api_key_is_omitted() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .update_ai_provider_settings(UpdateAiProviderSettingsRequest {
+                provider_id: "openai".to_owned(),
+                selected_model_id: "gpt-5.1".to_owned(),
+                api_key: Some("sk-proj-secret5678".to_owned()),
+            })
+            .expect("settings should update");
+        state
+            .update_ai_provider_settings(UpdateAiProviderSettingsRequest {
+                provider_id: "openai".to_owned(),
+                selected_model_id: "gpt-5.2".to_owned(),
+                api_key: None,
+            })
+            .expect("settings should update");
+
+        assert_eq!(state.desktop_settings.ai_provider.selected_model_id, "gpt-5.2");
         assert!(state.desktop_settings.ai_provider.api_key_configured);
         assert_eq!(
             state.desktop_settings.ai_provider.api_key_last_four,

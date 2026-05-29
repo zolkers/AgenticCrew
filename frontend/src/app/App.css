@@ -36,7 +36,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -565,6 +566,84 @@ button {
   border-radius: 8px;
   color: var(--color-text);
   background: var(--color-terminal);
+}
+
+.settings-form {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.settings-form label {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.settings-form label span {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.settings-form input,
+.settings-form select {
+  width: 100%;
+  min-height: 2.55rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  background: var(--color-terminal);
+}
+
+.settings-form input:focus,
+.settings-form select:focus {
+  border-color: rgba(78, 212, 200, 0.72);
+  outline: 0;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.settings-actions button {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  min-height: 2.4rem;
+  padding: 0 0.8rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
+  color: var(--color-text);
+  background: var(--color-panel-strong);
+}
+
+.settings-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.settings-status,
+.settings-error {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  min-height: 2rem;
+  font-size: 0.86rem;
+}
+
+.settings-status {
+  color: var(--color-teal);
+}
+
+.settings-error {
+  color: var(--color-coral);
 }
 
 .run-status-bar {

@@ -293,7 +293,18 @@ export function App({
         ) : null}
         {activeView === "agentStudio" ? <AgentStudio snapshot={loadState.agentStudioSnapshot} /> : null}
         {activeView === "gitPanel" ? <GitPanel workspace={activeWorkspace} /> : null}
-        {activeView === "settings" ? <SettingsPanel invoke={settingsInvoke} snapshot={loadState.settingsSnapshot} /> : null}
+        {activeView === "settings" ? (
+          <SettingsPanel
+            invoke={settingsInvoke}
+            onSnapshotChange={(settingsSnapshot) => {
+              setLoadState({
+                ...loadState,
+                settingsSnapshot
+              });
+            }}
+            snapshot={loadState.settingsSnapshot}
+          />
+        ) : null}
       </main>
       </div>
     </MantineProvider>

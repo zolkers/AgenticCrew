@@ -59,7 +59,10 @@ pub struct UpdateAiProviderSettingsRequest {
 }
 
 impl UpdateAiProviderSettingsRequest {
-    pub fn into_settings(self) -> Result<AiProviderSettings, SettingsValidationError> {
+    pub fn into_settings(
+        self,
+        previous: &AiProviderSettings,
+    ) -> Result<AiProviderSettings, SettingsValidationError> {
         if self.provider_id != "openai" {
             return Err(SettingsValidationError::UnsupportedProvider {
                 provider_id: self.provider_id,
@@ -71,9 +74,21 @@ impl UpdateAiProviderSettingsRequest {
             return Err(SettingsValidationError::EmptyModel);
         }
 
-        let trimmed_key = self.api_key.as_deref().map(str::trim).unwrap_or_default();
-        let api_key_configured = !trimmed_key.is_empty();
-        let api_key_last_four = api_key_configured.then(|| last_four(trimmed_key));
+        let (api_key_configured, api_key_last_four) = match self.api_key {
+            Some(api_key) => {
+                let trimmed_key = api_key.trim();
+
+                if trimmed_key.is_empty() {
+                    (false, None)
+                } else {
+                    (true, Some(last_four(trimmed_key)))
+                }
+            }
+            None => (
+                previous.api_key_configured,
+                previous.api_key_last_four.clone(),
+            ),
+        };
 
         Ok(AiProviderSettings {
             provider_id: "openai".to_owned(),
@@ -133,10 +148,55 @@ mod tests {
             selected_model_id: "gpt-5.1".to_owned(),
             api_key: Some("sk-proj-secret1234".to_owned()),
         }
-        .into_settings()
+        .into_settings(&AiProviderSettings::openai_default())
         .expect("valid settings");
 
         assert!(settings.api_key_configured);
         assert_eq!(settings.api_key_last_four, Some("1234".to_owned()));
+    }
+
+    #[test]
+    fn update_request_preserves_existing_key_metadata_when_key_is_omitted() {
+        let previous = AiProviderSettings {
+            api_key_configured: true,
+            api_key_last_four: Some("5678".to_owned()),
+            display_name: "OpenAI".to_owned(),
+            provider_id: "openai".to_owned(),
+            selected_model_id: "gpt-5".to_owned(),
+        };
+
+        let settings = UpdateAiProviderSettingsRequest {
+            provider_id: "openai".to_owned(),
+            selected_model_id: "gpt-5.2".to_owned(),
+            api_key: None,
+        }
+        .into_settings(&previous)
+        .expect("valid settings");
+
+        assert_eq!(settings.selected_model_id, "gpt-5.2");
+        assert!(settings.api_key_configured);
+        assert_eq!(settings.api_key_last_four, Some("5678".to_owned()));
+    }
+
+    #[test]
+    fn update_request_clears_key_metadata_when_empty_key_is_provided() {
+        let previous = AiProviderSettings {
+            api_key_configured: true,
+            api_key_last_four: Some("5678".to_owned()),
+            display_name: "OpenAI".to_owned(),
+            provider_id: "openai".to_owned(),
+            selected_model_id: "gpt-5".to_owned(),
+        };
+
+        let settings = UpdateAiProviderSettingsRequest {
+            provider_id: "openai".to_owned(),
+            selected_model_id: "gpt-5.2".to_owned(),
+            api_key: Some(" ".to_owned()),
+        }
+        .into_settings(&previous)
+        .expect("valid settings");
+
+        assert!(!settings.api_key_configured);
+        assert_eq!(settings.api_key_last_four, None);
     }
 }

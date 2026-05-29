@@ -136,13 +136,20 @@ export const previewSkillSourcesInvoke: InvokeSkillSources = (command) => {
 export const previewSettingsInvoke: InvokeSettings = (command, args) => {
   if (command === "update_ai_provider_settings") {
     const request = args?.request as { apiKey?: string | null; selectedModelId?: string } | undefined;
-    const apiKey = request?.apiKey?.trim() ?? "";
+    const apiKey = request?.apiKey?.trim();
+    const apiKeyConfigured =
+      apiKey === undefined ? previewSettingsSnapshot.aiProvider.apiKeyConfigured : apiKey.length > 0;
+    let apiKeyLastFour = previewSettingsSnapshot.aiProvider.apiKeyLastFour;
+
+    if (apiKey !== undefined) {
+      apiKeyLastFour = apiKey.length > 0 ? apiKey.slice(-4) : null;
+    }
 
     return Promise.resolve({
       aiProvider: {
         ...previewSettingsSnapshot.aiProvider,
-        apiKeyConfigured: apiKey.length > 0,
-        apiKeyLastFour: apiKey.length > 0 ? apiKey.slice(-4) : null,
+        apiKeyConfigured,
+        apiKeyLastFour,
         selectedModelId: request?.selectedModelId ?? previewSettingsSnapshot.aiProvider.selectedModelId
       }
     });
