@@ -2,6 +2,7 @@ use serde::Serialize;
 use std::collections::BTreeSet;
 
 use super::{
+    evidence::Evidence,
     sessions::{CheckpointStatus, FeatureSessionStatus},
     state::AgentOsState,
 };
@@ -24,6 +25,64 @@ pub struct MissionControlSnapshot {
     pub model: String,
     pub current_checkpoint: String,
     pub human_gate_status: HumanGateStatus,
+    pub sessions: Vec<MissionSessionSummary>,
+    pub checkpoints: Vec<MissionCheckpointSummary>,
+    pub cost_summary: MissionCostSummary,
+    pub git_summary: MissionGitSummary,
+    pub skill_summary: MissionSkillSummary,
+    pub recent_evidence: Vec<MissionEvidenceSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissionSessionSummary {
+    pub id: String,
+    pub title: String,
+    pub branch: String,
+    pub status: FeatureSessionStatus,
+    pub checkpoint_count: u64,
+    pub pending_checkpoint_count: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissionCheckpointSummary {
+    pub session_id: String,
+    pub label: String,
+    pub owner_agent: String,
+    pub status: CheckpointStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissionCostSummary {
+    pub total_usd: f64,
+    pub model_call_count: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissionGitSummary {
+    pub workspace_count: u64,
+    pub active_branches: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissionSkillSummary {
+    pub source_count: u64,
+    pub active_source_count: u64,
+    pub discovered_skill_count: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissionEvidenceSummary {
+    pub evidence_id: String,
+    pub checkpoint_id: String,
+    pub command: String,
+    pub exit_code: i32,
+    pub created_at: String,
 }
 
 pub fn initial_mission_control_snapshot() -> MissionControlSnapshot {
@@ -95,6 +154,84 @@ pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionContr
         ),
         current_checkpoint,
         human_gate_status,
+        sessions: active_sessions
+            .iter()
+            .map(|session| MissionSessionSummary {
+                id: session.id.clone(),
+                title: session.title.clone(),
+                branch: session.branch.clone(),
+                status: session.status,
+                checkpoint_count: session.checkpoints.len() as u64,
+                pending_checkpoint_count: session
+                    .checkpoints
+                    .iter()
+                    .filter(|checkpoint| checkpoint.status != CheckpointStatus::Passed)
+                    .count() as u64,
+            })
+            .collect(),
+        checkpoints: active_sessions
+            .iter()
+            .flat_map(|session| {
+                session
+                    .checkpoints
+                    .iter()
+                    .map(|checkpoint| MissionCheckpointSummary {
+                        session_id: session.id.clone(),
+                        label: checkpoint.label.clone(),
+                        owner_agent: checkpoint.owner_agent.clone(),
+                        status: checkpoint.status,
+                    })
+            })
+            .collect(),
+        cost_summary: MissionCostSummary {
+            total_usd: state
+                .model_call_estimates
+                .iter()
+                .map(|estimate| estimate.estimated_cost_usd)
+                .sum(),
+            model_call_count: state.model_call_estimates.len() as u64,
+        },
+        git_summary: MissionGitSummary {
+            workspace_count: state.workspaces.len() as u64,
+            active_branches: state
+                .workspaces
+                .iter()
+                .map(|workspace| workspace.branch.clone())
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect(),
+        },
+        skill_summary: MissionSkillSummary {
+            source_count: state.skill_sources.len() as u64,
+            active_source_count: state
+                .skill_sources
+                .iter()
+                .filter(|source| source.active)
+                .count() as u64,
+            discovered_skill_count: state
+                .skill_sources
+                .iter()
+                .map(|source| source.discovered_skills.len() as u64)
+                .sum(),
+        },
+        recent_evidence: state
+            .evidence
+            .iter()
+            .rev()
+            .take(5)
+            .rev()
+            .map(evidence_summary)
+            .collect(),
+    }
+}
+
+fn evidence_summary(evidence: &Evidence) -> MissionEvidenceSummary {
+    MissionEvidenceSummary {
+        evidence_id: evidence.evidence_id.clone(),
+        checkpoint_id: evidence.checkpoint_id.clone(),
+        command: evidence.command.clone(),
+        exit_code: evidence.exit_code,
+        created_at: evidence.created_at.clone(),
     }
 }
 
@@ -126,6 +263,22 @@ mod tests {
                 model: "gpt-5-codex".to_owned(),
                 current_checkpoint: "initial".to_owned(),
                 human_gate_status: HumanGateStatus::Open,
+                sessions: Vec::new(),
+                checkpoints: Vec::new(),
+                cost_summary: super::MissionCostSummary {
+                    total_usd: 0.0,
+                    model_call_count: 0,
+                },
+                git_summary: super::MissionGitSummary {
+                    workspace_count: 2,
+                    active_branches: vec!["dev".to_owned(), "qa/device-smoke".to_owned()],
+                },
+                skill_summary: super::MissionSkillSummary {
+                    source_count: 0,
+                    active_source_count: 0,
+                    discovered_skill_count: 0,
+                },
+                recent_evidence: Vec::new(),
             }
         );
     }
@@ -143,7 +296,23 @@ mod tests {
                 "provider": "openai",
                 "model": "gpt-5-codex",
                 "currentCheckpoint": "initial",
-                "humanGateStatus": "open"
+                "humanGateStatus": "open",
+                "sessions": [],
+                "checkpoints": [],
+                "costSummary": {
+                    "totalUsd": 0.0,
+                    "modelCallCount": 0
+                },
+                "gitSummary": {
+                    "workspaceCount": 2,
+                    "activeBranches": ["dev", "qa/device-smoke"]
+                },
+                "skillSummary": {
+                    "sourceCount": 0,
+                    "activeSourceCount": 0,
+                    "discoveredSkillCount": 0
+                },
+                "recentEvidence": []
             })
         );
     }
@@ -159,6 +328,8 @@ mod tests {
         assert_eq!(snapshot.active_agent_count, 1);
         assert_eq!(snapshot.current_checkpoint, "State tests");
         assert_eq!(snapshot.human_gate_status, HumanGateStatus::Pending);
+        assert_eq!(snapshot.sessions[0].pending_checkpoint_count, 1);
+        assert_eq!(snapshot.checkpoints[0].owner_agent, "qa");
 
         state.feature_sessions[0].status = FeatureSessionStatus::Closed;
         let closed_snapshot = mission_control_snapshot_from_state(&state);
@@ -180,6 +351,8 @@ mod tests {
         assert_eq!(snapshot.current_cost_usd, 1.0);
         assert_eq!(snapshot.provider, "anthropic");
         assert_eq!(snapshot.model, "claude-sonnet");
+        assert_eq!(snapshot.cost_summary.total_usd, 1.0);
+        assert_eq!(snapshot.cost_summary.model_call_count, 2);
     }
 
     #[test]

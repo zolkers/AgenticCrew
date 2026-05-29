@@ -912,6 +912,131 @@ section[aria-label="Settings"] {
   background: var(--color-panel);
 }
 
+.mission-page {
+  max-width: 1180px !important;
+}
+
+.mission-header h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+}
+
+.mission-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.mission-kpis div,
+.mission-panel {
+  min-width: 0;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  background: var(--color-terminal);
+}
+
+.mission-kpis div {
+  padding: 0.85rem;
+}
+
+.mission-kpis dt {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+.mission-kpis dt svg {
+  color: var(--color-teal);
+}
+
+.mission-kpis dd {
+  margin: 0.45rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.mission-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.mission-panel {
+  padding: 1rem;
+}
+
+.mission-panel h2 {
+  margin: 0 0 0.8rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.mission-list {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.mission-list li {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border-left: 2px solid var(--color-teal);
+  background: var(--color-panel);
+}
+
+.mission-list strong,
+.mission-list span,
+.mission-list small,
+.mission-facts dd {
+  overflow-wrap: anywhere;
+}
+
+.mission-list span,
+.mission-list small,
+.mission-empty {
+  color: var(--color-muted);
+}
+
+.mission-list span,
+.evidence-list strong {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.mission-facts {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+}
+
+.mission-facts div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.65rem;
+  background: var(--color-panel);
+}
+
+.mission-facts dt {
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+}
+
+.mission-facts dd {
+  margin: 0;
+  font-weight: 800;
+}
+
 .surface-header {
   display: flex;
   justify-content: space-between;
@@ -1096,7 +1221,8 @@ section[aria-label="Settings"] {
   .cockpit-hero,
   .agent-header,
   .command-bar,
-  .git-context-form {
+  .git-context-form,
+  .mission-grid {
     grid-template-columns: 1fr;
   }
 

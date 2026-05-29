@@ -17,11 +17,27 @@ import type { InvokeWorkspace } from "./workspaceApi";
 const previewMissionControlSnapshot: MissionControlSnapshot = {
   activeAgentCount: 0,
   activeSessionCount: 0,
+  checkpoints: [],
+  costSummary: {
+    modelCallCount: 0,
+    totalUsd: 0
+  },
   currentCheckpoint: "Preview mode",
   currentCostUsd: 0,
+  gitSummary: {
+    activeBranches: ["codex/cockpit-prototype", "codex/mobile-smoke"],
+    workspaceCount: 2
+  },
   humanGateStatus: "open",
   model: "local-preview",
-  provider: "browser"
+  provider: "browser",
+  recentEvidence: [],
+  sessions: [],
+  skillSummary: {
+    activeSourceCount: 0,
+    discoveredSkillCount: 0,
+    sourceCount: 1
+  }
 };
 
 const previewWorkspaceSnapshot: WorkspaceSnapshot = {

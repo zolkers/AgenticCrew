@@ -7,11 +7,27 @@ describe("loadMissionControlSnapshot", () => {
     const rustSnapshot: MissionControlSnapshot = {
       activeAgentCount: 7,
       activeSessionCount: 3,
+      checkpoints: [],
+      costSummary: {
+        modelCallCount: 1,
+        totalUsd: 2.5
+      },
       currentCheckpoint: "Tests are red",
       currentCostUsd: 2.5,
+      gitSummary: {
+        activeBranches: ["dev"],
+        workspaceCount: 1
+      },
       humanGateStatus: "pending",
       model: "gpt-5-mini",
-      provider: "openai"
+      provider: "openai",
+      recentEvidence: [],
+      sessions: [],
+      skillSummary: {
+        activeSourceCount: 0,
+        discoveredSkillCount: 0,
+        sourceCount: 0
+      }
     };
     const calls: string[] = [];
 

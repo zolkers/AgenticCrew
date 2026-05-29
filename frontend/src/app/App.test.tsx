@@ -18,11 +18,51 @@ const openAiModels = [
 const missionControlSnapshot: MissionControlSnapshot = {
   activeAgentCount: 9,
   activeSessionCount: 5,
+  checkpoints: [
+    {
+      label: "Injected checkpoint item",
+      ownerAgent: "maya",
+      sessionId: "session-1",
+      status: "pending"
+    }
+  ],
+  costSummary: {
+    modelCallCount: 3,
+    totalUsd: 4.75
+  },
   currentCheckpoint: "Injected from invoke",
   currentCostUsd: 4.75,
+  gitSummary: {
+    activeBranches: ["dev"],
+    workspaceCount: 2
+  },
   humanGateStatus: "open",
   model: "gpt-5",
-  provider: "openai"
+  provider: "openai",
+  recentEvidence: [
+    {
+      checkpointId: "checkpoint-1",
+      command: "npm run test",
+      createdAt: "2026-05-29T12:00:00Z",
+      evidenceId: "ev-1",
+      exitCode: 0
+    }
+  ],
+  sessions: [
+    {
+      branch: "dev",
+      checkpointCount: 2,
+      id: "session-1",
+      pendingCheckpointCount: 1,
+      status: "running",
+      title: "Injected session"
+    }
+  ],
+  skillSummary: {
+    activeSourceCount: 1,
+    discoveredSkillCount: 4,
+    sourceCount: 2
+  }
 };
 
 const skillSourcesSnapshot: SkillSourcesSnapshot = {
@@ -731,11 +771,27 @@ describe("App", () => {
     pendingMissionControlSnapshot.resolveSnapshot({
       activeAgentCount: 1,
       activeSessionCount: 1,
+      checkpoints: [],
+      costSummary: {
+        modelCallCount: 0,
+        totalUsd: 1
+      },
       currentCheckpoint: "Unmounted success",
       currentCostUsd: 1,
+      gitSummary: {
+        activeBranches: [],
+        workspaceCount: 0
+      },
       humanGateStatus: "open",
       model: "gpt-5",
-      provider: "openai"
+      provider: "openai",
+      recentEvidence: [],
+      sessions: [],
+      skillSummary: {
+        activeSourceCount: 0,
+        discoveredSkillCount: 0,
+        sourceCount: 0
+      }
     });
     pendingSkillSourcesSnapshot.resolveSnapshot(skillSourcesSnapshot);
     await Promise.all([pendingMissionControlSnapshot.promise, pendingSkillSourcesSnapshot.promise]);

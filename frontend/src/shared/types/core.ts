@@ -3,11 +3,66 @@ export type HumanGateStatus = "open" | "pending" | "blocked";
 export type MissionControlSnapshot = {
   activeAgentCount: number;
   activeSessionCount: number;
+  checkpoints: MissionCheckpointSummary[];
+  costSummary: MissionCostSummary;
   currentCheckpoint: string;
   currentCostUsd: number;
+  gitSummary: MissionGitSummary;
   humanGateStatus: HumanGateStatus;
   model: string;
   provider: string;
+  recentEvidence: MissionEvidenceSummary[];
+  sessions: MissionSessionSummary[];
+  skillSummary: MissionSkillSummary;
+};
+
+export type MissionSessionSummary = {
+  branch: string;
+  checkpointCount: number;
+  id: string;
+  pendingCheckpointCount: number;
+  status:
+    | "archived"
+    | "blocked"
+    | "closed"
+    | "closing"
+    | "draft"
+    | "opened"
+    | "planning"
+    | "running"
+    | "validating";
+  title: string;
+};
+
+export type MissionCheckpointSummary = {
+  label: string;
+  ownerAgent: string;
+  sessionId: string;
+  status: "blocked" | "failed" | "passed" | "pending";
+};
+
+export type MissionCostSummary = {
+  modelCallCount: number;
+  totalUsd: number;
+};
+
+export type MissionGitSummary = {
+  activeBranches: string[];
+  workspaceCount: number;
+};
+
+export type MissionSkillSummary = {
+  activeSourceCount: number;
+  discoveredSkillCount: number;
+  sourceCount: number;
+};
+
+export type MissionEvidenceSummary = {
+  checkpointId: string;
+  command: string;
+  createdAt: string;
+  evidenceId: string;
+  exitCode: number;
 };
 
 export type WorkspaceAgent = {
