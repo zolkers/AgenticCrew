@@ -66,8 +66,12 @@ function findClionMingwBin() {
     return undefined;
   }
 
-  const jetbrainsRoot = "C:\\Program Files\\JetBrains";
-  const candidates = existsSync(jetbrainsRoot)
+  const jetbrainsRoot =
+    process.env.JETBRAINS_ROOT ??
+    (process.env.ProgramFiles === undefined
+      ? undefined
+      : join(process.env.ProgramFiles, "JetBrains"));
+  const candidates = jetbrainsRoot !== undefined && existsSync(jetbrainsRoot)
     ? readdirSync(jetbrainsRoot)
         .filter((entry) => entry.startsWith("CLion"))
         .sort()

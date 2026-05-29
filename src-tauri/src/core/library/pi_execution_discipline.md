@@ -4,7 +4,7 @@ type: harness_policy
 version: 1
 name: Pi Execution Discipline
 category: execution
-source: "C:\\Users\\riege\\Documents\\perso\\SYSTEM.md"
+source: "system-policy-import"
 rules:
   - targeted_inspection
   - precise_edits
