@@ -1,7 +1,12 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AgentStudio } from "./AgentStudio";
-import type { AgentStudioSnapshot, AiModelRecord, HarnessStudioSnapshot } from "../../shared/types/core";
+import type {
+  AgentStudioSnapshot,
+  AiModelRecord,
+  DiscoveredSkillManifest,
+  HarnessStudioSnapshot
+} from "../../shared/types/core";
 
 const harnessSnapshot: HarnessStudioSnapshot = {
   activeProfileCount: 1,
@@ -29,6 +34,16 @@ const modelOptions: AiModelRecord[] = [
   { id: "gpt-5.2", label: "GPT-5.2", providerId: "openai" },
   { id: "gpt-5.1", label: "GPT-5.1", providerId: "openai" },
   { id: "gpt-5", label: "GPT-5", providerId: "openai" }
+];
+
+const availableSkillRoutes: DiscoveredSkillManifest[] = [
+  {
+    description: "Plan work safely",
+    id: "superpowers/planning",
+    name: "planning",
+    relativePath: "skills/planning/SKILL.md",
+    route: "agenticcrew://skills/superpowers/planning"
+  }
 ];
 
 const noHarnessSnapshot: HarnessStudioSnapshot = {
@@ -209,6 +224,44 @@ describe("AgentStudio", () => {
           providerId: "openai",
           role: "reviewer",
           skillRoutes: []
+        }
+      });
+    });
+  });
+
+  it("adds discovered marketplace skill routes to the agent form", async () => {
+    const invoke = vi.fn().mockResolvedValue(emptySnapshot);
+
+    render(
+      <AgentStudio
+        availableSkillRoutes={availableSkillRoutes}
+        harnessSnapshot={noHarnessSnapshot}
+        invoke={invoke}
+        snapshot={emptySnapshot}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("Skill routes"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: /planning/ }));
+    expect(screen.getByLabelText("Skill routes")).toHaveValue("agenticcrew://skills/superpowers/planning");
+    fireEvent.click(screen.getByRole("button", { name: /planning/ }));
+    expect(screen.getByLabelText("Skill routes")).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: /planning/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Create agent" }));
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith("create_agent_template", {
+        request: {
+          active: true,
+          budgetCents: 200,
+          description: "Custom workspace agent.",
+          harnessProfileId: null,
+          id: "review-agent",
+          modelId: "gpt-5.2",
+          name: "Review Agent",
+          providerId: "openai",
+          role: "reviewer",
+          skillRoutes: ["agenticcrew://skills/superpowers/planning"]
         }
       });
     });

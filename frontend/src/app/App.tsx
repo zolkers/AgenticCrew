@@ -364,6 +364,7 @@ export function App({
         ) : null}
         {activeView === "agentStudio" ? (
           <AgentStudio
+            availableSkillRoutes={loadState.skillSourcesSnapshot.sources.flatMap((source) => source.discoveredSkills ?? [])}
             harnessSnapshot={loadState.harnessStudioSnapshot}
             invoke={agentStudioInvoke}
             modelOptions={loadState.settingsSnapshot.aiProvider.availableModels}

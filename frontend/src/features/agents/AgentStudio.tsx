@@ -6,9 +6,16 @@ import {
   updateAgentTemplate,
   type InvokeAgentStudio
 } from "../../shared/api/agentStudioApi";
-import type { AgentStudioSnapshot, AgentTemplate, AiModelRecord, HarnessStudioSnapshot } from "../../shared/types/core";
+import type {
+  AgentStudioSnapshot,
+  AgentTemplate,
+  AiModelRecord,
+  DiscoveredSkillManifest,
+  HarnessStudioSnapshot
+} from "../../shared/types/core";
 
 type AgentStudioProps = Readonly<{
+  availableSkillRoutes?: readonly DiscoveredSkillManifest[];
   harnessSnapshot: HarnessStudioSnapshot;
   invoke: InvokeAgentStudio;
   modelOptions?: readonly AiModelRecord[];
@@ -16,7 +23,14 @@ type AgentStudioProps = Readonly<{
   snapshot: AgentStudioSnapshot;
 }>;
 
-export function AgentStudio({ harnessSnapshot, invoke, modelOptions, onSnapshotChange, snapshot }: AgentStudioProps) {
+export function AgentStudio({
+  availableSkillRoutes,
+  harnessSnapshot,
+  invoke,
+  modelOptions,
+  onSnapshotChange,
+  snapshot
+}: AgentStudioProps) {
   const [budgetDollars, setBudgetDollars] = useState("2.00");
   const [description, setDescription] = useState("Custom workspace agent.");
   const [editingTemplateId, setEditingTemplateId] = useState<null | string>(null);
@@ -34,6 +48,7 @@ export function AgentStudio({ harnessSnapshot, invoke, modelOptions, onSnapshotC
   const modelSelectOptions = availableModels.some((model) => model.id === modelId)
     ? availableModels
     : [{ id: modelId, label: modelId, providerId: "openai" }, ...availableModels];
+  const selectedSkillRoutes = splitSkillRoutes(skillRoutesText);
   const generatedId = useMemo(() => slugify(name), [name]);
   const submitLabel = saving ? "Saving" : getAgentSubmitLabel(editingTemplateId);
 
@@ -93,6 +108,18 @@ export function AgentStudio({ harnessSnapshot, invoke, modelOptions, onSnapshotC
     setHarnessProfileId(harnessSnapshot.profiles[0]?.id ?? "");
     setBudgetDollars("2.00");
     setSkillRoutesText("agenticcrew://skills/superpowers/subagent-driven-development");
+  }
+
+  function toggleSkillRoute(route: string) {
+    const routeSet = new Set(selectedSkillRoutes);
+
+    if (routeSet.has(route)) {
+      routeSet.delete(route);
+    } else {
+      routeSet.add(route);
+    }
+
+    setSkillRoutesText([...routeSet].join("\n"));
   }
 
   async function toggleAgentTemplate(templateId: string, active: boolean) {
@@ -302,6 +329,29 @@ export function AgentStudio({ harnessSnapshot, invoke, modelOptions, onSnapshotC
             value={skillRoutesText}
           />
         </label>
+        {availableSkillRoutes === undefined || availableSkillRoutes.length === 0 ? null : (
+          <div aria-label="Available skill routes" className="route-picker">
+            {availableSkillRoutes.map((skill) => {
+              const selected = selectedSkillRoutes.includes(skill.route);
+
+              return (
+                <button
+                  aria-pressed={selected}
+                  disabled={saving}
+                  key={skill.route}
+                  onClick={() => {
+                    toggleSkillRoute(skill.route);
+                  }}
+                  type="button"
+                >
+                  <Route aria-hidden="true" size={14} />
+                  <span>{skill.name}</span>
+                  <code>{skill.route}</code>
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className="settings-actions">
           <button disabled={saving || (editingTemplateId === null && generatedId.length === 0)} type="submit">
             <Plus aria-hidden="true" size={16} />

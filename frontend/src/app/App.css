@@ -755,6 +755,38 @@ button {
   resize: vertical;
 }
 
+.route-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.6rem;
+}
+
+.route-picker button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.5rem;
+  align-items: center;
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 6px;
+  color: var(--color-text);
+  text-align: left;
+  background: var(--color-panel);
+}
+
+.route-picker button[aria-pressed="true"] {
+  border-color: rgba(78, 212, 200, 0.72);
+  background: rgba(78, 212, 200, 0.08);
+}
+
+.route-picker code {
+  grid-column: 1 / -1;
+  color: var(--color-copper);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .inline-action {
   display: inline-flex;
   justify-self: start;

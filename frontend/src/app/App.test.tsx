@@ -30,7 +30,6 @@ const skillSourcesSnapshot: SkillSourcesSnapshot = {
   sources: [
     {
       active: false,
-      discoveredSkills: [],
       id: "superpowers",
       kind: "git_hub",
       lastSyncError: null,
