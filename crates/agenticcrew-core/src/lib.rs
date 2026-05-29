@@ -642,6 +642,7 @@ mod tests {
         assert_eq!(snapshot.active_model.model_id, "gpt-live");
         assert_eq!(snapshot.cost_summary.model_call_count, 1);
         assert_eq!(snapshot.cost_summary.total_usd, 0.42);
+        assert_eq!(snapshot.cost_summary.total_tokens, 150);
     }
 
     #[test]

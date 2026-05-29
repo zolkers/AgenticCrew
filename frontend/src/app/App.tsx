@@ -42,6 +42,7 @@ import type {
   CreateWorkspaceRequest,
   HarnessStudioSnapshot,
   HarnessProfile,
+  MissionCostSummary,
   MissionControlSnapshot,
   SettingsSnapshot,
   SkillSourcesSnapshot,
@@ -108,6 +109,14 @@ const viewByRouteSegment: Record<string, AppView> = {
 };
 
 const defaultBranchOptions = ["main", "dev", "staging", "release"];
+
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat("en", {
+    compactDisplay: "short",
+    maximumFractionDigits: value >= 1_000 ? 1 : 0,
+    notation: "compact"
+  }).format(value);
+}
 
 export function App({
   agentStudioInvoke,
@@ -199,6 +208,7 @@ export function App({
       workspace.gitStatus?.remoteBranch?.replace(/^origin\//u, "")
     ])
   ]);
+  const tokenSummary = loadState.missionControlSnapshot.costSummary;
   const openWorkspace = (workspaceId: string, view: AppView = "cockpit") => {
     setRouteState({ view, workspaceId });
     window.history.pushState(null, "", `/workspace/${workspaceId}/${routeSegmentByView[view]}`);
@@ -283,12 +293,31 @@ export function App({
         </button>
         <div className="topbar-workspace" aria-label="Active workspace">
           <span>{activeWorkspace.id}</span>
-          <strong>{activeWorkspace.branch}</strong>
+          <label>
+            <GitBranch aria-hidden="true" size={14} />
+            <select
+              aria-label="Active branch"
+              className="topbar-branch-select"
+              onChange={(event) => {
+                void updateActiveWorkspace({
+                  branch: event.target.value,
+                  path: activeWorkspace.path
+                });
+              }}
+              value={activeWorkspace.branch}
+            >
+              {branchOptions.map((branch) => (
+                <option key={branch} value={branch}>
+                  {branch}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-        <div className="topbar-budget" aria-label="Budget status">
-          <span>Budget</span>
+        <div className="topbar-tokens" aria-label="Token usage">
+          <span>Tokens</span>
           <strong>
-            ${activeWorkspace.budgetUsedUsd.toFixed(2)} / ${activeWorkspace.budgetLimitUsd.toFixed(2)}
+            {formatCompactNumber(tokenSummary.totalTokens)} / {formatCompactNumber(tokenSummary.tokenLimit)}
           </strong>
         </div>
         <button
@@ -363,6 +392,7 @@ export function App({
             onLoadoutChange={(loadout) => {
               void updateActiveLoadout(loadout);
             }}
+            tokenSummary={tokenSummary}
             onWorkspaceChange={openWorkspace}
             workspaces={workspaces}
           />
@@ -607,6 +637,7 @@ type CockpitProps = Readonly<{
   harnessStudioSnapshot: HarnessStudioSnapshot;
   onLoadoutChange: (loadout: WorkspaceLoadout) => void;
   onWorkspaceChange: (workspaceId: string) => void;
+  tokenSummary: MissionCostSummary;
   workspaces: readonly CockpitWorkspace[];
 }>;
 
@@ -621,6 +652,7 @@ function Cockpit({
   harnessStudioSnapshot,
   onLoadoutChange,
   onWorkspaceChange,
+  tokenSummary,
   workspaces
 }: CockpitProps) {
   const agentsById = Object.fromEntries(activeWorkspace.agents.map((agent) => [agent.id, agent])) as Record<
@@ -639,7 +671,6 @@ function Cockpit({
     activeWorkspace.selectedHarnessProfileId ?? (harnessProfiles.at(0)?.id ?? "");
   const selectedAgentTemplate = agentTemplates.find((template) => template.id === selectedAgentTemplateId);
   const selectedHarnessProfile = harnessProfiles.find((profile) => profile.id === selectedHarnessProfileId);
-  const budgetPercent = Math.round((activeWorkspace.budgetUsedUsd / activeWorkspace.budgetLimitUsd) * 100);
   const updateLoadout = (next: Partial<WorkspaceLoadout>) => {
     onLoadoutChange({
       agentTemplateId: selectedAgentTemplateId,
@@ -811,14 +842,16 @@ function Cockpit({
             <h1 id="cockpit-title">AgenticCrew Cockpit</h1>
             <h2>{activeWorkspace.mission}</h2>
           </div>
-          <dl className="metric-strip" aria-label="Workspace budget and status">
+          <dl className="metric-strip" aria-label="Workspace token usage and status">
             <div>
               <dt>Status</dt>
               <dd>{activeWorkspace.status}</dd>
             </div>
             <div>
-              <dt>Budget</dt>
-              <dd>{budgetPercent}%</dd>
+              <dt>Tokens</dt>
+              <dd>
+                {formatCompactNumber(tokenSummary.totalTokens)} / {formatCompactNumber(tokenSummary.tokenLimit)}
+              </dd>
             </div>
             <div>
               <dt>Agents</dt>

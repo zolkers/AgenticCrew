@@ -37,6 +37,8 @@ const previewMissionControlSnapshot: MissionControlSnapshot = {
   checkpoints: [],
   costSummary: {
     modelCallCount: 0,
+    tokenLimit: 1_000_000,
+    totalTokens: 0,
     totalUsd: 0
   },
   currentCheckpoint: "Preview mode",
@@ -254,10 +256,14 @@ export const previewMissionControlInvoke: InvokeMissionControl = (command, args)
     const request = args?.request as
       | {
           estimatedCostUsd?: number;
+          cachedTokens?: number;
+          inputTokens?: number;
           model?: string;
+          outputTokens?: number;
           provider?: string;
         }
       | undefined;
+    const totalTokens = (request?.inputTokens ?? 0) + (request?.outputTokens ?? 0);
 
     return Promise.resolve({
       ...previewMissionControlSnapshot,
@@ -271,6 +277,8 @@ export const previewMissionControlInvoke: InvokeMissionControl = (command, args)
       },
       costSummary: {
         modelCallCount: previewMissionControlSnapshot.costSummary.modelCallCount + 1,
+        tokenLimit: previewMissionControlSnapshot.costSummary.tokenLimit,
+        totalTokens: previewMissionControlSnapshot.costSummary.totalTokens + totalTokens,
         totalUsd:
           previewMissionControlSnapshot.costSummary.totalUsd + (request?.estimatedCostUsd ?? 0)
       },

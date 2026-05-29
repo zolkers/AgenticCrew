@@ -85,6 +85,8 @@ pub struct MissionCheckpointSummary {
 pub struct MissionCostSummary {
     pub total_usd: f64,
     pub model_call_count: u64,
+    pub total_tokens: u64,
+    pub token_limit: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -115,6 +117,8 @@ pub struct MissionEvidenceSummary {
 pub fn initial_mission_control_snapshot() -> MissionControlSnapshot {
     mission_control_snapshot_from_state(&AgentOsState::empty())
 }
+
+const DEFAULT_TOKEN_LIMIT: u64 = 1_000_000;
 
 pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionControlSnapshot {
     let active_sessions: Vec<_> = state
@@ -234,6 +238,12 @@ pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionContr
                 .map(|estimate| estimate.estimated_cost_usd)
                 .sum(),
             model_call_count: state.model_call_estimates.len() as u64,
+            total_tokens: state
+                .model_call_estimates
+                .iter()
+                .map(|estimate| estimate.input_tokens + estimate.output_tokens)
+                .sum(),
+            token_limit: DEFAULT_TOKEN_LIMIT,
         },
         git_summary: MissionGitSummary {
             workspace_count: state.workspaces.len() as u64,
@@ -347,6 +357,8 @@ mod tests {
                 cost_summary: super::MissionCostSummary {
                     total_usd: 0.0,
                     model_call_count: 0,
+                    total_tokens: 0,
+                    token_limit: super::DEFAULT_TOKEN_LIMIT,
                 },
                 git_summary: super::MissionGitSummary {
                     workspace_count: 2,
@@ -448,6 +460,11 @@ mod tests {
         assert_eq!(snapshot.active_model.model_id, "claude-sonnet");
         assert_eq!(snapshot.cost_summary.total_usd, 1.0);
         assert_eq!(snapshot.cost_summary.model_call_count, 2);
+        assert_eq!(snapshot.cost_summary.total_tokens, 4);
+        assert_eq!(
+            snapshot.cost_summary.token_limit,
+            super::DEFAULT_TOKEN_LIMIT
+        );
     }
 
     #[test]

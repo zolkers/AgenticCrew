@@ -63,6 +63,8 @@ export type MissionCheckpointSummary = {
 
 export type MissionCostSummary = {
   modelCallCount: number;
+  tokenLimit: number;
+  totalTokens: number;
   totalUsd: number;
 };
 

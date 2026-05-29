@@ -35,6 +35,8 @@ describe("MissionControl", () => {
       ],
       costSummary: {
         modelCallCount: 7,
+        tokenLimit: 1_000_000,
+        totalTokens: 12_500,
         totalUsd: 1.25
       },
       currentCheckpoint: "Architecture boundary",
@@ -108,6 +110,8 @@ describe("MissionControl", () => {
           checkpoints: [],
           costSummary: {
             modelCallCount: 0,
+            tokenLimit: 1_000_000,
+            totalTokens: 0,
             totalUsd: 0
           },
           currentCheckpoint: "initial",

@@ -32,8 +32,11 @@ describe("previewInvokes", () => {
     await expect(
       previewMissionControlInvoke("record_model_call_estimate", {
         request: {
+          cachedTokens: 25,
           estimatedCostUsd: 0.42,
+          inputTokens: 100,
           model: "gpt-preview-live",
+          outputTokens: 50,
           provider: "openai"
         }
       })
@@ -48,6 +51,8 @@ describe("previewInvokes", () => {
       },
       costSummary: {
         modelCallCount: 1,
+        tokenLimit: 1_000_000,
+        totalTokens: 150,
         totalUsd: 0.42
       },
       currentCostUsd: 0.42

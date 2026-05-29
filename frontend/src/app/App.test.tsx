@@ -37,6 +37,8 @@ const missionControlSnapshot: MissionControlSnapshot = {
   ],
   costSummary: {
     modelCallCount: 3,
+    tokenLimit: 1_000_000,
+    totalTokens: 42_500,
     totalUsd: 4.75
   },
   currentCheckpoint: "Injected from invoke",
@@ -218,6 +220,29 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Queue agent instruction" })).toBeDisabled();
     expect(screen.getByLabelText("Run status")).toHaveTextContent("engine: langgraph");
     expect(screen.queryByRole("heading", { name: "Skill Sources" })).not.toBeInTheDocument();
+  });
+
+  it("changes the active workspace branch from the topbar and shows token usage", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    expect(screen.getByLabelText("Token usage")).toHaveTextContent("42.5K / 1M");
+
+    fireEvent.change(screen.getByLabelText("Active branch"), {
+      target: { value: "codex/mobile-smoke" }
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Active branch")).toHaveValue("codex/mobile-smoke");
+    });
   });
 
   it("opens an agent overview from the cockpit team list", async () => {
@@ -853,6 +878,8 @@ describe("App", () => {
       checkpoints: [],
       costSummary: {
         modelCallCount: 0,
+        tokenLimit: 1_000_000,
+        totalTokens: 0,
         totalUsd: 1
       },
       currentCheckpoint: "Unmounted success",

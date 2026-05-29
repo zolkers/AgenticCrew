@@ -107,14 +107,14 @@ button {
 .brand-button small,
 .topbar-workspace span,
 .topbar-workspace strong,
-.topbar-budget span,
-.topbar-budget strong {
+.topbar-tokens span,
+.topbar-tokens strong {
   display: block;
 }
 
 .brand-button small,
 .topbar-workspace span,
-.topbar-budget span,
+.topbar-tokens span,
 .eyebrow,
 .agent-header p,
 .agent-list small,
@@ -138,11 +138,40 @@ button {
 }
 
 .topbar-workspace,
-.topbar-budget {
+.topbar-tokens {
   min-width: 0;
   height: 100%;
   padding: 0.5rem 0.8rem;
   border-left: 1px solid var(--color-border);
+}
+
+.topbar-workspace label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.35rem;
+  align-items: center;
+  min-width: 10rem;
+  max-width: 18rem;
+  margin-top: 0.1rem;
+  color: var(--color-text);
+}
+
+.topbar-branch-select {
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: var(--color-text);
+  color-scheme: dark;
+  font: inherit;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  background: transparent;
+}
+
+.topbar-branch-select:focus-visible {
+  outline: 1px solid var(--color-teal);
+  outline-offset: 3px;
 }
 
 .topbar-tab {
@@ -1606,7 +1635,7 @@ section[aria-label="Settings"] {
   }
 
   .topbar-workspace,
-  .topbar-budget {
+  .topbar-tokens {
     border-left: 0;
     border-top: 1px solid var(--color-border-soft);
   }

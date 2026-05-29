@@ -19,6 +19,8 @@ describe("loadMissionControlSnapshot", () => {
       checkpoints: [],
       costSummary: {
         modelCallCount: 1,
+        tokenLimit: 1_000_000,
+        totalTokens: 250,
         totalUsd: 2.5
       },
       currentCheckpoint: "Tests are red",
@@ -64,6 +66,8 @@ describe("loadMissionControlSnapshot", () => {
       checkpoints: [],
       costSummary: {
         modelCallCount: 1,
+        tokenLimit: 1_000_000,
+        totalTokens: 150,
         totalUsd: 0.42
       },
       currentCheckpoint: "initial",
