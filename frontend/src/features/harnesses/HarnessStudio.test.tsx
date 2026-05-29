@@ -52,8 +52,8 @@ describe("HarnessStudio", () => {
       />
     );
 
-    expect(screen.getByText("Profile Off")).toBeInTheDocument();
-    expect(screen.getByText("Inactive")).toBeInTheDocument();
+    expect(screen.getAllByText("Profile Off").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/inactive/u).length).toBeGreaterThan(0);
   });
 
   it("renders bound skill routes on harness profiles", () => {
@@ -101,7 +101,7 @@ describe("HarnessStudio", () => {
     expect(screen.getByRole("heading", { name: "Effective harness" })).toBeInTheDocument();
     expect(screen.getByText("Profile On")).toBeInTheDocument();
     expect(screen.getByText(/Use project rules/u)).toBeInTheDocument();
-    const effectiveHarness = screen.getByRole("heading", { name: "Effective harness" }).closest("section");
+    const effectiveHarness = screen.getByRole("heading", { name: "Effective harness" }).closest("details");
     expect(effectiveHarness).not.toBeNull();
     expect(within(effectiveHarness as HTMLElement).getByText("PI extensions").closest("div")).toHaveTextContent("1");
   });

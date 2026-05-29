@@ -572,7 +572,7 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Harness Studio" })).toBeInTheDocument();
     expect(screen.getAllByText("Pi Execution Discipline").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Effective harness" })).toBeInTheDocument();
-    expect(screen.getByText("Execution Discipline")).toBeInTheDocument();
+    expect(screen.getAllByText("Execution Discipline").length).toBeGreaterThan(0);
   });
 
   it("keeps Harness Studio in sync after creating a local harness", async () => {

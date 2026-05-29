@@ -32,12 +32,14 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
   const [piName, setPiName] = useState("Release PI Extension");
   const [name, setName] = useState("Workspace Harness");
   const [saving, setSaving] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState(snapshot.profiles[0]?.id ?? "");
   const [skillRoutesText, setSkillRoutesText] = useState("");
   const selectedSkillRoutes = splitSkillRoutes(skillRoutesText);
   const piExtensions = snapshot.piExtensions ?? [];
   const effectiveHarnesses = snapshot.effectiveHarnesses ?? effectiveHarnessPreviews(snapshot.profiles, piExtensions);
   const generatedId = useMemo(() => slugify(name), [name]);
   const generatedPiId = useMemo(() => slugify(piName), [piName]);
+  const selectedProfile = snapshot.profiles.find((profile) => profile.id === selectedProfileId) ?? snapshot.profiles[0];
   const submitLabel = saving ? "Saving" : getHarnessSubmitLabel(editingProfileId);
 
   async function submitHarnessProfile() {
@@ -188,105 +190,24 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
             <span>{piExtensions.length} inspected</span>
           </article>
         </div>
-        {effectiveHarnesses.length > 0 ? (
-          <section aria-labelledby="effective-harness-title" className="effective-harness-panel">
-            <header>
-              <Layers3 aria-hidden="true" size={18} />
-              <h3 id="effective-harness-title">Effective harness</h3>
-            </header>
-            <ul className="surface-list">
-              {effectiveHarnesses.map((harness) => (
-                <li key={harness.profileId}>
-                  <div>
-                    <strong>{harness.profileName}</strong>
-                    <span>{harness.profileId}</span>
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>Enabled modules</dt>
-                      <dd>{harness.enabledModuleCount}</dd>
-                    </div>
-                    <div>
-                      <dt>Skill routes</dt>
-                      <dd>{harness.skillRouteCount}</dd>
-                    </div>
-                    <div>
-                      <dt>PI extensions</dt>
-                      <dd>{harness.piExtensionCount ?? 0}</dd>
-                    </div>
-                  </dl>
-                  <p>{harness.preview || "No enabled module content"}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-        <ul className="surface-list">
-          {snapshot.profiles.map((profile) => (
-            <li key={profile.id}>
-              <div>
-                <strong>{profile.name}</strong>
-                <span>{profile.id}</span>
-              </div>
-              <dl>
-                <div>
-                  <dt>Version</dt>
-                  <dd>{profile.version}</dd>
-                </div>
-                <div>
-                  <dt>Modules</dt>
-                  <dd>{profile.modules.length}</dd>
-                </div>
-                <div>
-                  <dt>Status</dt>
-                  <dd>{profile.active ? "Active" : "Inactive"}</dd>
-                </div>
-              </dl>
-              <p>{profile.description}</p>
-              <ul className="pill-list">
-                {profile.modules.map((module) => (
-                  <li key={module.id}>{module.name}</li>
-                ))}
-              </ul>
-              {profile.skillRoutes.length > 0 ? (
-                <ul className="pill-list">
-                  {profile.skillRoutes.map((route) => (
-                    <li key={route}>{route}</li>
-                  ))}
-                </ul>
-              ) : null}
-              <button
-                className="inline-action"
-                disabled={saving}
-                onClick={() => {
-                  void toggleHarnessProfile(profile.id, !profile.active);
-                }}
-                type="button"
-              >
-                <Power aria-hidden="true" size={16} />
-                <span>{profile.active ? "Deactivate" : "Activate"}</span>
-              </button>
-              <button
-                className="inline-action"
-                disabled={saving}
-                onClick={() => {
-                  beginEdit(profile);
-                }}
-                type="button"
-              >
-                <Edit3 aria-hidden="true" size={16} />
-                <span>Edit</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <HarnessProfileBrowser
+          onEdit={beginEdit}
+          onSelect={setSelectedProfileId}
+          onToggleActive={(profile) => {
+            void toggleHarnessProfile(profile.id, !profile.active);
+          }}
+          profiles={snapshot.profiles}
+          saving={saving}
+          selectedProfile={selectedProfile}
+        />
+        {effectiveHarnesses.length > 0 ? <EffectiveHarnessDrawer harnesses={effectiveHarnesses} /> : null}
         </>
       )}
-      <section aria-labelledby="pi-extensions-title" className="effective-harness-panel">
-        <header>
+      <details className="harness-studio-drawer">
+        <summary>
           <Upload aria-hidden="true" size={18} />
           <h3 id="pi-extensions-title">PI extensions</h3>
-        </header>
+        </summary>
         {piExtensions.length === 0 ? <p>No PI extension imported</p> : null}
         {piExtensions.length > 0 ? (
           <ul className="surface-list">
@@ -370,7 +291,7 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
             </button>
           </div>
         </form>
-      </section>
+      </details>
       <form
         className="harness-form"
         onSubmit={(event) => {
@@ -464,6 +385,156 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
         </div>
       </form>
     </section>
+  );
+}
+
+type HarnessProfileBrowserProps = Readonly<{
+  onEdit: (profile: HarnessProfile) => void;
+  onSelect: (profileId: string) => void;
+  onToggleActive: (profile: HarnessProfile) => void;
+  profiles: readonly HarnessProfile[];
+  saving: boolean;
+  selectedProfile: HarnessProfile;
+}>;
+
+function HarnessProfileBrowser({
+  onEdit,
+  onSelect,
+  onToggleActive,
+  profiles,
+  saving,
+  selectedProfile
+}: HarnessProfileBrowserProps) {
+  const basePolicyModule = selectedProfile.modules.find((module) => module.kind === "base_policy");
+
+  return (
+    <div className="harness-studio-layout">
+      <nav className="harness-roster-panel" aria-label="Harness profiles">
+        {profiles.map((profile) => (
+          <button
+            aria-pressed={selectedProfile.id === profile.id}
+            key={profile.id}
+            onClick={() => {
+              onSelect(profile.id);
+            }}
+            type="button"
+          >
+            <span className={`status-dot status-dot-${profile.active ? "active" : "queued"}`} aria-hidden="true" />
+            <span>
+              <strong>{profile.name}</strong>
+              <small>
+                {profile.active ? "active" : "inactive"} / v{profile.version}
+              </small>
+            </span>
+            <code>{profile.modules.length} modules</code>
+          </button>
+        ))}
+      </nav>
+      <article className="harness-detail-panel" aria-label="Selected harness details">
+        <header>
+          <div>
+            <p className="eyebrow">Selected harness</p>
+            <h3>{selectedProfile.name}</h3>
+            <span>
+              {selectedProfile.id} / {selectedProfile.active ? "active" : "inactive"}
+            </span>
+          </div>
+          <div className="harness-detail-actions">
+            <button
+              className="inline-action"
+              disabled={saving}
+              onClick={() => {
+                onToggleActive(selectedProfile);
+              }}
+              type="button"
+            >
+              <Power aria-hidden="true" size={16} />
+              <span>{selectedProfile.active ? "Deactivate" : "Activate"}</span>
+            </button>
+            <button
+              className="inline-action"
+              disabled={saving}
+              onClick={() => {
+                onEdit(selectedProfile);
+              }}
+              type="button"
+            >
+              <Edit3 aria-hidden="true" size={16} />
+              <span>Edit</span>
+            </button>
+          </div>
+        </header>
+        <dl>
+          <div>
+            <dt>Version</dt>
+            <dd>{selectedProfile.version}</dd>
+          </div>
+          <div>
+            <dt>Modules</dt>
+            <dd>{selectedProfile.modules.length}</dd>
+          </div>
+          <div>
+            <dt>Skill routes</dt>
+            <dd>{selectedProfile.skillRoutes.length}</dd>
+          </div>
+        </dl>
+        <p>{selectedProfile.description}</p>
+        <div className="harness-policy-preview">
+          <strong>{basePolicyModule?.name ?? "Base policy"}</strong>
+          <p>{basePolicyModule?.content.trim() || "No base policy content"}</p>
+        </div>
+        <ul className="pill-list compact-pills" aria-label={`${selectedProfile.name} modules`}>
+          {selectedProfile.modules.map((module) => (
+            <li key={module.id}>{module.name}</li>
+          ))}
+        </ul>
+        {selectedProfile.skillRoutes.length > 0 ? (
+          <ul className="pill-list compact-pills" aria-label={`${selectedProfile.name} skill routes`}>
+            {selectedProfile.skillRoutes.map((route) => (
+              <li key={route}>{route}</li>
+            ))}
+          </ul>
+        ) : null}
+      </article>
+    </div>
+  );
+}
+
+type EffectiveHarnessPreview = NonNullable<HarnessStudioSnapshot["effectiveHarnesses"]>[number];
+
+function EffectiveHarnessDrawer({ harnesses }: Readonly<{ harnesses: readonly EffectiveHarnessPreview[] }>) {
+  return (
+    <details className="harness-studio-drawer">
+      <summary>
+        <Layers3 aria-hidden="true" size={18} />
+        <h3 id="effective-harness-title">Effective harness</h3>
+      </summary>
+      <ul className="surface-list">
+        {harnesses.map((harness) => (
+          <li key={harness.profileId}>
+            <div>
+              <strong>{harness.profileName}</strong>
+              <span>{harness.profileId}</span>
+            </div>
+            <dl>
+              <div>
+                <dt>Enabled modules</dt>
+                <dd>{harness.enabledModuleCount}</dd>
+              </div>
+              <div>
+                <dt>Skill routes</dt>
+                <dd>{harness.skillRouteCount}</dd>
+              </div>
+              <div>
+                <dt>PI extensions</dt>
+                <dd>{harness.piExtensionCount ?? 0}</dd>
+              </div>
+            </dl>
+            <p>{harness.preview || "No enabled module content"}</p>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 

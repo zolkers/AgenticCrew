@@ -1149,7 +1149,15 @@ button {
   margin-top: 0.85rem;
 }
 
-.agent-roster-panel {
+.harness-studio-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.agent-roster-panel,
+.harness-roster-panel {
   display: grid;
   gap: 0.35rem;
   align-content: start;
@@ -1159,7 +1167,8 @@ button {
   background: var(--color-terminal);
 }
 
-.agent-roster-panel button {
+.agent-roster-panel button,
+.harness-roster-panel button {
   display: grid;
   grid-template-columns: 0.75rem minmax(0, 1fr) auto;
   gap: 0.55rem;
@@ -1175,29 +1184,36 @@ button {
 }
 
 .agent-roster-panel button:hover,
-.agent-roster-panel button[aria-pressed="true"] {
+.agent-roster-panel button[aria-pressed="true"],
+.harness-roster-panel button:hover,
+.harness-roster-panel button[aria-pressed="true"] {
   border-color: rgba(106, 169, 255, 0.42);
   background: #303746;
 }
 
-.agent-roster-panel button > span:nth-child(2) {
+.agent-roster-panel button > span:nth-child(2),
+.harness-roster-panel button > span:nth-child(2) {
   display: grid;
   gap: 0.12rem;
   min-width: 0;
 }
 
 .agent-roster-panel strong,
-.agent-roster-panel small {
+.agent-roster-panel small,
+.harness-roster-panel strong,
+.harness-roster-panel small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.agent-roster-panel small {
+.agent-roster-panel small,
+.harness-roster-panel small {
   color: var(--color-muted);
 }
 
-.agent-roster-panel code {
+.agent-roster-panel code,
+.harness-roster-panel code {
   max-width: 8rem;
   color: var(--color-codex);
   font-size: 0.76rem;
@@ -1206,7 +1222,8 @@ button {
   white-space: nowrap;
 }
 
-.agent-detail-panel {
+.agent-detail-panel,
+.harness-detail-panel {
   display: grid;
   gap: 0.8rem;
   min-width: 0;
@@ -1217,7 +1234,8 @@ button {
     var(--color-terminal);
 }
 
-.agent-detail-panel > header {
+.agent-detail-panel > header,
+.harness-detail-panel > header {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -1225,62 +1243,85 @@ button {
   justify-content: space-between;
 }
 
-.agent-detail-panel h3 {
+.agent-detail-panel h3,
+.harness-detail-panel h3 {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.05rem;
 }
 
 .agent-detail-panel header span,
-.agent-detail-panel p {
+.agent-detail-panel p,
+.harness-detail-panel header span,
+.harness-detail-panel p {
   color: var(--color-muted);
 }
 
-.agent-detail-panel dl {
+.agent-detail-panel dl,
+.harness-detail-panel dl {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.55rem;
   margin: 0;
 }
 
-.agent-detail-panel dl div {
+.agent-detail-panel dl div,
+.harness-detail-panel dl div {
   min-width: 0;
   padding: 0.55rem;
   border: 1px solid var(--color-border-soft);
   background: var(--color-panel);
 }
 
-.agent-detail-panel dt {
+.agent-detail-panel dt,
+.harness-detail-panel dt {
   color: var(--color-muted);
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.agent-detail-panel dd {
+.agent-detail-panel dd,
+.harness-detail-panel dd {
   margin: 0.2rem 0 0;
   overflow-wrap: anywhere;
   font-weight: 800;
 }
 
-.agent-detail-actions {
+.agent-detail-actions,
+.harness-detail-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
   justify-content: flex-end;
 }
 
+.harness-policy-preview {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid rgba(125, 211, 199, 0.22);
+  background: rgba(125, 211, 199, 0.06);
+}
+
+.harness-policy-preview p {
+  margin: 0;
+}
+
 .compact-pills {
   margin: 0;
 }
 
-.agent-studio-drawer {
+.agent-studio-drawer,
+.harness-studio-drawer {
   padding: 0.65rem;
   border: 1px solid var(--color-border);
   background: var(--color-terminal);
 }
 
-.agent-studio-drawer summary {
+.agent-studio-drawer summary,
+.harness-studio-drawer summary {
   display: flex;
   gap: 0.5rem;
   align-items: center;
@@ -1288,17 +1329,21 @@ button {
   list-style: none;
 }
 
-.agent-studio-drawer summary::-webkit-details-marker {
+.agent-studio-drawer summary::-webkit-details-marker,
+.harness-studio-drawer summary::-webkit-details-marker {
   display: none;
 }
 
-.agent-studio-drawer h3 {
+.agent-studio-drawer h3,
+.harness-studio-drawer h3 {
   margin: 0;
   font-size: 0.9rem;
   text-transform: uppercase;
 }
 
-.agent-studio-drawer .surface-list {
+.agent-studio-drawer .surface-list,
+.harness-studio-drawer .surface-list,
+.harness-studio-drawer .harness-form {
   margin-top: 0.7rem;
 }
 
@@ -1866,6 +1911,7 @@ section[aria-label="Settings"] {
   .agent-header,
   .command-bar,
   .agent-studio-layout,
+  .harness-studio-layout,
   .git-context-form,
   .mission-grid {
     grid-template-columns: 1fr;
