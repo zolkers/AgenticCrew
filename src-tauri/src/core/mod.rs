@@ -8,6 +8,7 @@ pub mod permissions;
 pub mod sessions;
 pub mod settings;
 pub mod skill_manifest;
+pub mod skill_routes;
 pub mod skill_sync;
 pub mod skills;
 pub mod state;

@@ -3,7 +3,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::skills::{DiscoveredSkillManifest, SkillManifestValidationError};
+use super::{
+    skill_routes::SkillRoute,
+    skills::{DiscoveredSkillManifest, SkillManifestValidationError},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SkillManifestInspection {
@@ -118,8 +121,18 @@ fn parse_skill_manifest(
         }
     })?;
 
+    let id = format!("{source_id}/{name}");
+    let route = SkillRoute::parse(&format!("skill://{id}"))
+        .map_err(|error| SkillManifestValidationError {
+            relative_path: relative_path.to_owned(),
+            message: format!("invalid skill route: {error}"),
+        })?
+        .canonical()
+        .to_owned();
+
     Ok(DiscoveredSkillManifest {
-        id: format!("{source_id}/{name}"),
+        id,
+        route,
         name,
         description,
         relative_path: relative_path.to_owned(),
@@ -188,6 +201,10 @@ mod tests {
         assert!(inspection.validation_errors.is_empty());
         assert_eq!(inspection.discovered_skills.len(), 1);
         assert_eq!(inspection.discovered_skills[0].id, "superpowers/planning");
+        assert_eq!(
+            inspection.discovered_skills[0].route,
+            "agenticcrew://skills/superpowers/planning"
+        );
         assert_eq!(inspection.discovered_skills[0].name, "planning");
         assert_eq!(
             inspection.discovered_skills[0].description,

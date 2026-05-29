@@ -91,6 +91,7 @@ export function SkillSources({ snapshot }: SkillSourcesProps) {
                         {source.discoveredSkills.map((skill) => (
                           <li key={skill.id}>
                             <strong>{skill.name}</strong>
+                            <code>{skill.route}</code>
                             <span>{skill.description}</span>
                           </li>
                         ))}

@@ -786,6 +786,51 @@ mod tests {
     }
 
     #[test]
+    fn legacy_discovered_skill_manifests_default_missing_routes() {
+        let state: AgentOsState = serde_json::from_value(serde_json::json!({
+            "schema_version": CURRENT_SCHEMA_VERSION,
+            "goals": [],
+            "design_sessions": [],
+            "feature_sessions": [],
+            "evidence": [],
+            "model_call_estimates": [],
+            "skill_sources": [
+                {
+                    "id": "superpowers",
+                    "kind": "git_hub",
+                    "repositoryUrl": "https://github.com/obra/superpowers",
+                    "selectedRef": "main",
+                    "trustLevel": "external",
+                    "status": "validated",
+                    "lastSyncStatus": "synced",
+                    "discoveredSkills": [
+                        {
+                            "id": "superpowers/planning",
+                            "name": "planning",
+                            "description": "Plan work safely",
+                            "relativePath": "skills/planning/SKILL.md"
+                        }
+                    ],
+                    "permissionGate": {
+                        "approved": false,
+                        "policy": {
+                            "commands": [],
+                            "docker": false,
+                            "fileSystem": [],
+                            "git": false,
+                            "network": []
+                        }
+                    },
+                    "active": false
+                }
+            ]
+        }))
+        .expect("legacy skill state should deserialize with default routes");
+
+        assert_eq!(state.skill_sources[0].discovered_skills[0].route, "");
+    }
+
+    #[test]
     fn update_ai_provider_settings_records_redacted_openai_configuration() {
         let mut state = AgentOsState::empty();
 
@@ -1138,6 +1183,7 @@ mod tests {
                 "superpowers",
                 vec![crate::core::skills::DiscoveredSkillManifest {
                     id: "superpowers/planning".to_owned(),
+                    route: "agenticcrew://skills/superpowers/planning".to_owned(),
                     name: "planning".to_owned(),
                     description: "Plan work safely".to_owned(),
                     relative_path: "skills/planning/SKILL.md".to_owned(),

@@ -75,6 +75,8 @@ pub struct SkillSource {
 #[serde(rename_all = "camelCase")]
 pub struct DiscoveredSkillManifest {
     pub id: String,
+    #[serde(default)]
+    pub route: String,
     pub name: String,
     pub description: String,
     pub relative_path: String,
@@ -331,6 +333,7 @@ mod tests {
         source.record_manifest_validation(
             vec![DiscoveredSkillManifest {
                 id: "superpowers/planning".to_owned(),
+                route: "agenticcrew://skills/superpowers/planning".to_owned(),
                 name: "planning".to_owned(),
                 description: "Plan work safely".to_owned(),
                 relative_path: "skills/planning/SKILL.md".to_owned(),

@@ -60,7 +60,8 @@ describe("SkillSources", () => {
               description: "Plan work safely",
               id: "superpowers/planning",
               name: "planning",
-              relativePath: "skills/planning/SKILL.md"
+              relativePath: "skills/planning/SKILL.md",
+              route: "agenticcrew://skills/superpowers/planning"
             }
           ],
           id: "superpowers",
@@ -100,6 +101,7 @@ describe("SkillSources", () => {
     expect(screen.getByText("C:/AgenticCrew/cache/skills/superpowers")).toBeInTheDocument();
     expect(screen.getByText("git fetch failed")).toBeInTheDocument();
     expect(screen.getByText("planning")).toBeInTheDocument();
+    expect(screen.getByText("agenticcrew://skills/superpowers/planning")).toBeInTheDocument();
     expect(screen.getByText("Plan work safely")).toBeInTheDocument();
     expect(screen.getByText("skills/bad/SKILL.md")).toBeInTheDocument();
     expect(screen.getByText("missing required frontmatter field 'description'")).toBeInTheDocument();

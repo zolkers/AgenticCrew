@@ -46,6 +46,7 @@ export type DiscoveredSkillManifest = {
   id: string;
   name: string;
   relativePath: string;
+  route: string;
 };
 
 export type SkillManifestValidationError = {
