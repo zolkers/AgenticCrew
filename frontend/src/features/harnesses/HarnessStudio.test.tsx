@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HarnessStudio } from "./HarnessStudio";
 import type { DiscoveredSkillManifest, HarnessStudioSnapshot } from "../../shared/types/core";
@@ -86,6 +86,7 @@ describe("HarnessStudio", () => {
           effectiveHarnesses: [
             {
               enabledModuleCount: 2,
+              piExtensionCount: 1,
               preview: "Use project rules.\n\nRequire validation.",
               profileId: "profile-on",
               profileName: "Profile On",
@@ -100,6 +101,9 @@ describe("HarnessStudio", () => {
     expect(screen.getByRole("heading", { name: "Effective harness" })).toBeInTheDocument();
     expect(screen.getByText("Profile On")).toBeInTheDocument();
     expect(screen.getByText(/Use project rules/u)).toBeInTheDocument();
+    const effectiveHarness = screen.getByRole("heading", { name: "Effective harness" }).closest("section");
+    expect(effectiveHarness).not.toBeNull();
+    expect(within(effectiveHarness as HTMLElement).getByText("PI extensions").closest("div")).toHaveTextContent("1");
   });
 
   it("derives an effective harness preview when older snapshots omit it", () => {
@@ -117,6 +121,49 @@ describe("HarnessStudio", () => {
     );
 
     expect(screen.getByText("No enabled module content")).toBeInTheDocument();
+  });
+
+  it("includes active PI extensions in fallback effective harness previews", () => {
+    const profile = profileFixture("profile-on", true);
+
+    render(
+      <HarnessStudio
+        invoke={vi.fn()}
+        snapshot={{
+          activePiExtensionCount: 1,
+          activeProfileCount: 1,
+          bindings: [],
+          piExtensions: [
+            {
+              active: true,
+              description: "Release policy",
+              id: "release-pi",
+              inspected: true,
+              modules: [
+                {
+                  content: "Require release validation.",
+                  enabled: true,
+                  id: "release-pi/base-policy",
+                  kind: "base_policy",
+                  name: "Base Policy",
+                  source: {
+                    route: "agenticcrew://pi/local/release-pi",
+                    sourceId: "release-pi",
+                    trustLevel: "local"
+                  },
+                  version: "1"
+                }
+              ],
+              name: "Release PI",
+              route: "agenticcrew://pi/local/release-pi"
+            }
+          ],
+          profiles: [profile]
+        }}
+      />
+    );
+
+    expect(screen.getByText(/Require release validation/u)).toBeInTheDocument();
   });
 
   it("creates a local harness profile", async () => {
@@ -317,6 +364,94 @@ describe("HarnessStudio", () => {
       });
     });
   });
+
+  it("imports PI extensions without activating them", async () => {
+    const nextSnapshot: HarnessStudioSnapshot = {
+      activePiExtensionCount: 0,
+      activeProfileCount: 1,
+      bindings: [],
+      piExtensions: [
+        {
+          active: false,
+          description: "Release policy",
+          id: "release-pi",
+          inspected: true,
+          modules: [],
+          name: "Release PI",
+          route: "agenticcrew://pi/local/release-pi"
+        }
+      ],
+      profiles: [profileFixture("profile-on", true)]
+    };
+    const invoke = vi.fn().mockResolvedValue(nextSnapshot);
+    const onSnapshotChange = vi.fn();
+
+    render(
+      <HarnessStudio
+        invoke={invoke}
+        onSnapshotChange={onSnapshotChange}
+        snapshot={{ activeProfileCount: 1, bindings: [], profiles: [profileFixture("profile-on", true)] }}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("PI name"), { target: { value: "Release PI" } });
+    fireEvent.change(screen.getByLabelText("PI description"), { target: { value: "Release policy" } });
+    fireEvent.change(screen.getByLabelText("PI base policy"), { target: { value: "Require release evidence." } });
+    fireEvent.click(screen.getByRole("button", { name: "Import PI extension" }));
+
+    await waitFor(() => {
+      expect(onSnapshotChange).toHaveBeenCalledWith(nextSnapshot);
+    });
+    expect(invoke).toHaveBeenCalledWith("import_pi_extension", {
+      request: {
+        agentPersona: null,
+        basePolicy: "Require release evidence.",
+        behaviorRules: [],
+        description: "Release policy",
+        id: "release-pi",
+        name: "Release PI",
+        outputStyle: null,
+        projectMemory: null,
+        safetyRules: [],
+        toolRules: []
+      }
+    });
+  });
+
+  it("activates imported PI extensions separately", async () => {
+    const nextSnapshot: HarnessStudioSnapshot = {
+      activePiExtensionCount: 1,
+      activeProfileCount: 1,
+      bindings: [],
+      piExtensions: [piExtensionFixture("release-pi", true)],
+      profiles: [profileFixture("profile-on", true)]
+    };
+    const invoke = vi.fn().mockResolvedValue(nextSnapshot);
+
+    render(
+      <HarnessStudio
+        invoke={invoke}
+        snapshot={{
+          activePiExtensionCount: 0,
+          activeProfileCount: 1,
+          bindings: [],
+          piExtensions: [piExtensionFixture("release-pi", false)],
+          profiles: [profileFixture("profile-on", true)]
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Activate PI" }));
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith("set_pi_extension_active", {
+        request: {
+          active: true,
+          extensionId: "release-pi"
+        }
+      });
+    });
+  });
 });
 
 function profileFixture(id: string, active: boolean) {
@@ -342,5 +477,17 @@ function profileFixture(id: string, active: boolean) {
     name: id,
     skillRoutes: [],
     version: "1"
+  };
+}
+
+function piExtensionFixture(id: string, active: boolean) {
+  return {
+    active,
+    description: "Release policy",
+    id,
+    inspected: true,
+    modules: [],
+    name: "Release PI",
+    route: `agenticcrew://pi/local/${id}`
   };
 }

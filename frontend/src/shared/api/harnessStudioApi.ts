@@ -1,13 +1,17 @@
 import type {
   CreateHarnessProfileRequest,
   HarnessStudioSnapshot,
+  ImportPiExtensionRequest,
   SetHarnessProfileActiveRequest,
+  SetPiExtensionActiveRequest,
   UpdateHarnessProfileRequest
 } from "../types/core";
 
 export type HarnessStudioCommand =
   | "create_harness_profile"
   | "harness_studio_snapshot"
+  | "import_pi_extension"
+  | "set_pi_extension_active"
   | "set_harness_profile_active"
   | "update_harness_profile";
 
@@ -41,4 +45,18 @@ export async function updateHarnessProfile(
   request: UpdateHarnessProfileRequest
 ): Promise<HarnessStudioSnapshot> {
   return invoke("update_harness_profile", { request });
+}
+
+export async function importPiExtension(
+  invoke: InvokeHarnessStudio,
+  request: ImportPiExtensionRequest
+): Promise<HarnessStudioSnapshot> {
+  return invoke("import_pi_extension", { request });
+}
+
+export async function setPiExtensionActive(
+  invoke: InvokeHarnessStudio,
+  request: SetPiExtensionActiveRequest
+): Promise<HarnessStudioSnapshot> {
+  return invoke("set_pi_extension_active", { request });
 }

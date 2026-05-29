@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use super::pi_extensions::PiExtension;
 use super::state::AgentOsState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -76,8 +77,10 @@ pub enum HarnessBindingTargetKind {
 #[serde(rename_all = "camelCase")]
 pub struct HarnessStudioSnapshot {
     pub profiles: Vec<HarnessProfile>,
+    pub pi_extensions: Vec<PiExtension>,
     pub bindings: Vec<HarnessBinding>,
     pub active_profile_count: u64,
+    pub active_pi_extension_count: u64,
     pub effective_harnesses: Vec<EffectiveHarnessPreview>,
 }
 
@@ -88,6 +91,7 @@ pub struct EffectiveHarnessPreview {
     pub profile_name: String,
     pub enabled_module_count: u64,
     pub skill_route_count: u64,
+    pub pi_extension_count: u64,
     pub preview: String,
 }
 
@@ -123,15 +127,36 @@ pub struct UpdateHarnessProfileRequest {
 
 pub fn harness_studio_snapshot_from_state(state: &AgentOsState) -> HarnessStudioSnapshot {
     let profiles = state.harness_profiles.clone();
+    let pi_extensions = state.pi_extensions.clone();
     HarnessStudioSnapshot {
         active_profile_count: profiles.iter().filter(|profile| profile.active).count() as u64,
-        effective_harnesses: effective_harness_previews(&profiles),
+        active_pi_extension_count: pi_extensions
+            .iter()
+            .filter(|extension| extension.active)
+            .count() as u64,
+        effective_harnesses: effective_harness_previews(&profiles, &pi_extensions),
         profiles,
+        pi_extensions,
         bindings: state.harness_bindings.clone(),
     }
 }
 
-fn effective_harness_previews(profiles: &[HarnessProfile]) -> Vec<EffectiveHarnessPreview> {
+fn effective_harness_previews(
+    profiles: &[HarnessProfile],
+    pi_extensions: &[PiExtension],
+) -> Vec<EffectiveHarnessPreview> {
+    let active_extensions = pi_extensions
+        .iter()
+        .filter(|extension| extension.active)
+        .collect::<Vec<_>>();
+    let extension_content = active_extensions
+        .iter()
+        .flat_map(|extension| extension.modules.iter())
+        .filter(|module| module.enabled)
+        .map(|module| module.content.trim())
+        .filter(|content| !content.is_empty())
+        .collect::<Vec<_>>();
+
     profiles
         .iter()
         .filter(|profile| profile.active)
@@ -145,11 +170,13 @@ fn effective_harness_previews(profiles: &[HarnessProfile]) -> Vec<EffectiveHarne
                 .iter()
                 .map(|module| module.content.trim())
                 .filter(|content| !content.is_empty())
+                .chain(extension_content.iter().copied())
                 .collect::<Vec<_>>()
                 .join("\n\n");
 
             EffectiveHarnessPreview {
                 enabled_module_count: enabled_modules.len() as u64,
+                pi_extension_count: active_extensions.len() as u64,
                 preview,
                 profile_id: profile.id.clone(),
                 profile_name: profile.name.clone(),
@@ -306,6 +333,7 @@ mod tests {
         harness_studio_snapshot_from_state, CreateHarnessProfileRequest, HarnessProfile,
         UpdateHarnessProfileRequest,
     };
+    use crate::core::pi_extensions::{ImportPiExtensionRequest, PiExtension};
     use crate::core::state::AgentOsState;
 
     #[test]
@@ -327,6 +355,7 @@ mod tests {
         let snapshot = harness_studio_snapshot_from_state(&state);
 
         assert_eq!(snapshot.active_profile_count, 1);
+        assert_eq!(snapshot.active_pi_extension_count, 0);
         assert_eq!(snapshot.profiles[0].id, "pi-execution-discipline");
         assert_eq!(snapshot.effective_harnesses.len(), 1);
         assert_eq!(
@@ -336,6 +365,38 @@ mod tests {
         assert!(snapshot.effective_harnesses[0]
             .preview
             .contains("Use targeted inspection"));
+    }
+
+    #[test]
+    fn effective_harness_preview_includes_active_pi_extensions() {
+        let mut state = AgentOsState::empty();
+        let mut extension = PiExtension::imported(ImportPiExtensionRequest {
+            agent_persona: None,
+            base_policy: "Add release review protocol.".to_owned(),
+            behavior_rules: Vec::new(),
+            description: "Release PI".to_owned(),
+            id: "release-pi".to_owned(),
+            name: "Release PI".to_owned(),
+            output_style: None,
+            project_memory: None,
+            safety_rules: Vec::new(),
+            tool_rules: Vec::new(),
+        })
+        .expect("extension should validate");
+        extension.active = true;
+        state.pi_extensions.push(extension);
+
+        let snapshot = harness_studio_snapshot_from_state(&state);
+
+        assert_eq!(snapshot.active_pi_extension_count, 1);
+        assert_eq!(
+            snapshot.pi_extensions[0].route,
+            "agenticcrew://pi/local/release-pi"
+        );
+        assert_eq!(snapshot.effective_harnesses[0].pi_extension_count, 1);
+        assert!(snapshot.effective_harnesses[0]
+            .preview
+            .contains("Add release review protocol"));
     }
 
     #[test]

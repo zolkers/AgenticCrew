@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   createHarnessProfile,
+  importPiExtension,
   loadHarnessStudioSnapshot,
   setHarnessProfileActive,
+  setPiExtensionActive,
   updateHarnessProfile
 } from "./harnessStudioApi";
 
@@ -73,6 +75,52 @@ describe("harnessStudioApi", () => {
         expect(args).toEqual({ request });
         return Promise.resolve(snapshot);
       }, request)
+    ).resolves.toEqual(snapshot);
+  });
+
+  it("imports and activates PI extensions through the injected invoke", async () => {
+    const snapshot = {
+      activePiExtensionCount: 1,
+      activeProfileCount: 1,
+      bindings: [],
+      piExtensions: [],
+      profiles: []
+    };
+    const importRequest = {
+      agentPersona: null,
+      basePolicy: "Require release evidence",
+      behaviorRules: [],
+      description: "Release review",
+      id: "release-pi",
+      name: "Release PI",
+      outputStyle: null,
+      projectMemory: null,
+      safetyRules: [],
+      toolRules: []
+    };
+
+    await expect(
+      importPiExtension((command, args) => {
+        expect(command).toBe("import_pi_extension");
+        expect(args).toEqual({ request: importRequest });
+        return Promise.resolve(snapshot);
+      }, importRequest)
+    ).resolves.toEqual(snapshot);
+
+    await expect(
+      setPiExtensionActive((command, args) => {
+        expect(command).toBe("set_pi_extension_active");
+        expect(args).toEqual({
+          request: {
+            active: true,
+            extensionId: "release-pi"
+          }
+        });
+        return Promise.resolve(snapshot);
+      }, {
+        active: true,
+        extensionId: "release-pi"
+      })
     ).resolves.toEqual(snapshot);
   });
 });

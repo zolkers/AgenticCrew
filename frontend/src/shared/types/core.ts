@@ -249,18 +249,31 @@ export type HarnessBinding = {
 };
 
 export type HarnessStudioSnapshot = {
+  activePiExtensionCount?: number;
   activeProfileCount: number;
   bindings: HarnessBinding[];
   effectiveHarnesses?: EffectiveHarnessPreview[];
+  piExtensions?: PiExtension[];
   profiles: HarnessProfile[];
 };
 
 export type EffectiveHarnessPreview = {
   enabledModuleCount: number;
+  piExtensionCount?: number;
   preview: string;
   profileId: string;
   profileName: string;
   skillRouteCount: number;
+};
+
+export type PiExtension = {
+  active: boolean;
+  description: string;
+  id: string;
+  inspected: boolean;
+  modules: HarnessModule[];
+  name: string;
+  route: string;
 };
 
 export type CreateHarnessProfileRequest = {
@@ -283,6 +296,24 @@ export type UpdateHarnessProfileRequest = {
   name: string;
   profileId: string;
   skillRoutes: string[];
+};
+
+export type ImportPiExtensionRequest = {
+  agentPersona?: string | null;
+  basePolicy: string;
+  behaviorRules: string[];
+  description: string;
+  id: string;
+  name: string;
+  outputStyle?: string | null;
+  projectMemory?: string | null;
+  safetyRules: string[];
+  toolRules: string[];
+};
+
+export type SetPiExtensionActiveRequest = {
+  active: boolean;
+  extensionId: string;
 };
 
 export type AgentTemplate = {
@@ -401,6 +432,7 @@ export type ElectronCommandMap = {
   create_harness_profile: HarnessStudioSnapshot;
   create_workspace: WorkspaceSnapshot;
   harness_studio_snapshot: HarnessStudioSnapshot;
+  import_pi_extension: HarnessStudioSnapshot;
   inspect_cached_skill_source: unknown;
   mission_control_snapshot: MissionControlSnapshot;
   promote_agent_training_run: AgentStudioSnapshot;
@@ -408,6 +440,7 @@ export type ElectronCommandMap = {
   settings_snapshot: SettingsSnapshot;
   set_agent_template_active: AgentStudioSnapshot;
   set_harness_profile_active: HarnessStudioSnapshot;
+  set_pi_extension_active: HarnessStudioSnapshot;
   skill_sources_snapshot: SkillSourcesSnapshot;
   sync_github_skill_source: unknown;
   sync_provider_models: SettingsSnapshot;

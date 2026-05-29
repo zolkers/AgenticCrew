@@ -403,6 +403,7 @@ mod tests {
             skill_sources: Vec::new(),
             harness_profiles: Vec::new(),
             harness_bindings: Vec::new(),
+            pi_extensions: Vec::new(),
             agent_templates: Vec::new(),
             agent_training_runs: Vec::new(),
             desktop_settings: Default::default(),

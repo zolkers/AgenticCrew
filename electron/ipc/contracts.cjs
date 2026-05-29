@@ -10,6 +10,8 @@ const COMMANDS = new Set([
   "create_harness_profile",
   "set_harness_profile_active",
   "update_harness_profile",
+  "import_pi_extension",
+  "set_pi_extension_active",
   "agent_studio_snapshot",
   "create_agent_template",
   "set_agent_template_active",

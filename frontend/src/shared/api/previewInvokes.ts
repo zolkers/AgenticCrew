@@ -76,8 +76,10 @@ const previewSkillSourcesSnapshot: SkillSourcesSnapshot = {
 };
 
 const previewHarnessStudioSnapshot: HarnessStudioSnapshot = {
+  activePiExtensionCount: 0,
   activeProfileCount: 1,
   bindings: [],
+  piExtensions: [],
   profiles: [
     {
       active: true,
@@ -105,6 +107,47 @@ const previewHarnessStudioSnapshot: HarnessStudioSnapshot = {
     }
   ]
 };
+
+let currentPreviewHarnessStudioSnapshot = previewHarnessStudioSnapshot;
+
+export function resetPreviewInvokesForTests() {
+  currentPreviewHarnessStudioSnapshot = previewHarnessStudioSnapshot;
+}
+
+function withEffectiveHarnesses(snapshot: HarnessStudioSnapshot): HarnessStudioSnapshot {
+  const activePiExtensions = (snapshot.piExtensions ?? []).filter((extension) => extension.active);
+  const piExtensionContent = activePiExtensions
+    .flatMap((extension) => extension.modules)
+    .filter((module) => module.enabled && module.content.trim().length > 0)
+    .map((module) => module.content.trim());
+
+  return {
+    ...snapshot,
+    activePiExtensionCount: activePiExtensions.length,
+    activeProfileCount: snapshot.profiles.filter((profile) => profile.active).length,
+    effectiveHarnesses: snapshot.profiles
+      .filter((profile) => profile.active)
+      .map((profile) => {
+        const enabledModules = profile.modules.filter((module) => module.enabled);
+        const preview =
+          [
+            ...enabledModules
+              .map((module) => module.content.trim())
+              .filter((content) => content.length > 0),
+            ...piExtensionContent
+          ].join("\n\n") || "No enabled module content";
+
+        return {
+          enabledModuleCount: enabledModules.length,
+          piExtensionCount: activePiExtensions.length,
+          preview,
+          profileId: profile.id,
+          profileName: profile.name,
+          skillRouteCount: profile.skillRoutes.length
+        };
+      })
+  };
+}
 
 const previewAgentStudioSnapshot: AgentStudioSnapshot = {
   activeTemplateCount: 1,
@@ -315,11 +358,10 @@ export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =
       | undefined;
     const id = request?.id ?? "preview-local";
 
-    return Promise.resolve({
-      ...previewHarnessStudioSnapshot,
-      activeProfileCount: previewHarnessStudioSnapshot.activeProfileCount + (request?.active ? 1 : 0),
+    currentPreviewHarnessStudioSnapshot = withEffectiveHarnesses({
+      ...currentPreviewHarnessStudioSnapshot,
       profiles: [
-        ...previewHarnessStudioSnapshot.profiles,
+        ...currentPreviewHarnessStudioSnapshot.profiles,
         {
           active: request?.active ?? false,
           description: request?.description ?? "Preview local harness",
@@ -345,32 +387,35 @@ export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =
         }
       ]
     });
+
+    return Promise.resolve(currentPreviewHarnessStudioSnapshot);
   }
 
   if (command === "set_harness_profile_active") {
     const request = args?.request as { active?: boolean; profileId?: string } | undefined;
     const profileId = request?.profileId;
     const active = request?.active;
-    const profiles = previewHarnessStudioSnapshot.profiles.map((profile) =>
+    const profiles = currentPreviewHarnessStudioSnapshot.profiles.map((profile) =>
       profile.id === profileId ? { ...profile, active: active ?? profile.active } : profile
     );
 
-    return Promise.resolve({
-      ...previewHarnessStudioSnapshot,
-      activeProfileCount: profiles.filter((profile) => profile.active).length,
+    currentPreviewHarnessStudioSnapshot = withEffectiveHarnesses({
+      ...currentPreviewHarnessStudioSnapshot,
       profiles
     });
+
+    return Promise.resolve(currentPreviewHarnessStudioSnapshot);
   }
 
   if (command === "update_harness_profile") {
     const request = args?.request as
-      | { basePolicy: string; description: string; name: string; profileId: string; skillRoutes: string[] }
+      | { basePolicy: string; description: string; name: string; profileId: string; skillRoutes?: string[] }
       | undefined;
     if (request === undefined) {
-      return Promise.resolve(previewHarnessStudioSnapshot);
+      return Promise.resolve(currentPreviewHarnessStudioSnapshot);
     }
 
-    const profiles = previewHarnessStudioSnapshot.profiles.map((profile) =>
+    const profiles = currentPreviewHarnessStudioSnapshot.profiles.map((profile) =>
       profile.id === request.profileId
         ? {
             ...profile,
@@ -381,19 +426,85 @@ export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =
               version: incrementStringVersion(module.version)
             })),
             name: request.name,
-            skillRoutes: request.skillRoutes,
+            skillRoutes: request.skillRoutes ?? profile.skillRoutes,
             version: incrementStringVersion(profile.version)
           }
         : profile
     );
 
-    return Promise.resolve({
-      ...previewHarnessStudioSnapshot,
+    currentPreviewHarnessStudioSnapshot = withEffectiveHarnesses({
+      ...currentPreviewHarnessStudioSnapshot,
       profiles
     });
+
+    return Promise.resolve(currentPreviewHarnessStudioSnapshot);
   }
 
-  return Promise.resolve(previewHarnessStudioSnapshot);
+  if (command === "import_pi_extension") {
+    const request = args?.request as
+      | {
+          agentPersona?: null | string;
+          basePolicy?: string;
+          behaviorRules?: string[];
+          description?: string;
+          id?: string;
+          name?: string;
+          outputStyle?: null | string;
+          projectMemory?: null | string;
+          safetyRules?: string[];
+          toolRules?: string[];
+        }
+      | undefined;
+    const id = request?.id ?? "preview-pi";
+    const extension = {
+      active: false,
+      description: request?.description ?? "Preview PI extension",
+      id,
+      inspected: true,
+      modules: [
+        {
+          content: request?.basePolicy ?? "Preview PI policy",
+          enabled: true,
+          id: `${id}/base-policy`,
+          kind: "base_policy" as const,
+          name: "Base Policy",
+          source: {
+            route: `agenticcrew://pi/local/${id}`,
+            sourceId: id,
+            trustLevel: "local" as const
+          },
+          version: "1"
+        }
+      ],
+      name: request?.name ?? "Preview PI",
+      route: `agenticcrew://pi/local/${id}`
+    };
+
+    currentPreviewHarnessStudioSnapshot = withEffectiveHarnesses({
+      ...currentPreviewHarnessStudioSnapshot,
+      piExtensions: [...(currentPreviewHarnessStudioSnapshot.piExtensions ?? []), extension]
+    });
+
+    return Promise.resolve(currentPreviewHarnessStudioSnapshot);
+  }
+
+  if (command === "set_pi_extension_active") {
+    const request = args?.request as { active?: boolean; extensionId?: string } | undefined;
+    const piExtensions = (currentPreviewHarnessStudioSnapshot.piExtensions ?? []).map((extension) =>
+      extension.id === request?.extensionId
+        ? { ...extension, active: request.active ?? extension.active }
+        : extension
+    );
+
+    currentPreviewHarnessStudioSnapshot = withEffectiveHarnesses({
+      ...currentPreviewHarnessStudioSnapshot,
+      piExtensions
+    });
+
+    return Promise.resolve(currentPreviewHarnessStudioSnapshot);
+  }
+
+  return Promise.resolve(currentPreviewHarnessStudioSnapshot);
 };
 
 export const previewAgentStudioInvoke: InvokeAgentStudio = (command, args) => {

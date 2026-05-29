@@ -10,16 +10,18 @@ use agenticcrew_core::{
         CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
     },
     core::permissions::ApprovedPermissionPolicy,
+    core::pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
     core::settings::{SyncProviderModelsRequest, UpdateAiProviderSettingsRequest},
     core::workspaces::{
         CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest, UpdateWorkspaceGitContextRequest,
         UpdateWorkspaceLoadoutRequest,
     },
     create_agent_template_at_path, create_harness_profile_at_path, create_workspace_at_path,
-    harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
-    mission_control_snapshot_at_path, promote_agent_training_run_at_path,
-    refresh_workspace_git_status_at_path, set_agent_template_active_at_path,
-    set_harness_profile_active_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
+    harness_studio_snapshot_at_path, import_pi_extension_at_path,
+    inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
+    promote_agent_training_run_at_path, refresh_workspace_git_status_at_path,
+    set_agent_template_active_at_path, set_harness_profile_active_at_path,
+    set_pi_extension_active_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
     sync_github_skill_source_at_path, sync_provider_models_at_path, update_agent_template_at_path,
     update_ai_provider_settings_at_path, update_harness_profile_at_path,
     update_workspace_git_context_at_path, update_workspace_loadout_at_path,
@@ -74,6 +76,18 @@ struct SetHarnessProfileActiveArgs {
 #[serde(rename_all = "camelCase")]
 struct UpdateHarnessProfileArgs {
     request: UpdateHarnessProfileRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ImportPiExtensionArgs {
+    request: ImportPiExtensionRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SetPiExtensionActiveArgs {
+    request: SetPiExtensionActiveRequest,
 }
 
 #[derive(Deserialize)]
@@ -214,6 +228,16 @@ fn run() -> Result<(), DesktopCommandError> {
             let args = parse_args::<UpdateHarnessProfileArgs>(&args_json)?;
 
             print_json(&update_harness_profile_at_path(state_path, args.request)?)
+        }
+        "import_pi_extension" => {
+            let args = parse_args::<ImportPiExtensionArgs>(&args_json)?;
+
+            print_json(&import_pi_extension_at_path(state_path, args.request)?)
+        }
+        "set_pi_extension_active" => {
+            let args = parse_args::<SetPiExtensionActiveArgs>(&args_json)?;
+
+            print_json(&set_pi_extension_active_at_path(state_path, args.request)?)
         }
         "agent_studio_snapshot" => print_json(&agent_studio_snapshot_at_path(state_path)?),
         "create_agent_template" => {

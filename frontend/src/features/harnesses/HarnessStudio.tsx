@@ -1,12 +1,19 @@
 import { useMemo, useState } from "react";
-import { Edit3, Layers3, Plus, Power, Route, Shield, X } from "lucide-react";
+import { Edit3, Layers3, Plus, Power, Route, Shield, Upload, X } from "lucide-react";
 import {
   createHarnessProfile,
+  importPiExtension,
+  setPiExtensionActive,
   setHarnessProfileActive,
   updateHarnessProfile,
   type InvokeHarnessStudio
 } from "../../shared/api/harnessStudioApi";
-import type { DiscoveredSkillManifest, HarnessProfile, HarnessStudioSnapshot } from "../../shared/types/core";
+import type {
+  DiscoveredSkillManifest,
+  HarnessProfile,
+  HarnessStudioSnapshot,
+  PiExtension
+} from "../../shared/types/core";
 
 type HarnessStudioProps = Readonly<{
   availableSkillRoutes?: readonly DiscoveredSkillManifest[];
@@ -20,12 +27,17 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
   const [description, setDescription] = useState("Local execution profile for this workspace.");
   const [editingProfileId, setEditingProfileId] = useState<null | string>(null);
   const [error, setError] = useState<null | string>(null);
+  const [piBasePolicy, setPiBasePolicy] = useState("Require explicit PI review before release claims.");
+  const [piDescription, setPiDescription] = useState("Local PI extension for this workspace.");
+  const [piName, setPiName] = useState("Release PI Extension");
   const [name, setName] = useState("Workspace Harness");
   const [saving, setSaving] = useState(false);
   const [skillRoutesText, setSkillRoutesText] = useState("");
   const selectedSkillRoutes = splitSkillRoutes(skillRoutesText);
-  const effectiveHarnesses = snapshot.effectiveHarnesses ?? effectiveHarnessPreviews(snapshot.profiles);
+  const piExtensions = snapshot.piExtensions ?? [];
+  const effectiveHarnesses = snapshot.effectiveHarnesses ?? effectiveHarnessPreviews(snapshot.profiles, piExtensions);
   const generatedId = useMemo(() => slugify(name), [name]);
+  const generatedPiId = useMemo(() => slugify(piName), [piName]);
   const submitLabel = saving ? "Saving" : getHarnessSubmitLabel(editingProfileId);
 
   async function submitHarnessProfile() {
@@ -104,6 +116,48 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
     }
   }
 
+  async function importLocalPiExtension() {
+    setError(null);
+    setSaving(true);
+
+    try {
+      const nextSnapshot = await importPiExtension(invoke, {
+        agentPersona: null,
+        basePolicy: piBasePolicy,
+        behaviorRules: [],
+        description: piDescription,
+        id: generatedPiId,
+        name: piName,
+        outputStyle: null,
+        projectMemory: null,
+        safetyRules: [],
+        toolRules: []
+      });
+      onSnapshotChange?.(nextSnapshot);
+      setPiName("Release PI Extension");
+      setPiDescription("Local PI extension for this workspace.");
+      setPiBasePolicy("Require explicit PI review before release claims.");
+    } catch {
+      setError("PI extension import failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function togglePiExtension(extensionId: string, active: boolean) {
+    setError(null);
+    setSaving(true);
+
+    try {
+      const nextSnapshot = await setPiExtensionActive(invoke, { active, extensionId });
+      onSnapshotChange?.(nextSnapshot);
+    } catch {
+      setError("PI extension status update failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <section aria-label="Harness Studio">
       <header className="surface-header">
@@ -130,8 +184,8 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
           </article>
           <article className="surface-card">
             <Shield aria-hidden="true" size={20} />
-            <strong>Precedence</strong>
-            <span>workspace / agent / run</span>
+            <strong>PI extensions</strong>
+            <span>{piExtensions.length} inspected</span>
           </article>
         </div>
         {effectiveHarnesses.length > 0 ? (
@@ -155,6 +209,10 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
                     <div>
                       <dt>Skill routes</dt>
                       <dd>{harness.skillRouteCount}</dd>
+                    </div>
+                    <div>
+                      <dt>PI extensions</dt>
+                      <dd>{harness.piExtensionCount ?? 0}</dd>
                     </div>
                   </dl>
                   <p>{harness.preview || "No enabled module content"}</p>
@@ -224,6 +282,95 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
         </ul>
         </>
       )}
+      <section aria-labelledby="pi-extensions-title" className="effective-harness-panel">
+        <header>
+          <Upload aria-hidden="true" size={18} />
+          <h3 id="pi-extensions-title">PI extensions</h3>
+        </header>
+        {piExtensions.length === 0 ? <p>No PI extension imported</p> : null}
+        {piExtensions.length > 0 ? (
+          <ul className="surface-list">
+            {piExtensions.map((extension) => (
+              <li key={extension.id}>
+                <div>
+                  <strong>{extension.name}</strong>
+                  <span>{extension.route}</span>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{extension.active ? "Active" : "Inactive"}</dd>
+                  </div>
+                  <div>
+                    <dt>Modules</dt>
+                    <dd>{extension.modules.length}</dd>
+                  </div>
+                </dl>
+                <p>{extension.description}</p>
+                <button
+                  className="inline-action"
+                  disabled={saving}
+                  onClick={() => {
+                    void togglePiExtension(extension.id, !extension.active);
+                  }}
+                  type="button"
+                >
+                  <Power aria-hidden="true" size={16} />
+                  <span>{extension.active ? "Deactivate PI" : "Activate PI"}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <form
+          className="harness-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void importLocalPiExtension();
+          }}
+        >
+          <label>
+            <span>PI name</span>
+            <input
+              disabled={saving}
+              onChange={(event) => {
+                setPiName(event.target.value);
+              }}
+              value={piName}
+            />
+          </label>
+          <label>
+            <span>PI route</span>
+            <input disabled readOnly value={`agenticcrew://pi/local/${generatedPiId}`} />
+          </label>
+          <label>
+            <span>PI description</span>
+            <input
+              disabled={saving}
+              onChange={(event) => {
+                setPiDescription(event.target.value);
+              }}
+              value={piDescription}
+            />
+          </label>
+          <label>
+            <span>PI base policy</span>
+            <textarea
+              disabled={saving}
+              onChange={(event) => {
+                setPiBasePolicy(event.target.value);
+              }}
+              value={piBasePolicy}
+            />
+          </label>
+          <div className="settings-actions">
+            <button disabled={saving || generatedPiId.length === 0} type="submit">
+              <Upload aria-hidden="true" size={16} />
+              <span>Import PI extension</span>
+            </button>
+          </div>
+        </form>
+      </section>
       <form
         className="harness-form"
         onSubmit={(event) => {
@@ -347,15 +494,27 @@ function splitSkillRoutes(value: string): string[] {
     .filter((route) => route.length > 0);
 }
 
-function effectiveHarnessPreviews(profiles: readonly HarnessProfile[]) {
+function effectiveHarnessPreviews(profiles: readonly HarnessProfile[], piExtensions: readonly PiExtension[]) {
+  const activePiExtensions = piExtensions.filter((extension) => extension.active);
+  const piExtensionContent = activePiExtensions
+    .flatMap((extension) => extension.modules)
+    .filter((module) => module.enabled)
+    .map((module) => module.content.trim())
+    .filter(Boolean);
+
   return profiles
     .filter((profile) => profile.active)
     .map((profile) => {
       const enabledModules = profile.modules.filter((module) => module.enabled);
+      const preview = [
+        ...enabledModules.map((module) => module.content.trim()).filter(Boolean),
+        ...piExtensionContent
+      ].join("\n\n");
 
       return {
         enabledModuleCount: enabledModules.length,
-        preview: enabledModules.map((module) => module.content.trim()).filter(Boolean).join("\n\n"),
+        piExtensionCount: activePiExtensions.length,
+        preview,
         profileId: profile.id,
         profileName: profile.name,
         skillRouteCount: profile.skillRoutes.length

@@ -5,6 +5,7 @@ pub mod harnesses;
 pub mod library;
 pub mod mission_control;
 pub mod permissions;
+pub mod pi_extensions;
 pub mod sessions;
 pub mod settings;
 pub mod skill_manifest;

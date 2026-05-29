@@ -18,6 +18,7 @@ use core::{
     },
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
     permissions::ApprovedPermissionPolicy,
+    pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
     settings::{
         settings_snapshot_from_state, SettingsSnapshot, SyncProviderModelsRequest,
         UpdateAiProviderSettingsRequest,
@@ -240,6 +241,24 @@ pub fn update_harness_profile_at_path(
     request: UpdateHarnessProfileRequest,
 ) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
     let state = mutate_state_at_path(path, |state| state.update_harness_profile(request))?;
+
+    Ok(harness_studio_snapshot_from_state(&state))
+}
+
+pub fn import_pi_extension_at_path(
+    path: impl AsRef<Path>,
+    request: ImportPiExtensionRequest,
+) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.import_pi_extension(request))?;
+
+    Ok(harness_studio_snapshot_from_state(&state))
+}
+
+pub fn set_pi_extension_active_at_path(
+    path: impl AsRef<Path>,
+    request: SetPiExtensionActiveRequest,
+) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.set_pi_extension_active(request))?;
 
     Ok(harness_studio_snapshot_from_state(&state))
 }

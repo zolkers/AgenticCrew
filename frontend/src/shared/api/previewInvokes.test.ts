@@ -1,14 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   previewAgentStudioInvoke,
   previewHarnessStudioInvoke,
   previewMissionControlInvoke,
+  resetPreviewInvokesForTests,
   previewSettingsInvoke,
   previewSkillSourcesInvoke,
   previewWorkspaceInvoke
 } from "./previewInvokes";
 
 describe("previewInvokes", () => {
+  beforeEach(() => {
+    resetPreviewInvokesForTests();
+  });
+
   it("returns a Mission Control preview snapshot for browser previews", async () => {
     await expect(previewMissionControlInvoke("mission_control_snapshot")).resolves.toMatchObject({
       currentCheckpoint: "Preview mode",
@@ -143,16 +148,58 @@ describe("previewInvokes", () => {
       profiles: [{ id: "pi-execution-discipline" }, { id: "local-preview" }]
     });
 
+    const toggled = await previewHarnessStudioInvoke("set_harness_profile_active", {
+      request: {
+        active: false,
+        profileId: "pi-execution-discipline"
+      }
+    });
+
+    expect(toggled).toMatchObject({
+      activeProfileCount: 1
+    });
+    expect(toggled.profiles).toEqual(
+      expect.arrayContaining([expect.objectContaining({ active: false, id: "pi-execution-discipline" })])
+    );
+  });
+
+  it("persists preview PI extension import before activation", async () => {
+    await expect(
+      previewHarnessStudioInvoke("import_pi_extension", {
+        request: {
+          basePolicy: "Add preview PI protocol.",
+          description: "Preview import",
+          id: "preview-import",
+          name: "Preview Import"
+        }
+      })
+    ).resolves.toMatchObject({
+      activePiExtensionCount: 0,
+      piExtensions: [{ active: false, id: "preview-import", inspected: true }]
+    });
+
     await expect(
       previewHarnessStudioInvoke("set_harness_profile_active", {
         request: {
-          active: false,
+          active: true,
           profileId: "pi-execution-discipline"
         }
       })
     ).resolves.toMatchObject({
-      activeProfileCount: 0,
-      profiles: [{ active: false, id: "pi-execution-discipline" }]
+      profiles: [{ active: true, id: "pi-execution-discipline" }]
+    });
+
+    await expect(
+      previewHarnessStudioInvoke("set_pi_extension_active", {
+        request: {
+          active: true,
+          extensionId: "preview-import"
+        }
+      })
+    ).resolves.toMatchObject({
+      activePiExtensionCount: 1,
+      effectiveHarnesses: [expect.objectContaining({ piExtensionCount: 1 })],
+      piExtensions: [{ active: true, id: "preview-import" }]
     });
   });
 
@@ -171,21 +218,23 @@ describe("previewInvokes", () => {
       ]
     });
 
-    await expect(previewHarnessStudioInvoke("set_harness_profile_active")).resolves.toMatchObject({
-      activeProfileCount: 1,
-      profiles: [{ active: true, id: "pi-execution-discipline" }]
+    const fallbackToggled = await previewHarnessStudioInvoke("set_harness_profile_active");
+    expect(fallbackToggled).toMatchObject({
+      activeProfileCount: 1
     });
+    expect(fallbackToggled.profiles).toEqual(
+      expect.arrayContaining([expect.objectContaining({ active: true, id: "pi-execution-discipline" })])
+    );
 
-    await expect(
-      previewHarnessStudioInvoke("set_harness_profile_active", {
-        request: {
-          profileId: "pi-execution-discipline"
-        }
-      })
-    ).resolves.toMatchObject({
-      activeProfileCount: 1,
-      profiles: [{ active: true, id: "pi-execution-discipline" }]
+    const fallbackProfileToggle = await previewHarnessStudioInvoke("set_harness_profile_active", {
+      request: {
+        profileId: "pi-execution-discipline"
+      }
     });
+    expect(fallbackProfileToggle).toMatchObject({ activeProfileCount: 1 });
+    expect(fallbackProfileToggle.profiles).toEqual(
+      expect.arrayContaining([expect.objectContaining({ active: true, id: "pi-execution-discipline" })])
+    );
   });
 
   it("handles preview harness profile updates", async () => {

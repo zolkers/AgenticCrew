@@ -17,6 +17,9 @@ use super::{
         SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
     },
     permissions::ApprovedPermissionPolicy,
+    pi_extensions::{
+        ImportPiExtensionRequest, PiExtension, PiExtensionError, SetPiExtensionActiveRequest,
+    },
     sessions::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
         SessionTransitionError,
@@ -52,6 +55,8 @@ pub struct AgentOsState {
     #[serde(default)]
     pub harness_bindings: Vec<HarnessBinding>,
     #[serde(default)]
+    pub pi_extensions: Vec<PiExtension>,
+    #[serde(default)]
     pub agent_templates: Vec<AgentTemplate>,
     #[serde(default)]
     pub agent_training_runs: Vec<AgentTrainingRun>,
@@ -73,6 +78,7 @@ impl AgentOsState {
             skill_sources: Vec::new(),
             harness_profiles: vec![HarnessProfile::pi_execution_discipline()],
             harness_bindings: Vec::new(),
+            pi_extensions: Vec::new(),
             agent_templates: vec![AgentTemplate::developer_with_pi()],
             agent_training_runs: Vec::new(),
             desktop_settings: DesktopSettings::default(),
@@ -383,6 +389,43 @@ impl AgentOsState {
         profile
             .update_from(request)
             .map_err(StateMutationError::InvalidHarnessProfile)?;
+
+        Ok(())
+    }
+
+    pub fn import_pi_extension(
+        &mut self,
+        request: ImportPiExtensionRequest,
+    ) -> Result<(), StateMutationError> {
+        if self
+            .pi_extensions
+            .iter()
+            .any(|extension| extension.id == request.id)
+        {
+            return Err(StateMutationError::DuplicatePiExtension {
+                extension_id: request.id,
+            });
+        }
+
+        self.pi_extensions
+            .push(PiExtension::imported(request).map_err(StateMutationError::InvalidPiExtension)?);
+
+        Ok(())
+    }
+
+    pub fn set_pi_extension_active(
+        &mut self,
+        request: SetPiExtensionActiveRequest,
+    ) -> Result<(), StateMutationError> {
+        let extension = self
+            .pi_extensions
+            .iter_mut()
+            .find(|extension| extension.id == request.extension_id)
+            .ok_or_else(|| StateMutationError::MissingPiExtension {
+                extension_id: request.extension_id.clone(),
+            })?;
+
+        extension.active = request.active;
 
         Ok(())
     }
@@ -704,6 +747,12 @@ pub enum StateMutationError {
     MissingHarnessProfile {
         profile_id: String,
     },
+    DuplicatePiExtension {
+        extension_id: String,
+    },
+    MissingPiExtension {
+        extension_id: String,
+    },
     DuplicateAgentTemplate {
         template_id: String,
     },
@@ -725,6 +774,7 @@ pub enum StateMutationError {
     },
     InvalidSkillSource(SkillSourceError),
     InvalidHarnessProfile(HarnessProfileError),
+    InvalidPiExtension(PiExtensionError),
     InvalidAgentTemplate(AgentTemplateError),
     InvalidDesktopSettings(SettingsValidationError),
     InvalidWorkspace(WorkspaceError),
@@ -770,6 +820,12 @@ impl fmt::Display for StateMutationError {
             StateMutationError::MissingHarnessProfile { profile_id } => {
                 write!(formatter, "harness profile '{profile_id}' does not exist")
             }
+            StateMutationError::DuplicatePiExtension { extension_id } => {
+                write!(formatter, "PI extension '{extension_id}' already exists")
+            }
+            StateMutationError::MissingPiExtension { extension_id } => {
+                write!(formatter, "PI extension '{extension_id}' does not exist")
+            }
             StateMutationError::DuplicateAgentTemplate { template_id } => {
                 write!(formatter, "agent template '{template_id}' already exists")
             }
@@ -802,6 +858,9 @@ impl fmt::Display for StateMutationError {
             }
             StateMutationError::InvalidHarnessProfile(error) => {
                 write!(formatter, "invalid harness profile: {error}")
+            }
+            StateMutationError::InvalidPiExtension(error) => {
+                write!(formatter, "invalid PI extension: {error}")
             }
             StateMutationError::InvalidAgentTemplate(error) => {
                 write!(formatter, "invalid agent template: {error}")
@@ -989,6 +1048,7 @@ mod tests {
             ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
             NetworkPermissionScope,
         },
+        pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
         sessions::{
             Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
             SessionTransitionError,
@@ -1018,6 +1078,7 @@ mod tests {
         assert_eq!(state.harness_profiles.len(), 1);
         assert_eq!(state.harness_profiles[0].id, "pi-execution-discipline");
         assert!(state.harness_bindings.is_empty());
+        assert!(state.pi_extensions.is_empty());
         assert_eq!(state.agent_templates.len(), 1);
         assert_eq!(state.agent_templates[0].id, "developer-pi");
         assert!(state.agent_training_runs.is_empty());
@@ -1039,6 +1100,7 @@ mod tests {
 
         assert!(state.harness_profiles.is_empty());
         assert!(state.harness_bindings.is_empty());
+        assert!(state.pi_extensions.is_empty());
         assert!(state.agent_templates.is_empty());
         assert!(state.agent_training_runs.is_empty());
         assert_eq!(state.desktop_settings.ai_provider.provider_id, "openai");
@@ -1202,6 +1264,91 @@ mod tests {
             state.harness_profiles[0].skill_routes,
             vec!["agenticcrew://skills/review"]
         );
+    }
+
+    #[test]
+    fn import_pi_extension_keeps_it_inspected_but_inactive() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .import_pi_extension(ImportPiExtensionRequest {
+                agent_persona: Some("Operate as a release reviewer.".to_owned()),
+                base_policy: "Require release evidence.".to_owned(),
+                behavior_rules: vec!["Prefer small diffs.".to_owned()],
+                description: "Release review extension".to_owned(),
+                id: "release-pi".to_owned(),
+                name: "Release PI".to_owned(),
+                output_style: None,
+                project_memory: None,
+                safety_rules: Vec::new(),
+                tool_rules: Vec::new(),
+            })
+            .expect("PI extension should import");
+
+        assert_eq!(state.pi_extensions.len(), 1);
+        assert_eq!(state.pi_extensions[0].id, "release-pi");
+        assert!(state.pi_extensions[0].inspected);
+        assert!(!state.pi_extensions[0].active);
+        assert_eq!(state.pi_extensions[0].modules.len(), 3);
+    }
+
+    #[test]
+    fn import_pi_extension_rejects_duplicate_id() {
+        let mut state = AgentOsState::empty();
+        let request = ImportPiExtensionRequest {
+            agent_persona: None,
+            base_policy: "Require release evidence.".to_owned(),
+            behavior_rules: Vec::new(),
+            description: "Release review extension".to_owned(),
+            id: "release-pi".to_owned(),
+            name: "Release PI".to_owned(),
+            output_style: None,
+            project_memory: None,
+            safety_rules: Vec::new(),
+            tool_rules: Vec::new(),
+        };
+
+        state
+            .import_pi_extension(request.clone())
+            .expect("first extension should import");
+        let error = state
+            .import_pi_extension(request)
+            .expect_err("duplicate extension should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::DuplicatePiExtension {
+                extension_id: "release-pi".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn set_pi_extension_active_updates_existing_extension() {
+        let mut state = AgentOsState::empty();
+        state
+            .import_pi_extension(ImportPiExtensionRequest {
+                agent_persona: None,
+                base_policy: "Require release evidence.".to_owned(),
+                behavior_rules: Vec::new(),
+                description: "Release review extension".to_owned(),
+                id: "release-pi".to_owned(),
+                name: "Release PI".to_owned(),
+                output_style: None,
+                project_memory: None,
+                safety_rules: Vec::new(),
+                tool_rules: Vec::new(),
+            })
+            .expect("extension should import");
+
+        state
+            .set_pi_extension_active(SetPiExtensionActiveRequest {
+                active: true,
+                extension_id: "release-pi".to_owned(),
+            })
+            .expect("extension should activate");
+
+        assert!(state.pi_extensions[0].active);
     }
 
     #[test]
@@ -2090,6 +2237,7 @@ mod tests {
             skill_sources: Vec::new(),
             harness_profiles: vec![HarnessProfile::pi_execution_discipline()],
             harness_bindings: Vec::new(),
+            pi_extensions: Vec::new(),
             agent_templates: vec![AgentTemplate::developer_with_pi()],
             agent_training_runs: Vec::new(),
             desktop_settings: DesktopSettings::default(),
