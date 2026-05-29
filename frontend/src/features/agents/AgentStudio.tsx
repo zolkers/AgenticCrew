@@ -49,6 +49,7 @@ export function AgentStudio({
       ? availableModels
       : [{ id: modelId, label: modelId, providerId: "openai" }, ...availableModels];
   const selectedSkillRoutes = splitSkillRoutes(skillRoutesText);
+  const evaluationRuns = snapshot.evaluationRuns ?? [];
   const versionSummaries = snapshot.versionSummaries ?? agentVersionSummaries(snapshot);
   const generatedId = useMemo(() => slugify(name), [name]);
   const submitLabel = saving ? "Saving" : getAgentSubmitLabel(editingTemplateId);
@@ -183,7 +184,7 @@ export function AgentStudio({
           <article className="surface-card">
             <Trophy aria-hidden="true" size={20} />
             <strong>Evaluation</strong>
-            <span>Version scoring pending</span>
+            <span>{evaluationRuns.length} evaluations</span>
           </article>
         </div>
         <ul className="surface-list">
@@ -318,6 +319,45 @@ export function AgentStudio({
                     <Trophy aria-hidden="true" size={15} />
                   </button>
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {evaluationRuns.length > 0 ? (
+        <section aria-labelledby="evaluation-lane-title" className="training-lane">
+          <header>
+            <FlaskConical aria-hidden="true" size={18} />
+            <h3 id="evaluation-lane-title">Evaluation lane</h3>
+          </header>
+          <ul className="surface-list">
+            {evaluationRuns.map((run) => (
+              <li key={run.id}>
+                <div>
+                  <strong>{run.suiteId}</strong>
+                  <span>
+                    {run.agentTemplateId} / v{run.baselineVersion} -&gt; v{run.candidateVersion}
+                  </span>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{run.status}</dd>
+                  </div>
+                  <div>
+                    <dt>Score</dt>
+                    <dd>{run.score ?? "Pending"}</dd>
+                  </div>
+                  <div>
+                    <dt>Regressions</dt>
+                    <dd>{run.regressionCount}</dd>
+                  </div>
+                  <div>
+                    <dt>Cost</dt>
+                    <dd>${(run.estimatedCostCents / 100).toFixed(2)}</dd>
+                  </div>
+                </dl>
+                {run.artifactPath ? <code>{run.artifactPath}</code> : null}
               </li>
             ))}
           </ul>

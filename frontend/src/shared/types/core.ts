@@ -347,8 +347,24 @@ export type AgentTrainingRun = {
   status: AgentTrainingStatus;
 };
 
+export type AgentEvaluationStatus = "pending" | "running" | "passed" | "failed" | "regressed";
+
+export type AgentEvaluationRun = {
+  agentTemplateId: string;
+  artifactPath?: string | null;
+  baselineVersion: number;
+  candidateVersion: number;
+  estimatedCostCents: number;
+  id: string;
+  regressionCount: number;
+  score?: number | null;
+  status: AgentEvaluationStatus;
+  suiteId: string;
+};
+
 export type AgentStudioSnapshot = {
   activeTemplateCount: number;
+  evaluationRuns?: AgentEvaluationRun[];
   templates: AgentTemplate[];
   trainingRuns: AgentTrainingRun[];
   versionSummaries?: AgentVersionSummary[];

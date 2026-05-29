@@ -87,6 +87,20 @@ const templateSnapshot: AgentStudioSnapshot = {
       status: "promoted"
     }
   ],
+  evaluationRuns: [
+    {
+      agentTemplateId: "loose-agent",
+      artifactPath: "evaluations/loose-agent/release.json",
+      baselineVersion: 1,
+      candidateVersion: 2,
+      estimatedCostCents: 37,
+      id: "eval-1",
+      regressionCount: 0,
+      score: 96,
+      status: "passed",
+      suiteId: "release-regression"
+    }
+  ],
   versionSummaries: [
     {
       active: true,
@@ -130,9 +144,12 @@ describe("AgentStudio", () => {
     expect(screen.getByText("loose-agent / completed")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Promote training run smoke" })).toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
-    expect(screen.getByText("release-regression")).toBeInTheDocument();
+    expect(screen.getAllByText("release-regression").length).toBeGreaterThan(0);
     expect(screen.getByText("0.91")).toBeInTheDocument();
     expect(screen.getByText("v3")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Evaluation lane" })).toBeInTheDocument();
+    expect(screen.getByText("loose-agent / v1 -> v2")).toBeInTheDocument();
+    expect(screen.getByText("evaluations/loose-agent/release.json")).toBeInTheDocument();
   });
 
   it("derives version summaries when older snapshots omit them", () => {

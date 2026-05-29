@@ -47,11 +47,37 @@ pub enum AgentTrainingStatus {
     Promoted,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentEvaluationStatus {
+    Pending,
+    Running,
+    Passed,
+    Failed,
+    Regressed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentEvaluationRun {
+    pub id: String,
+    pub agent_template_id: String,
+    pub baseline_version: u32,
+    pub candidate_version: u32,
+    pub suite_id: String,
+    pub status: AgentEvaluationStatus,
+    pub score: Option<u32>,
+    pub regression_count: u64,
+    pub estimated_cost_cents: u64,
+    pub artifact_path: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentStudioSnapshot {
     pub templates: Vec<AgentTemplate>,
     pub training_runs: Vec<AgentTrainingRun>,
+    pub evaluation_runs: Vec<AgentEvaluationRun>,
     pub version_summaries: Vec<AgentVersionSummary>,
     pub active_template_count: u64,
 }
@@ -120,6 +146,7 @@ pub fn agent_studio_snapshot_from_state(state: &AgentOsState) -> AgentStudioSnap
             .count() as u64,
         templates: state.agent_templates.clone(),
         training_runs: state.agent_training_runs.clone(),
+        evaluation_runs: state.agent_evaluation_runs.clone(),
         version_summaries: agent_version_summaries(
             &state.agent_templates,
             &state.agent_training_runs,
@@ -281,8 +308,9 @@ fn validate_identifier(field: &'static str, value: String) -> Result<String, Age
 #[cfg(test)]
 mod tests {
     use super::{
-        agent_studio_snapshot_from_state, AgentTemplate, AgentTrainingRun, AgentTrainingStatus,
-        CreateAgentTemplateRequest, UpdateAgentTemplateRequest,
+        agent_studio_snapshot_from_state, AgentEvaluationRun, AgentEvaluationStatus, AgentTemplate,
+        AgentTrainingRun, AgentTrainingStatus, CreateAgentTemplateRequest,
+        UpdateAgentTemplateRequest,
     };
     use crate::core::state::AgentOsState;
 
@@ -307,9 +335,33 @@ mod tests {
 
         assert_eq!(snapshot.active_template_count, 1);
         assert_eq!(snapshot.templates[0].id, "developer-pi");
+        assert!(snapshot.evaluation_runs.is_empty());
         assert_eq!(snapshot.version_summaries.len(), 1);
         assert_eq!(snapshot.version_summaries[0].template_id, "developer-pi");
         assert_eq!(snapshot.version_summaries[0].current_version, 1);
+    }
+
+    #[test]
+    fn agent_studio_snapshot_includes_evaluation_runs() {
+        let mut state = AgentOsState::empty();
+        state.agent_evaluation_runs.push(AgentEvaluationRun {
+            agent_template_id: "developer-pi".to_owned(),
+            artifact_path: Some("evaluations/developer-pi/report.json".to_owned()),
+            baseline_version: 1,
+            candidate_version: 2,
+            estimated_cost_cents: 42,
+            id: "eval-release".to_owned(),
+            regression_count: 0,
+            score: Some(96),
+            status: AgentEvaluationStatus::Passed,
+            suite_id: "release-regression".to_owned(),
+        });
+
+        let snapshot = agent_studio_snapshot_from_state(&state);
+
+        assert_eq!(snapshot.evaluation_runs.len(), 1);
+        assert_eq!(snapshot.evaluation_runs[0].candidate_version, 2);
+        assert_eq!(snapshot.evaluation_runs[0].score, Some(96));
     }
 
     #[test]

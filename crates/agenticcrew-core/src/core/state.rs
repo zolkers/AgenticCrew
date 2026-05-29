@@ -6,9 +6,9 @@ use std::{
 
 use super::{
     agents::{
-        AgentTemplate, AgentTemplateError, AgentTrainingRun, AgentTrainingStatus,
-        CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest,
-        UpdateAgentTemplateRequest,
+        AgentEvaluationRun, AgentTemplate, AgentTemplateError, AgentTrainingRun,
+        AgentTrainingStatus, CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest,
+        SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
     },
     costs::ModelCallEstimate,
     evidence::{CommandExitCodeEvidence, Evidence},
@@ -61,6 +61,8 @@ pub struct AgentOsState {
     #[serde(default)]
     pub agent_training_runs: Vec<AgentTrainingRun>,
     #[serde(default)]
+    pub agent_evaluation_runs: Vec<AgentEvaluationRun>,
+    #[serde(default)]
     pub desktop_settings: DesktopSettings,
     #[serde(default = "WorkspaceRecord::built_in_workspaces")]
     pub workspaces: Vec<WorkspaceRecord>,
@@ -81,6 +83,7 @@ impl AgentOsState {
             pi_extensions: Vec::new(),
             agent_templates: vec![AgentTemplate::developer_with_pi()],
             agent_training_runs: Vec::new(),
+            agent_evaluation_runs: Vec::new(),
             desktop_settings: DesktopSettings::default(),
             workspaces: WorkspaceRecord::built_in_workspaces(),
         }
@@ -1082,6 +1085,7 @@ mod tests {
         assert_eq!(state.agent_templates.len(), 1);
         assert_eq!(state.agent_templates[0].id, "developer-pi");
         assert!(state.agent_training_runs.is_empty());
+        assert!(state.agent_evaluation_runs.is_empty());
         assert_eq!(state.desktop_settings.ai_provider.provider_id, "openai");
     }
 
@@ -1103,6 +1107,7 @@ mod tests {
         assert!(state.pi_extensions.is_empty());
         assert!(state.agent_templates.is_empty());
         assert!(state.agent_training_runs.is_empty());
+        assert!(state.agent_evaluation_runs.is_empty());
         assert_eq!(state.desktop_settings.ai_provider.provider_id, "openai");
     }
 
@@ -2240,6 +2245,7 @@ mod tests {
             pi_extensions: Vec::new(),
             agent_templates: vec![AgentTemplate::developer_with_pi()],
             agent_training_runs: Vec::new(),
+            agent_evaluation_runs: Vec::new(),
             desktop_settings: DesktopSettings::default(),
             workspaces: WorkspaceRecord::built_in_workspaces(),
         }

@@ -173,6 +173,20 @@ const previewAgentStudioSnapshot: AgentStudioSnapshot = {
       version: 1
     }
   ],
+  evaluationRuns: [
+    {
+      agentTemplateId: "developer-pi",
+      artifactPath: "preview/evaluations/developer-pi.json",
+      baselineVersion: 1,
+      candidateVersion: 2,
+      estimatedCostCents: 42,
+      id: "preview-eval-release",
+      regressionCount: 0,
+      score: 96,
+      status: "passed",
+      suiteId: "release-regression"
+    }
+  ],
   trainingRuns: [
     {
       agentTemplateId: "developer-pi",

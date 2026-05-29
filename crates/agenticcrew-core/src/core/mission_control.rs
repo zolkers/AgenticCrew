@@ -406,6 +406,7 @@ mod tests {
             pi_extensions: Vec::new(),
             agent_templates: Vec::new(),
             agent_training_runs: Vec::new(),
+            agent_evaluation_runs: Vec::new(),
             desktop_settings: Default::default(),
             workspaces: Vec::new(),
         }
