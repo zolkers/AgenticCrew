@@ -692,7 +692,7 @@ describe("App", () => {
     await openDefaultWorkspace();
     fireEvent.click(screen.getByRole("button", { name: "Agent Studio" }));
     fireEvent.click(await screen.findByRole("button", { name: "New agent" }));
-    fireEvent.change(await screen.findByLabelText("Description"), {
+    fireEvent.change(await screen.findByLabelText("Prompt"), {
       target: { value: "Reviews changes before merge." }
     });
     fireEvent.change(screen.getByLabelText("Skill routes"), {

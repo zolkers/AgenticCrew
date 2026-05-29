@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
-import { Bot, Edit3, FlaskConical, Plus, Power, Route, Trophy, X } from "lucide-react";
+import { Bot, Edit3, Plus, Power, Route, X } from "lucide-react";
 import {
   createAgentTemplate,
-  promoteAgentTrainingRun,
   setAgentTemplateActive,
   updateAgentTemplate,
   type InvokeAgentStudio
@@ -51,8 +50,6 @@ export function AgentStudio({
       ? availableModels
       : [{ id: modelId, label: modelId, providerId: "openai" }, ...availableModels];
   const selectedSkillRoutes = splitSkillRoutes(skillRoutesText);
-  const evaluationRuns = snapshot.evaluationRuns ?? [];
-  const versionSummaries = snapshot.versionSummaries ?? agentVersionSummaries(snapshot);
   const generatedId = useMemo(() => slugify(name), [name]);
   const selectedTemplate = snapshot.templates.find((template) => template.id === selectedTemplateId) ?? snapshot.templates[0];
   const submitLabel = saving ? "Saving" : getAgentSubmitLabel(editingTemplateId);
@@ -152,20 +149,6 @@ export function AgentStudio({
     }
   }
 
-  async function promoteTrainingRun(trainingRunId: string) {
-    setError(null);
-    setSaving(true);
-
-    try {
-      const nextSnapshot = await promoteAgentTrainingRun(invoke, { trainingRunId });
-      onSnapshotChange?.(nextSnapshot);
-    } catch {
-      setError("Training promotion failed");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
     <section aria-label="Agent Studio">
       <header className="surface-header">
@@ -201,16 +184,6 @@ export function AgentStudio({
             <strong>Skill routes</strong>
             <span>{snapshot.templates.reduce((count, template) => count + template.skillRoutes.length, 0)}</span>
           </article>
-          <article className="surface-card">
-            <FlaskConical aria-hidden="true" size={20} />
-            <strong>Training</strong>
-            <span>{snapshot.trainingRuns.length} runs</span>
-          </article>
-          <article className="surface-card">
-            <Trophy aria-hidden="true" size={20} />
-            <strong>Evaluation</strong>
-            <span>{evaluationRuns.length} evaluations</span>
-          </article>
         </div>
         <AgentTemplateBrowser
           onEdit={beginEdit}
@@ -224,124 +197,6 @@ export function AgentStudio({
         />
         </>
       )}
-      {versionSummaries.length > 0 ? (
-        <details className="agent-studio-drawer">
-          <summary>
-            <Trophy aria-hidden="true" size={18} />
-            <h3 id="version-ledger-title">Version ledger</h3>
-          </summary>
-          <ul className="surface-list">
-            {versionSummaries.map((summary) => (
-              <li key={summary.templateId}>
-                <div>
-                  <strong>{summary.templateName}</strong>
-                  <span>
-                    v{summary.currentVersion} / {summary.active ? "active" : "inactive"}
-                  </span>
-                </div>
-                <dl>
-                  <div>
-                    <dt>Latest training</dt>
-                    <dd>{summary.latestTrainingStatus ?? "none"}</dd>
-                  </div>
-                  <div>
-                    <dt>Promotions</dt>
-                    <dd>{summary.promotedTrainingCount}</dd>
-                  </div>
-                </dl>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
-      {snapshot.trainingRuns.length > 0 ? (
-        <details className="agent-studio-drawer">
-          <summary>
-            <FlaskConical aria-hidden="true" size={18} />
-            <h3 id="training-lane-title">Training lane</h3>
-          </summary>
-          <ul className="surface-list">
-            {snapshot.trainingRuns.map((run) => (
-              <li key={run.id}>
-                <div>
-                  <strong>{run.datasetId}</strong>
-                  <span>
-                    {run.agentTemplateId} / {run.status}
-                  </span>
-                </div>
-                <dl>
-                  <div>
-                    <dt>Critic</dt>
-                    <dd>{run.criticScore ?? "Pending"}</dd>
-                  </div>
-                  <div>
-                    <dt>Promoted</dt>
-                    <dd>
-                      {run.promotedVersion === null || run.promotedVersion === undefined
-                        ? "No"
-                        : `v${String(run.promotedVersion)}`}
-                    </dd>
-                  </div>
-                </dl>
-                {run.status === "completed" &&
-                (run.promotedVersion === null || run.promotedVersion === undefined) ? (
-                  <button
-                    aria-label={`Promote training run ${run.datasetId}`}
-                    className="icon-action"
-                    disabled={saving}
-                    onClick={() => {
-                      void promoteTrainingRun(run.id);
-                    }}
-                    title="Promote"
-                    type="button"
-                  >
-                    <Trophy aria-hidden="true" size={15} />
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
-      {evaluationRuns.length > 0 ? (
-        <details className="agent-studio-drawer">
-          <summary>
-            <FlaskConical aria-hidden="true" size={18} />
-            <h3 id="evaluation-lane-title">Evaluation lane</h3>
-          </summary>
-          <ul className="surface-list">
-            {evaluationRuns.map((run) => (
-              <li key={run.id}>
-                <div>
-                  <strong>{run.suiteId}</strong>
-                  <span>
-                    {run.agentTemplateId} / v{run.baselineVersion} -&gt; v{run.candidateVersion}
-                  </span>
-                </div>
-                <dl>
-                  <div>
-                    <dt>Status</dt>
-                    <dd>{run.status}</dd>
-                  </div>
-                  <div>
-                    <dt>Score</dt>
-                    <dd>{run.score ?? "Pending"}</dd>
-                  </div>
-                  <div>
-                    <dt>Regressions</dt>
-                    <dd>{run.regressionCount}</dd>
-                  </div>
-                  <div>
-                    <dt>Cost</dt>
-                    <dd>${(run.estimatedCostCents / 100).toFixed(2)}</dd>
-                  </div>
-                </dl>
-                {run.artifactPath ? <code>{run.artifactPath}</code> : null}
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
       {isEditorOpen ? (
         <AgentEditorPanel
           availableSkillRoutes={availableSkillRoutes}
@@ -359,7 +214,7 @@ export function AgentStudio({
           onClose={() => {
             resetForm({ close: true });
           }}
-          onDescriptionChange={setDescription}
+          onPromptChange={setDescription}
           onHarnessChange={setHarnessProfileId}
           onModelChange={setModelId}
           onNameChange={setName}
@@ -393,7 +248,7 @@ type AgentEditorPanelProps = Readonly<{
   name: string;
   onBudgetChange: (value: string) => void;
   onClose: () => void;
-  onDescriptionChange: (value: string) => void;
+  onPromptChange: (value: string) => void;
   onHarnessChange: (value: string) => void;
   onModelChange: (value: string) => void;
   onNameChange: (value: string) => void;
@@ -423,7 +278,7 @@ function AgentEditorPanel({
   name,
   onBudgetChange,
   onClose,
-  onDescriptionChange,
+  onPromptChange,
   onHarnessChange,
   onModelChange,
   onNameChange,
@@ -524,8 +379,8 @@ function AgentEditorPanel({
           />
         </label>
         <label>
-          <span>Description</span>
-          <input disabled={saving} onChange={(event) => { onDescriptionChange(event.target.value); }} value={description} />
+          <span>Prompt</span>
+          <input disabled={saving} onChange={(event) => { onPromptChange(event.target.value); }} value={description} />
         </label>
         <label>
           <span>Skill routes</span>
@@ -689,7 +544,10 @@ function AgentTemplateBrowser({
             <dd>${(selectedTemplate.budgetCents / 100).toFixed(2)}</dd>
           </div>
         </dl>
-        <p>{selectedTemplate.description}</p>
+        <div className="agent-prompt-preview">
+          <strong>Prompt</strong>
+          <p>{selectedTemplate.description}</p>
+        </div>
         <ul className="pill-list compact-pills" aria-label={`${selectedTemplate.name} skill routes`}>
           {selectedTemplate.skillRoutes.length === 0 ? <li>No skill route</li> : null}
           {selectedTemplate.skillRoutes.map((route) => (
@@ -720,23 +578,6 @@ function firstAvailableModelId(modelOptions: readonly AiModelRecord[] | undefine
   }
 
   return snapshot.templates[0]?.modelId ?? "";
-}
-
-function agentVersionSummaries(snapshot: AgentStudioSnapshot) {
-  return snapshot.templates.map((template) => {
-    const trainingRuns = snapshot.trainingRuns.filter((run) => run.agentTemplateId === template.id);
-
-    return {
-      active: template.active,
-      currentVersion: template.version,
-      latestTrainingStatus: trainingRuns.at(-1)?.status ?? null,
-      promotedTrainingCount: trainingRuns.filter(
-        (run) => run.promotedVersion !== null && run.promotedVersion !== undefined
-      ).length,
-      templateId: template.id,
-      templateName: template.name
-    };
-  });
 }
 
 function slugify(value: string): string {

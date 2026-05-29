@@ -1508,6 +1508,19 @@ button {
   margin: 0;
 }
 
+.agent-prompt-preview {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid rgba(106, 169, 255, 0.22);
+  background: rgba(106, 169, 255, 0.06);
+}
+
+.agent-prompt-preview p {
+  margin: 0;
+}
+
 .compact-pills {
   margin: 0;
 }

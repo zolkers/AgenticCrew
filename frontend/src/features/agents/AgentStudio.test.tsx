@@ -125,7 +125,7 @@ describe("AgentStudio", () => {
     expect(screen.getByText("No custom agent saved")).toBeInTheDocument();
   });
 
-  it("renders templates without harnesses and queued training runs", () => {
+  it("renders templates without exposing placeholder training surfaces", () => {
     render(
       <AgentStudio
         harnessSnapshot={harnessSnapshot}
@@ -136,66 +136,11 @@ describe("AgentStudio", () => {
 
     expect(screen.getAllByText("Loose Agent").length).toBeGreaterThan(0);
     expect(screen.getAllByText("None").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "Version ledger" })).toBeInTheDocument();
-    expect(screen.getByText("v2 / active")).toBeInTheDocument();
-    expect(screen.getAllByText("promoted").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "Training lane" })).toBeInTheDocument();
-    expect(screen.getByText("smoke")).toBeInTheDocument();
-    expect(screen.getByText("loose-agent / completed")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Promote training run smoke" })).toBeInTheDocument();
-    expect(screen.getByText("Pending")).toBeInTheDocument();
-    expect(screen.getAllByText("release-regression").length).toBeGreaterThan(0);
-    expect(screen.getByText("0.91")).toBeInTheDocument();
-    expect(screen.getByText("v3")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Evaluation lane" })).toBeInTheDocument();
-    expect(screen.getByText("loose-agent / v1 -> v2")).toBeInTheDocument();
-    expect(screen.getByText("evaluations/loose-agent/release.json")).toBeInTheDocument();
-  });
-
-  it("renders pending evaluation runs without artifacts", () => {
-    render(
-      <AgentStudio
-        harnessSnapshot={harnessSnapshot}
-        invoke={vi.fn()}
-        snapshot={{
-          ...templateSnapshot,
-          evaluationRuns: [
-            {
-              agentTemplateId: "loose-agent",
-              artifactPath: null,
-              baselineVersion: 2,
-              candidateVersion: 3,
-              estimatedCostCents: 0,
-              id: "eval-pending",
-              regressionCount: 0,
-              score: null,
-              status: "pending",
-              suiteId: "nightly"
-            }
-          ]
-        }}
-      />
-    );
-
-    expect(screen.getByText("loose-agent / v2 -> v3")).toBeInTheDocument();
-    expect(screen.getAllByText("Pending").length).toBeGreaterThan(0);
-    expect(screen.queryByText("evaluations/loose-agent/release.json")).toBeNull();
-  });
-
-  it("derives version summaries when older snapshots omit them", () => {
-    render(
-      <AgentStudio
-        harnessSnapshot={harnessSnapshot}
-        invoke={vi.fn()}
-        snapshot={{
-          ...templateSnapshot,
-          versionSummaries: undefined
-        }}
-      />
-    );
-
-    expect(screen.getByText("v2 / active")).toBeInTheDocument();
-    expect(screen.getAllByText("1").length).toBeGreaterThan(0);
+    expect(screen.getByText("Agent without a harness binding")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Version ledger" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Training lane" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Evaluation lane" })).toBeNull();
+    expect(screen.queryByText("preview-smoke")).toBeNull();
   });
 
   it("keeps legacy template models selectable when the provider registry omits them", () => {
@@ -269,7 +214,7 @@ describe("AgentStudio", () => {
     fireEvent.change(screen.getByLabelText("Model"), { target: { value: "gpt-5.1" } });
     fireEvent.change(screen.getByLabelText("Harness"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Budget"), { target: { value: "2.50" } });
-    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Reviews pull requests." } });
+    fireEvent.change(screen.getByLabelText("Prompt"), { target: { value: "Reviews pull requests." } });
     fireEvent.change(screen.getByLabelText("Skill routes"), {
       target: { value: "agenticcrew://skills/a\r\nagenticcrew://skills/b\n" }
     });
@@ -389,74 +334,6 @@ describe("AgentStudio", () => {
     expect(await screen.findByText("Agent creation failed")).toBeInTheDocument();
   });
 
-  it("promotes a completed training run", async () => {
-    const nextSnapshot: AgentStudioSnapshot = {
-      ...templateSnapshot,
-      templates: templateSnapshot.templates.map((template) => ({ ...template, version: 3 })),
-      trainingRuns: templateSnapshot.trainingRuns.map((run) =>
-        run.id === "train-1" ? { ...run, promotedVersion: 3, status: "promoted" } : run
-      )
-    };
-    const invoke = vi.fn().mockResolvedValue(nextSnapshot);
-    const onSnapshotChange = vi.fn();
-
-    render(
-      <AgentStudio
-        harnessSnapshot={harnessSnapshot}
-        invoke={invoke}
-        onSnapshotChange={onSnapshotChange}
-        snapshot={templateSnapshot}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Promote training run smoke" }));
-
-    await waitFor(() => {
-      expect(onSnapshotChange).toHaveBeenCalledWith(nextSnapshot);
-    });
-    expect(invoke).toHaveBeenCalledWith("promote_agent_training_run", {
-      request: { trainingRunId: "train-1" }
-    });
-  });
-
-  it("does not show a promote action for already versioned completed runs", () => {
-    render(
-      <AgentStudio
-        harnessSnapshot={harnessSnapshot}
-        invoke={vi.fn()}
-        snapshot={{
-          ...templateSnapshot,
-          trainingRuns: [
-            {
-              agentTemplateId: "loose-agent",
-              criticScore: 0.88,
-              datasetId: "already-versioned",
-              id: "train-versioned",
-              promotedVersion: 4,
-              status: "completed"
-            }
-          ]
-        }}
-      />
-    );
-
-    expect(screen.queryByRole("button", { name: "Promote training run already-versioned" })).toBeNull();
-  });
-
-  it("surfaces training promotion failures", async () => {
-    render(
-      <AgentStudio
-        harnessSnapshot={harnessSnapshot}
-        invoke={vi.fn().mockRejectedValue(new Error("promotion failed"))}
-        snapshot={templateSnapshot}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Promote training run smoke" }));
-
-    expect(await screen.findByText("Training promotion failed")).toBeInTheDocument();
-  });
-
   it("edits an existing agent template", async () => {
     const nextSnapshot: AgentStudioSnapshot = {
       activeTemplateCount: 1,
@@ -495,7 +372,7 @@ describe("AgentStudio", () => {
     fireEvent.change(screen.getByLabelText("Model"), { target: { value: "gpt-5.1" } });
     fireEvent.change(screen.getByLabelText("Harness"), { target: { value: "pi-execution-discipline" } });
     fireEvent.change(screen.getByLabelText("Budget"), { target: { value: "3.25" } });
-    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Updated guidance" } });
+    fireEvent.change(screen.getByLabelText("Prompt"), { target: { value: "Updated guidance" } });
     fireEvent.change(screen.getByLabelText("Skill routes"), {
       target: { value: "agenticcrew://skills/review" }
     });
