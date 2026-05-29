@@ -962,6 +962,7 @@ mod tests {
                 description: "Local review harness".to_owned(),
                 id: "local-review".to_owned(),
                 name: "Local Review".to_owned(),
+                skill_routes: Vec::new(),
             },
         )
         .expect("local harness should persist");
@@ -1000,6 +1001,7 @@ mod tests {
                 description: "Local review harness".to_owned(),
                 id: "local-review".to_owned(),
                 name: "Local Review".to_owned(),
+                skill_routes: Vec::new(),
             },
         )
         .expect("local harness should persist");
@@ -1011,6 +1013,7 @@ mod tests {
                 description: "Updated review harness".to_owned(),
                 name: "Review Harness".to_owned(),
                 profile_id: "local-review".to_owned(),
+                skill_routes: vec!["agenticcrew://skills/review".to_owned()],
             },
         )
         .expect("local harness should update");
@@ -1023,6 +1026,7 @@ mod tests {
         assert_eq!(profile.name, "Review Harness");
         assert_eq!(profile.description, "Updated review harness");
         assert_eq!(profile.modules[0].content, "Require approval evidence.");
+        assert_eq!(profile.skill_routes, vec!["agenticcrew://skills/review"]);
         assert_eq!(profile.version, "2");
         assert_eq!(
             snapshot,

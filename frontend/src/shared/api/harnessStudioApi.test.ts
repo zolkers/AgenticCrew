@@ -41,7 +41,8 @@ describe("harnessStudioApi", () => {
         basePolicy: "Validate",
         description: "Local",
         id: "local",
-        name: "Local"
+        name: "Local",
+        skillRoutes: []
       })
     ).resolves.toEqual(snapshot);
     await expect(
@@ -62,7 +63,8 @@ describe("harnessStudioApi", () => {
       basePolicy: "Require evidence",
       description: "Updated harness",
       name: "Review Harness",
-      profileId: "local"
+      profileId: "local",
+      skillRoutes: []
     };
 
     await expect(

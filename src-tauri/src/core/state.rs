@@ -994,6 +994,7 @@ mod tests {
                 description: "Local profile".to_owned(),
                 id: "local-careful".to_owned(),
                 name: "Local Careful".to_owned(),
+                skill_routes: Vec::new(),
             })
             .expect("harness profile should create");
 
@@ -1016,6 +1017,7 @@ mod tests {
             description: "Local profile".to_owned(),
             id: "local-careful".to_owned(),
             name: "Local Careful".to_owned(),
+            skill_routes: Vec::new(),
         };
 
         state
@@ -1057,6 +1059,7 @@ mod tests {
                 description: "Review before final claims.".to_owned(),
                 name: "Review Harness".to_owned(),
                 profile_id: "pi-execution-discipline".to_owned(),
+                skill_routes: vec!["agenticcrew://skills/review".to_owned()],
             })
             .expect("profile should update");
 
@@ -1066,6 +1069,10 @@ mod tests {
             "Require regression proof."
         );
         assert_eq!(state.harness_profiles[0].version, "2");
+        assert_eq!(
+            state.harness_profiles[0].skill_routes,
+            vec!["agenticcrew://skills/review"]
+        );
     }
 
     #[test]

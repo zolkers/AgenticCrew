@@ -352,6 +352,7 @@ export function App({
         ) : null}
         {activeView === "harnessStudio" ? (
           <HarnessStudio
+            availableSkillRoutes={loadState.skillSourcesSnapshot.sources.flatMap((source) => source.discoveredSkills ?? [])}
             invoke={harnessStudioInvoke}
             onSnapshotChange={(harnessStudioSnapshot) => {
               setLoadState({

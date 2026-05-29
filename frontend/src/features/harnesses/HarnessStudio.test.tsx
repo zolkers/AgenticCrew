@@ -1,7 +1,17 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HarnessStudio } from "./HarnessStudio";
-import type { HarnessStudioSnapshot } from "../../shared/types/core";
+import type { DiscoveredSkillManifest, HarnessStudioSnapshot } from "../../shared/types/core";
+
+const availableSkillRoutes: DiscoveredSkillManifest[] = [
+  {
+    description: "Plan work safely",
+    id: "superpowers/planning",
+    name: "planning",
+    relativePath: "skills/planning/SKILL.md",
+    route: "agenticcrew://skills/superpowers/planning"
+  }
+];
 
 describe("HarnessStudio", () => {
   afterEach(() => {
@@ -46,6 +56,26 @@ describe("HarnessStudio", () => {
     expect(screen.getByText("Inactive")).toBeInTheDocument();
   });
 
+  it("renders bound skill routes on harness profiles", () => {
+    render(
+      <HarnessStudio
+        invoke={vi.fn()}
+        snapshot={{
+          activeProfileCount: 1,
+          bindings: [],
+          profiles: [
+            {
+              ...profileFixture("profile-on", true),
+              skillRoutes: ["agenticcrew://skills/review"]
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(screen.getByText("agenticcrew://skills/review")).toBeInTheDocument();
+  });
+
   it("creates a local harness profile", async () => {
     const nextSnapshot: HarnessStudioSnapshot = {
       activeProfileCount: 2,
@@ -71,6 +101,9 @@ describe("HarnessStudio", () => {
     fireEvent.change(screen.getByLabelText("Base policy"), {
       target: { value: "Require review before merge." }
     });
+    fireEvent.change(screen.getByLabelText("Skill routes"), {
+      target: { value: "agenticcrew://skills/review\n\n agenticcrew://skills/planning " }
+    });
     fireEvent.click(screen.getByRole("button", { name: "Create harness" }));
 
     await waitFor(() => {
@@ -82,8 +115,41 @@ describe("HarnessStudio", () => {
         basePolicy: "Require review before merge.",
         description: "Review flow",
         id: "review_1-harness",
-        name: "Review_1-Harness"
+        name: "Review_1-Harness",
+        skillRoutes: ["agenticcrew://skills/review", "agenticcrew://skills/planning"]
       }
+    });
+  });
+
+  it("adds discovered marketplace skill routes to the harness form", async () => {
+    const invoke = vi.fn().mockResolvedValue({ activeProfileCount: 0, bindings: [], profiles: [] });
+
+    render(
+      <HarnessStudio
+        availableSkillRoutes={availableSkillRoutes}
+        invoke={invoke}
+        snapshot={{ activeProfileCount: 0, bindings: [], profiles: [] }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /planning/ }));
+    expect(screen.getByLabelText("Skill routes")).toHaveValue("agenticcrew://skills/superpowers/planning");
+    fireEvent.click(screen.getByRole("button", { name: /planning/ }));
+    expect(screen.getByLabelText("Skill routes")).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: /planning/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Create harness" }));
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith("create_harness_profile", {
+        request: {
+          active: true,
+          basePolicy: "Validate before final claims.",
+          description: "Local execution profile for this workspace.",
+          id: "workspace-harness",
+          name: "Workspace Harness",
+          skillRoutes: ["agenticcrew://skills/superpowers/planning"]
+        }
+      });
     });
   });
 
@@ -142,7 +208,8 @@ describe("HarnessStudio", () => {
         basePolicy: "Require evidence.",
         description: "Updated profile",
         name: "Updated Harness",
-        profileId: "profile-on"
+        profileId: "profile-on",
+        skillRoutes: []
       }
     });
   });

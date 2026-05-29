@@ -87,6 +87,8 @@ pub struct CreateHarnessProfileRequest {
     pub name: String,
     pub description: String,
     pub base_policy: String,
+    #[serde(default)]
+    pub skill_routes: Vec<String>,
     pub active: bool,
 }
 
@@ -104,6 +106,8 @@ pub struct UpdateHarnessProfileRequest {
     pub name: String,
     pub description: String,
     pub base_policy: String,
+    #[serde(default)]
+    pub skill_routes: Vec<String>,
 }
 
 pub fn harness_studio_snapshot_from_state(state: &AgentOsState) -> HarnessStudioSnapshot {
@@ -148,6 +152,7 @@ impl HarnessProfile {
         let name = validate_required("harness profile name", request.name)?;
         let description = validate_required("harness profile description", request.description)?;
         let base_policy = validate_required("base policy", request.base_policy)?;
+        let skill_routes = normalize_skill_routes(request.skill_routes);
 
         Ok(Self {
             id: id.clone(),
@@ -167,7 +172,7 @@ impl HarnessProfile {
                 content: base_policy,
                 enabled: true,
             }],
-            skill_routes: Vec::new(),
+            skill_routes,
             active: request.active,
         })
     }
@@ -180,6 +185,7 @@ impl HarnessProfile {
         self.description =
             validate_required("harness profile description", request.description)?;
         let base_policy = validate_required("base policy", request.base_policy)?;
+        self.skill_routes = normalize_skill_routes(request.skill_routes);
 
         if let Some(module) = self
             .modules
@@ -193,6 +199,14 @@ impl HarnessProfile {
 
         Ok(())
     }
+}
+
+fn normalize_skill_routes(skill_routes: Vec<String>) -> Vec<String> {
+    skill_routes
+        .into_iter()
+        .map(|route| route.trim().to_owned())
+        .filter(|route| !route.is_empty())
+        .collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -288,6 +302,7 @@ mod tests {
             description: "Local profile".to_owned(),
             id: "local-strict".to_owned(),
             name: "Local Strict".to_owned(),
+            skill_routes: vec![" agenticcrew://skills/review ".to_owned(), " ".to_owned()],
         })
         .expect("local harness should validate");
 
@@ -298,6 +313,7 @@ mod tests {
             profile.modules[0].source.route.as_deref(),
             Some("agenticcrew://harnesses/local/local-strict")
         );
+        assert_eq!(profile.skill_routes, vec!["agenticcrew://skills/review"]);
     }
 
     #[test]
@@ -308,6 +324,7 @@ mod tests {
             description: "Local profile".to_owned(),
             id: "local-strict".to_owned(),
             name: "Local Strict".to_owned(),
+            skill_routes: Vec::new(),
         })
         .expect("local harness should validate");
 
@@ -317,11 +334,13 @@ mod tests {
                 description: "Updated profile".to_owned(),
                 name: "Review Harness".to_owned(),
                 profile_id: "local-strict".to_owned(),
+                skill_routes: vec!["agenticcrew://skills/planning".to_owned()],
             })
             .expect("profile should update");
 
         assert_eq!(profile.name, "Review Harness");
         assert_eq!(profile.description, "Updated profile");
+        assert_eq!(profile.skill_routes, vec!["agenticcrew://skills/planning"]);
         assert_eq!(profile.modules[0].content, "Review tests before final response.");
         assert_eq!(profile.version, "2");
     }

@@ -181,6 +181,7 @@ export type CreateHarnessProfileRequest = {
   description: string;
   id: string;
   name: string;
+  skillRoutes: string[];
 };
 
 export type SetHarnessProfileActiveRequest = {
@@ -193,6 +194,7 @@ export type UpdateHarnessProfileRequest = {
   description: string;
   name: string;
   profileId: string;
+  skillRoutes: string[];
 };
 
 export type AgentTemplate = {

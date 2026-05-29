@@ -6,21 +6,24 @@ import {
   updateHarnessProfile,
   type InvokeHarnessStudio
 } from "../../shared/api/harnessStudioApi";
-import type { HarnessProfile, HarnessStudioSnapshot } from "../../shared/types/core";
+import type { DiscoveredSkillManifest, HarnessProfile, HarnessStudioSnapshot } from "../../shared/types/core";
 
 type HarnessStudioProps = Readonly<{
+  availableSkillRoutes?: readonly DiscoveredSkillManifest[];
   invoke: InvokeHarnessStudio;
   onSnapshotChange?: (snapshot: HarnessStudioSnapshot) => void;
   snapshot: HarnessStudioSnapshot;
 }>;
 
-export function HarnessStudio({ invoke, onSnapshotChange, snapshot }: HarnessStudioProps) {
+export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, snapshot }: HarnessStudioProps) {
   const [basePolicy, setBasePolicy] = useState("Validate before final claims.");
   const [description, setDescription] = useState("Local execution profile for this workspace.");
   const [editingProfileId, setEditingProfileId] = useState<null | string>(null);
   const [error, setError] = useState<null | string>(null);
   const [name, setName] = useState("Workspace Harness");
   const [saving, setSaving] = useState(false);
+  const [skillRoutesText, setSkillRoutesText] = useState("");
+  const selectedSkillRoutes = splitSkillRoutes(skillRoutesText);
   const generatedId = useMemo(() => slugify(name), [name]);
   const submitLabel = saving ? "Saving" : getHarnessSubmitLabel(editingProfileId);
 
@@ -36,13 +39,15 @@ export function HarnessStudio({ invoke, onSnapshotChange, snapshot }: HarnessStu
               basePolicy,
               description,
               id: generatedId,
-              name
+              name,
+              skillRoutes: selectedSkillRoutes
             })
           : await updateHarnessProfile(invoke, {
               basePolicy,
               description,
               name,
-              profileId: editingProfileId
+              profileId: editingProfileId,
+              skillRoutes: selectedSkillRoutes
             });
       onSnapshotChange?.(nextSnapshot);
       resetForm();
@@ -60,6 +65,7 @@ export function HarnessStudio({ invoke, onSnapshotChange, snapshot }: HarnessStu
     setName(profile.name);
     setDescription(profile.description);
     setBasePolicy(basePolicyModule?.content ?? "");
+    setSkillRoutesText(profile.skillRoutes.join("\n"));
     setError(null);
   }
 
@@ -68,6 +74,19 @@ export function HarnessStudio({ invoke, onSnapshotChange, snapshot }: HarnessStu
     setName("Workspace Harness");
     setDescription("Local execution profile for this workspace.");
     setBasePolicy("Validate before final claims.");
+    setSkillRoutesText("");
+  }
+
+  function toggleSkillRoute(route: string) {
+    const routeSet = new Set(selectedSkillRoutes);
+
+    if (routeSet.has(route)) {
+      routeSet.delete(route);
+    } else {
+      routeSet.add(route);
+    }
+
+    setSkillRoutesText([...routeSet].join("\n"));
   }
 
   async function toggleHarnessProfile(profileId: string, active: boolean) {
@@ -141,6 +160,13 @@ export function HarnessStudio({ invoke, onSnapshotChange, snapshot }: HarnessStu
                   <li key={module.id}>{module.name}</li>
                 ))}
               </ul>
+              {profile.skillRoutes.length > 0 ? (
+                <ul className="pill-list">
+                  {profile.skillRoutes.map((route) => (
+                    <li key={route}>{route}</li>
+                  ))}
+                </ul>
+              ) : null}
               <button
                 className="inline-action"
                 disabled={saving}
@@ -209,6 +235,39 @@ export function HarnessStudio({ invoke, onSnapshotChange, snapshot }: HarnessStu
             value={basePolicy}
           />
         </label>
+        <label>
+          <span>Skill routes</span>
+          <textarea
+            disabled={saving}
+            onChange={(event) => {
+              setSkillRoutesText(event.target.value);
+            }}
+            value={skillRoutesText}
+          />
+        </label>
+        {availableSkillRoutes === undefined || availableSkillRoutes.length === 0 ? null : (
+          <div aria-label="Available harness skill routes" className="route-picker">
+            {availableSkillRoutes.map((skill) => {
+              const selected = selectedSkillRoutes.includes(skill.route);
+
+              return (
+                <button
+                  aria-pressed={selected}
+                  disabled={saving}
+                  key={skill.route}
+                  onClick={() => {
+                    toggleSkillRoute(skill.route);
+                  }}
+                  type="button"
+                >
+                  <Route aria-hidden="true" size={14} />
+                  <span>{skill.name}</span>
+                  <code>{skill.route}</code>
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className="settings-actions">
           <button disabled={saving || generatedId.length === 0} type="submit">
             <Plus aria-hidden="true" size={16} />
@@ -247,6 +306,15 @@ function slugify(value: string): string {
 
 function getHarnessSubmitLabel(editingProfileId: null | string): string {
   return editingProfileId === null ? "Create harness" : "Save harness";
+}
+
+function splitSkillRoutes(value: string): string[] {
+  return value
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\r", "\n")
+    .split("\n")
+    .map((route) => route.trim())
+    .filter((route) => route.length > 0);
 }
 
 function isSlugCharacter(character: string): boolean {

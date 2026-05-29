@@ -204,7 +204,14 @@ export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
 export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) => {
   if (command === "create_harness_profile") {
     const request = args?.request as
-      | { active?: boolean; basePolicy?: string; description?: string; id?: string; name?: string }
+      | {
+          active?: boolean;
+          basePolicy?: string;
+          description?: string;
+          id?: string;
+          name?: string;
+          skillRoutes?: string[];
+        }
       | undefined;
     const id = request?.id ?? "preview-local";
 
@@ -233,7 +240,7 @@ export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =
             }
           ],
           name: request?.name ?? "Preview Local",
-          skillRoutes: [],
+          skillRoutes: request?.skillRoutes ?? [],
           version: "1"
         }
       ]
@@ -257,7 +264,7 @@ export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =
 
   if (command === "update_harness_profile") {
     const request = args?.request as
-      | { basePolicy: string; description: string; name: string; profileId: string }
+      | { basePolicy: string; description: string; name: string; profileId: string; skillRoutes: string[] }
       | undefined;
     if (request === undefined) {
       return Promise.resolve(previewHarnessStudioSnapshot);
@@ -274,6 +281,7 @@ export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =
               version: incrementStringVersion(module.version)
             })),
             name: request.name,
+            skillRoutes: request.skillRoutes,
             version: incrementStringVersion(profile.version)
           }
         : profile
