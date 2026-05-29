@@ -1,7 +1,14 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
-import { previewMissionControlInvoke, previewSkillSourcesInvoke } from "./shared/api/previewInvokes";
+import {
+  previewAgentStudioInvoke,
+  previewHarnessStudioInvoke,
+  previewMissionControlInvoke,
+  previewSkillSourcesInvoke
+} from "./shared/api/previewInvokes";
+import { tauriAgentStudioInvoke } from "./shared/api/tauriAgentStudioInvoke";
+import { tauriHarnessStudioInvoke } from "./shared/api/tauriHarnessStudioInvoke";
 import { tauriMissionControlInvoke } from "./shared/api/tauriMissionControlInvoke";
 import { tauriSkillSourcesInvoke } from "./shared/api/tauriSkillSourcesInvoke";
 
@@ -12,6 +19,8 @@ if (rootElement !== null) {
   createRoot(rootElement).render(
     <StrictMode>
       <App
+        agentStudioInvoke={isTauriRuntime ? tauriAgentStudioInvoke : previewAgentStudioInvoke}
+        harnessStudioInvoke={isTauriRuntime ? tauriHarnessStudioInvoke : previewHarnessStudioInvoke}
         missionControlInvoke={isTauriRuntime ? tauriMissionControlInvoke : previewMissionControlInvoke}
         skillSourcesInvoke={isTauriRuntime ? tauriSkillSourcesInvoke : previewSkillSourcesInvoke}
       />

@@ -1,16 +1,27 @@
 import { StrictMode, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./app/App";
-import { previewMissionControlInvoke, previewSkillSourcesInvoke } from "./shared/api/previewInvokes";
+import {
+  previewAgentStudioInvoke,
+  previewHarnessStudioInvoke,
+  previewMissionControlInvoke,
+  previewSkillSourcesInvoke
+} from "./shared/api/previewInvokes";
+import { tauriAgentStudioInvoke } from "./shared/api/tauriAgentStudioInvoke";
+import { tauriHarnessStudioInvoke } from "./shared/api/tauriHarnessStudioInvoke";
 import { tauriMissionControlInvoke } from "./shared/api/tauriMissionControlInvoke";
 import { tauriSkillSourcesInvoke } from "./shared/api/tauriSkillSourcesInvoke";
 
 const mocks = vi.hoisted(() => ({
   app: vi.fn(() => null),
   createRoot: vi.fn(),
+  previewAgentStudioInvoke: vi.fn(),
+  previewHarnessStudioInvoke: vi.fn(),
   previewMissionControlInvoke: vi.fn(),
   previewSkillSourcesInvoke: vi.fn(),
   render: vi.fn(),
+  tauriAgentStudioInvoke: vi.fn(),
+  tauriHarnessStudioInvoke: vi.fn(),
   tauriMissionControlInvoke: vi.fn(),
   tauriSkillSourcesInvoke: vi.fn()
 }));
@@ -31,7 +42,17 @@ vi.mock("./shared/api/tauriSkillSourcesInvoke", () => ({
   tauriSkillSourcesInvoke: mocks.tauriSkillSourcesInvoke
 }));
 
+vi.mock("./shared/api/tauriAgentStudioInvoke", () => ({
+  tauriAgentStudioInvoke: mocks.tauriAgentStudioInvoke
+}));
+
+vi.mock("./shared/api/tauriHarnessStudioInvoke", () => ({
+  tauriHarnessStudioInvoke: mocks.tauriHarnessStudioInvoke
+}));
+
 vi.mock("./shared/api/previewInvokes", () => ({
+  previewAgentStudioInvoke: mocks.previewAgentStudioInvoke,
+  previewHarnessStudioInvoke: mocks.previewHarnessStudioInvoke,
   previewMissionControlInvoke: mocks.previewMissionControlInvoke,
   previewSkillSourcesInvoke: mocks.previewSkillSourcesInvoke
 }));
@@ -57,10 +78,17 @@ describe("main", () => {
     expect(mocks.render).toHaveBeenCalledTimes(1);
 
     const renderedElement = mocks.render.mock.calls[0]?.[0] as ReactElement<{
-      children: ReactElement<{ missionControlInvoke: unknown; skillSourcesInvoke: unknown }>;
+      children: ReactElement<{
+        agentStudioInvoke: unknown;
+        harnessStudioInvoke: unknown;
+        missionControlInvoke: unknown;
+        skillSourcesInvoke: unknown;
+      }>;
     }>;
     expect(renderedElement.type).toBe(StrictMode);
     expect(renderedElement.props.children.type).toBe(App);
+    expect(renderedElement.props.children.props.agentStudioInvoke).toBe(previewAgentStudioInvoke);
+    expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(previewHarnessStudioInvoke);
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(previewMissionControlInvoke);
     expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(previewSkillSourcesInvoke);
   });
@@ -75,9 +103,16 @@ describe("main", () => {
     await import("./main");
 
     const renderedElement = mocks.render.mock.calls[0]?.[0] as ReactElement<{
-      children: ReactElement<{ missionControlInvoke: unknown; skillSourcesInvoke: unknown }>;
+      children: ReactElement<{
+        agentStudioInvoke: unknown;
+        harnessStudioInvoke: unknown;
+        missionControlInvoke: unknown;
+        skillSourcesInvoke: unknown;
+      }>;
     }>;
 
+    expect(renderedElement.props.children.props.agentStudioInvoke).toBe(tauriAgentStudioInvoke);
+    expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(tauriHarnessStudioInvoke);
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(tauriMissionControlInvoke);
     expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(tauriSkillSourcesInvoke);
   });

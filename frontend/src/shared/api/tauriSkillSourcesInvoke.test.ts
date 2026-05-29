@@ -20,6 +20,15 @@ describe("tauriSkillSourcesInvoke", () => {
     vi.mocked(invoke).mockResolvedValue(snapshot);
 
     await expect(tauriSkillSourcesInvoke("skill_sources_snapshot")).resolves.toEqual(snapshot);
-    expect(invoke).toHaveBeenCalledWith("skill_sources_snapshot");
+    expect(invoke).toHaveBeenCalledWith("skill_sources_snapshot", undefined);
+  });
+
+  it("forwards command args to Tauri invoke", async () => {
+    vi.mocked(invoke).mockResolvedValue(undefined);
+
+    await expect(tauriSkillSourcesInvoke("sync_github_skill_source", { sourceId: "superpowers" })).resolves
+      .toBeUndefined();
+
+    expect(invoke).toHaveBeenCalledWith("sync_github_skill_source", { sourceId: "superpowers" });
   });
 });

@@ -49,7 +49,7 @@ button {
   top: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(210px, 1.2fr) minmax(160px, 0.9fr) minmax(150px, 0.8fr) auto auto;
+  grid-template-columns: minmax(210px, 1.2fr) minmax(160px, 0.9fr) minmax(150px, 0.8fr) repeat(4, auto);
   gap: 0.75rem;
   align-items: center;
   padding: 0.75rem 1rem;
@@ -440,13 +440,78 @@ button {
 }
 
 section[aria-label="Mission Control"],
-section[aria-label="Skill Sources"] {
+section[aria-label="Skill Sources"],
+section[aria-label="Harness Studio"],
+section[aria-label="Agent Studio"] {
   max-width: 960px;
   margin: 0 auto;
   padding: 1.25rem;
   border: 1px solid var(--color-border-soft);
   border-radius: 8px;
   background: var(--color-panel);
+}
+
+.surface-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.surface-header h2 {
+  margin: 0;
+}
+
+.surface-header strong {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 3px;
+  color: var(--color-teal);
+  background: var(--color-terminal);
+}
+
+.surface-list {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.surface-list > li {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-terminal);
+}
+
+.surface-list strong,
+.surface-list span {
+  display: block;
+}
+
+.surface-list span,
+.surface-list p {
+  color: var(--color-muted);
+}
+
+.surface-list dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.surface-list dt {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+
+.surface-list dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 920px) {

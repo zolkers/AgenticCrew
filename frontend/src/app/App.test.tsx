@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "./App";
-import type { MissionControlSnapshot, SkillSourcesSnapshot } from "../shared/types/core";
+import type { AgentStudioSnapshot, HarnessStudioSnapshot, MissionControlSnapshot, SkillSourcesSnapshot } from "../shared/types/core";
 
 const missionControlSnapshot: MissionControlSnapshot = {
   activeAgentCount: 9,
@@ -44,6 +44,56 @@ const skillSourcesSnapshot: SkillSourcesSnapshot = {
   ]
 };
 
+const harnessStudioSnapshot: HarnessStudioSnapshot = {
+  activeProfileCount: 1,
+  bindings: [],
+  profiles: [
+    {
+      active: true,
+      description: "Built-in execution policy",
+      id: "pi-execution-discipline",
+      modules: [
+        {
+          content: "Validate before final claims.",
+          enabled: true,
+          id: "pi-execution-discipline/base-policy",
+          kind: "base_policy",
+          name: "Execution Discipline",
+          source: {
+            route: "agenticcrew://harnesses/builtin-pi/pi-execution-discipline",
+            sourceId: "builtin-pi",
+            trustLevel: "built_in"
+          },
+          version: "1"
+        }
+      ],
+      name: "Pi Execution Discipline",
+      skillRoutes: [],
+      version: "1"
+    }
+  ]
+};
+
+const agentStudioSnapshot: AgentStudioSnapshot = {
+  activeTemplateCount: 1,
+  templates: [
+    {
+      active: true,
+      budgetCents: 200,
+      description: "General implementation agent",
+      harnessProfileId: "pi-execution-discipline",
+      id: "developer-pi",
+      modelId: "gpt-5.4",
+      name: "Developer Agent",
+      providerId: "openai",
+      role: "developer",
+      skillRoutes: ["agenticcrew://skills/superpowers/subagent-driven-development"],
+      version: 1
+    }
+  ],
+  trainingRuns: []
+};
+
 function createDeferredSnapshot<T>() {
   let resolveSnapshot = (snapshot: T): void => {
     throw new Error(`Deferred snapshot resolve was used before assignment: ${JSON.stringify(snapshot)}`);
@@ -67,6 +117,8 @@ describe("App", () => {
   it("renders the AgenticCrew cockpit as the default screen", async () => {
     render(
       <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
@@ -85,6 +137,8 @@ describe("App", () => {
   it("switches workspace and updates visible agent context", async () => {
     render(
       <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
@@ -102,6 +156,8 @@ describe("App", () => {
   it("shows a plugins entry point in the cockpit sidebar", async () => {
     render(
       <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
@@ -115,6 +171,8 @@ describe("App", () => {
   it("returns to the cockpit from the product mark", async () => {
     render(
       <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
@@ -133,6 +191,8 @@ describe("App", () => {
   it("renders injected mission control data", async () => {
     render(
       <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
@@ -150,6 +210,8 @@ describe("App", () => {
   it("switches between Mission Control and Skill Sources", async () => {
     render(
       <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
@@ -174,9 +236,49 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Skill Sources" })).not.toBeInTheDocument();
   });
 
+  it("opens Harness Studio with the PI execution profile", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Harness Studio" }));
+
+    expect(await screen.findByRole("heading", { name: "Harness Studio" })).toBeInTheDocument();
+    expect(screen.getByText("Pi Execution Discipline")).toBeInTheDocument();
+    expect(screen.getByText("Execution Discipline")).toBeInTheDocument();
+  });
+
+  it("opens Agent Studio with the saved developer agent", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Agent Studio" }));
+
+    expect(await screen.findByRole("heading", { name: "Agent Studio" })).toBeInTheDocument();
+    expect(screen.getByText("Developer Agent")).toBeInTheDocument();
+    expect(screen.getByText("pi-execution-discipline")).toBeInTheDocument();
+  });
+
   it("renders an error state when the desktop command fails", async () => {
     render(
       <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.reject(new Error("command failed"))}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
@@ -190,6 +292,8 @@ describe("App", () => {
     const pendingSkillSourcesSnapshot = createDeferredSnapshot<SkillSourcesSnapshot>();
     const { unmount } = render(
       <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => pendingMissionControlSnapshot.promise}
         skillSourcesInvoke={() => pendingSkillSourcesSnapshot.promise}
       />
@@ -216,6 +320,8 @@ describe("App", () => {
     const pendingSkillSourcesSnapshot = createDeferredSnapshot<SkillSourcesSnapshot>();
     const { unmount } = render(
       <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => pendingMissionControlSnapshot.promise}
         skillSourcesInvoke={() => pendingSkillSourcesSnapshot.promise}
       />

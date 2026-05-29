@@ -1,15 +1,26 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AgentStudio } from "../features/agents/AgentStudio";
+import { HarnessStudio } from "../features/harnesses/HarnessStudio";
 import { MissionControl } from "../features/mission-control/MissionControl";
 import { SkillSources } from "../features/skill-sources/SkillSources";
+import { loadAgentStudioSnapshot, type InvokeAgentStudio } from "../shared/api/agentStudioApi";
+import { loadHarnessStudioSnapshot, type InvokeHarnessStudio } from "../shared/api/harnessStudioApi";
 import { loadMissionControlSnapshot, type InvokeMissionControl } from "../shared/api/missionControlApi";
 import { loadSkillSourcesSnapshot, type InvokeSkillSources } from "../shared/api/skillSourcesApi";
 import { cockpitWorkspaces, type CockpitWorkspace } from "../shared/preview/cockpitData";
-import type { MissionControlSnapshot, SkillSourcesSnapshot } from "../shared/types/core";
+import type {
+  AgentStudioSnapshot,
+  HarnessStudioSnapshot,
+  MissionControlSnapshot,
+  SkillSourcesSnapshot
+} from "../shared/types/core";
 import "../i18n";
 import "./App.css";
 
 type AppProps = Readonly<{
+  agentStudioInvoke: InvokeAgentStudio;
+  harnessStudioInvoke: InvokeHarnessStudio;
   missionControlInvoke: InvokeMissionControl;
   skillSourcesInvoke: InvokeSkillSources;
 }>;
@@ -18,14 +29,16 @@ type AppLoadState =
   | Readonly<{ status: "error" }>
   | Readonly<{
       missionControlSnapshot: MissionControlSnapshot;
+      agentStudioSnapshot: AgentStudioSnapshot;
+      harnessStudioSnapshot: HarnessStudioSnapshot;
       skillSourcesSnapshot: SkillSourcesSnapshot;
       status: "ready";
     }>
   | Readonly<{ status: "loading" }>;
 
-type AppView = "cockpit" | "missionControl" | "skillSources";
+type AppView = "cockpit" | "missionControl" | "skillSources" | "harnessStudio" | "agentStudio";
 
-export function App({ missionControlInvoke, skillSourcesInvoke }: AppProps) {
+export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvoke, skillSourcesInvoke }: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
   const [activeView, setActiveView] = useState<AppView>("cockpit");
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(cockpitWorkspaces[0].id);
@@ -34,10 +47,21 @@ export function App({ missionControlInvoke, skillSourcesInvoke }: AppProps) {
   useEffect(() => {
     let isCurrent = true;
 
-    void Promise.all([loadMissionControlSnapshot(missionControlInvoke), loadSkillSourcesSnapshot(skillSourcesInvoke)])
-      .then(([missionControlSnapshot, skillSourcesSnapshot]) => {
+    void Promise.all([
+      loadMissionControlSnapshot(missionControlInvoke),
+      loadSkillSourcesSnapshot(skillSourcesInvoke),
+      loadHarnessStudioSnapshot(harnessStudioInvoke),
+      loadAgentStudioSnapshot(agentStudioInvoke)
+    ])
+      .then(([missionControlSnapshot, skillSourcesSnapshot, harnessStudioSnapshot, agentStudioSnapshot]) => {
         if (isCurrent) {
-          setLoadState({ missionControlSnapshot, skillSourcesSnapshot, status: "ready" });
+          setLoadState({
+            agentStudioSnapshot,
+            harnessStudioSnapshot,
+            missionControlSnapshot,
+            skillSourcesSnapshot,
+            status: "ready"
+          });
         }
       })
       .catch(() => {
@@ -49,7 +73,7 @@ export function App({ missionControlInvoke, skillSourcesInvoke }: AppProps) {
     return () => {
       isCurrent = false;
     };
-  }, [missionControlInvoke, skillSourcesInvoke]);
+  }, [agentStudioInvoke, harnessStudioInvoke, missionControlInvoke, skillSourcesInvoke]);
 
   if (loadState.status === "error") {
     return <p role="alert">{t("missionControl.loadError", { defaultValue: "Mission Control unavailable" })}</p>;
@@ -61,6 +85,8 @@ export function App({ missionControlInvoke, skillSourcesInvoke }: AppProps) {
 
   const missionControlLabel = t("missionControl.title", { defaultValue: "Mission Control" });
   const skillSourcesLabel = t("skillSources.title", { defaultValue: "Skill Sources" });
+  const harnessStudioLabel = "Harness Studio";
+  const agentStudioLabel = "Agent Studio";
   const workspacesById = Object.fromEntries(
     cockpitWorkspaces.map((workspace) => [workspace.id, workspace])
   ) as Record<string, CockpitWorkspace>;
@@ -115,6 +141,26 @@ export function App({ missionControlInvoke, skillSourcesInvoke }: AppProps) {
         >
           {skillSourcesLabel}
         </button>
+        <button
+          className="topbar-tab"
+          aria-pressed={activeView === "harnessStudio"}
+          onClick={() => {
+            setActiveView("harnessStudio");
+          }}
+          type="button"
+        >
+          {harnessStudioLabel}
+        </button>
+        <button
+          className="topbar-tab"
+          aria-pressed={activeView === "agentStudio"}
+          onClick={() => {
+            setActiveView("agentStudio");
+          }}
+          type="button"
+        >
+          {agentStudioLabel}
+        </button>
       </nav>
       <main aria-label={t("app.mainLabel", { defaultValue: "Workspace" })} className="app-main">
         {activeView === "cockpit" ? (
@@ -130,6 +176,10 @@ export function App({ missionControlInvoke, skillSourcesInvoke }: AppProps) {
         {activeView === "skillSources" ? (
           <SkillSources snapshot={loadState.skillSourcesSnapshot} />
         ) : null}
+        {activeView === "harnessStudio" ? (
+          <HarnessStudio snapshot={loadState.harnessStudioSnapshot} />
+        ) : null}
+        {activeView === "agentStudio" ? <AgentStudio snapshot={loadState.agentStudioSnapshot} /> : null}
       </main>
     </div>
   );

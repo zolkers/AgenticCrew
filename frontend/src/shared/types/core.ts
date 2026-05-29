@@ -74,3 +74,85 @@ export type SkillSourcesSnapshot = {
   activeSourceCount: number;
   sources: SkillSource[];
 };
+
+export type HarnessModuleKind =
+  | "base_policy"
+  | "behavior_rule"
+  | "tool_rule"
+  | "safety_rule"
+  | "output_style"
+  | "project_memory"
+  | "agent_persona";
+
+export type HarnessTrustLevel = "built_in" | "local" | "external";
+
+export type HarnessModuleSource = {
+  route?: string | null;
+  sourceId: string;
+  trustLevel: HarnessTrustLevel;
+};
+
+export type HarnessModule = {
+  content: string;
+  enabled: boolean;
+  id: string;
+  kind: HarnessModuleKind;
+  name: string;
+  source: HarnessModuleSource;
+  version: string;
+};
+
+export type HarnessProfile = {
+  active: boolean;
+  description: string;
+  id: string;
+  modules: HarnessModule[];
+  name: string;
+  skillRoutes: string[];
+  version: string;
+};
+
+export type HarnessBindingTargetKind = "workspace" | "agent" | "skill" | "run";
+
+export type HarnessBinding = {
+  harnessProfileId: string;
+  targetId: string;
+  targetKind: HarnessBindingTargetKind;
+};
+
+export type HarnessStudioSnapshot = {
+  activeProfileCount: number;
+  bindings: HarnessBinding[];
+  profiles: HarnessProfile[];
+};
+
+export type AgentTemplate = {
+  active: boolean;
+  budgetCents: number;
+  description: string;
+  harnessProfileId?: string | null;
+  id: string;
+  modelId: string;
+  name: string;
+  providerId: string;
+  role: string;
+  skillRoutes: string[];
+  version: number;
+};
+
+export type AgentTrainingStatus = "draft" | "running" | "completed" | "failed" | "promoted";
+
+export type AgentTrainingRun = {
+  agentTemplateId: string;
+  criticScore?: number | null;
+  datasetId: string;
+  id: string;
+  promotedVersion?: number | null;
+  status: AgentTrainingStatus;
+};
+
+export type AgentStudioSnapshot = {
+  activeTemplateCount: number;
+  templates: AgentTemplate[];
+  trainingRuns: AgentTrainingRun[];
+};
