@@ -30,6 +30,7 @@
     "labels": {
       "kind": "Type",
       "lastSyncStatus": "Derniere sync",
+      "permissionGate": "Permissions",
       "ref": "Ref",
       "repository": "Depot",
       "status": "Statut",
@@ -45,6 +46,10 @@
       "failed": "Echouee",
       "never_synced": "Jamais synchronisee",
       "synced": "Synchronisee"
+    },
+    "permissionGate": {
+      "approved": "Approuvees",
+      "pending": "Approbation en attente"
     },
     "title": "Sources de skills",
     "trustLevel": {

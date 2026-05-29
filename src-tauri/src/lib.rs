@@ -9,6 +9,7 @@ use serde::Serialize;
 
 use core::{
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
+    permissions::ApprovedPermissionPolicy,
     skills::{
         skill_sources_snapshot_from_state, RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot,
     },
@@ -126,6 +127,16 @@ pub fn validate_skill_source_at_path(
     mutate_state_at_path(path, |state| state.validate_skill_source(source_id))
 }
 
+pub fn approve_skill_source_permissions_at_path(
+    path: impl AsRef<Path>,
+    source_id: &str,
+    policy: ApprovedPermissionPolicy,
+) -> Result<AgentOsState, DesktopCommandError> {
+    mutate_state_at_path(path, |state| {
+        state.approve_skill_source_permissions(source_id, policy)
+    })
+}
+
 pub fn activate_skill_source_at_path(
     path: impl AsRef<Path>,
     source_id: &str,
@@ -153,6 +164,8 @@ mod commands {
 
     use crate::{
         activate_skill_source_at_path, add_checkpoint_at_path, close_feature_session_at_path,
+        approve_skill_source_permissions_at_path,
+        core::permissions::ApprovedPermissionPolicy,
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
         create_feature_session_at_path, durable_state_snapshot_at_path,
@@ -240,6 +253,15 @@ mod commands {
         activate_skill_source_at_path(app_state_path(&app)?, &source_id)
     }
 
+    #[tauri::command]
+    pub fn approve_skill_source_permissions(
+        app: tauri::AppHandle,
+        source_id: String,
+        policy: ApprovedPermissionPolicy,
+    ) -> Result<AgentOsState, DesktopCommandError> {
+        approve_skill_source_permissions_at_path(app_state_path(&app)?, &source_id, policy)
+    }
+
     fn app_state_path(app: &tauri::AppHandle) -> Result<PathBuf, DesktopCommandError> {
         app.path()
             .app_data_dir()
@@ -261,6 +283,7 @@ pub fn run() {
             commands::close_feature_session,
             commands::register_github_skill_source,
             commands::validate_skill_source,
+            commands::approve_skill_source_permissions,
             commands::activate_skill_source
         ])
         .run(tauri::generate_context!())
@@ -282,7 +305,7 @@ mod tests {
 
     use super::{
         activate_skill_source_at_path, add_checkpoint_at_path, app_name,
-        close_feature_session_at_path, create_feature_session_at_path,
+        approve_skill_source_permissions_at_path, close_feature_session_at_path, create_feature_session_at_path,
         durable_state_snapshot_at_path, mission_control_snapshot_at_path,
         record_command_evidence_at_path, register_github_skill_source_at_path,
         skill_sources_snapshot_at_path, state_file_path, validate_skill_source_at_path,
@@ -293,6 +316,10 @@ mod tests {
         skills::RegisterGitHubSkillSourceRequest,
         state::{
             CreateCheckpointRequest, CreateFeatureSessionRequest, RecordCommandEvidenceRequest,
+        },
+        permissions::{
+            ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
+            NetworkPermissionScope,
         },
     };
 
@@ -444,6 +471,21 @@ mod tests {
         );
         assert!(!validated.skill_sources[0].active);
 
+        let error = activate_skill_source_at_path(&path, "superpowers")
+            .expect_err("validated source without approved permissions should not activate");
+        assert_eq!(
+            error.message,
+            "invalid skill source: skill source permissions must be approved before activation"
+        );
+
+        let approved = approve_skill_source_permissions_at_path(
+            &path,
+            "superpowers",
+            sample_permission_policy(),
+        )
+        .expect("skill source permissions should persist");
+        assert!(approved.skill_sources[0].permission_gate.approved);
+
         let activated = activate_skill_source_at_path(&path, "superpowers")
             .expect("skill source should activate");
         let loaded = durable_state_snapshot_at_path(&path).expect("state should load");
@@ -491,6 +533,23 @@ mod tests {
             id: "superpowers".to_owned(),
             repository_url: "https://github.com/obra/superpowers".to_owned(),
             selected_ref: "main".to_owned(),
+        }
+    }
+
+    fn sample_permission_policy() -> ApprovedPermissionPolicy {
+        ApprovedPermissionPolicy {
+            file_system: vec![FileSystemPermissionScope {
+                path: "workspaces/research".to_owned(),
+                writable: true,
+            }],
+            git: true,
+            docker: false,
+            network: vec![NetworkPermissionScope {
+                host: "api.github.com".to_owned(),
+            }],
+            commands: vec![CommandPermissionScope {
+                command: "git".to_owned(),
+            }],
         }
     }
 

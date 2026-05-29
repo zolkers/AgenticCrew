@@ -7,6 +7,7 @@ use std::{
 use super::{
     costs::ModelCallEstimate,
     evidence::{CommandExitCodeEvidence, Evidence},
+    permissions::ApprovedPermissionPolicy,
     sessions::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
         SessionTransitionError,
@@ -197,6 +198,24 @@ impl AgentOsState {
             })?;
 
         source.mark_validated();
+
+        Ok(())
+    }
+
+    pub fn approve_skill_source_permissions(
+        &mut self,
+        source_id: &str,
+        policy: ApprovedPermissionPolicy,
+    ) -> Result<(), StateMutationError> {
+        let source = self
+            .skill_sources
+            .iter_mut()
+            .find(|source| source.id == source_id)
+            .ok_or_else(|| StateMutationError::MissingSkillSource {
+                source_id: source_id.to_owned(),
+            })?;
+
+        source.approve_permissions(policy);
 
         Ok(())
     }
@@ -489,6 +508,10 @@ mod tests {
             Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
             SessionTransitionError,
         },
+        permissions::{
+            ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
+            NetworkPermissionScope,
+        },
         skills::RegisterGitHubSkillSourceRequest,
     };
 
@@ -636,6 +659,20 @@ mod tests {
         state
             .validate_skill_source("superpowers")
             .expect("skill source should validate");
+        let error = state
+            .activate_skill_source("superpowers")
+            .expect_err("skill source without approved permissions should not activate");
+
+        assert_eq!(
+            error,
+            StateMutationError::InvalidSkillSource(
+                crate::core::skills::SkillSourceError::PermissionsNotApproved
+            )
+        );
+
+        state
+            .approve_skill_source_permissions("superpowers", sample_permission_policy())
+            .expect("skill source permissions should approve");
         state
             .activate_skill_source("superpowers")
             .expect("validated source should activate");
@@ -656,6 +693,26 @@ mod tests {
             StateMutationError::MissingSkillSource {
                 source_id: "missing".to_owned(),
             }
+        );
+    }
+
+    #[test]
+    fn approve_skill_source_permissions_records_policy_on_existing_source() {
+        let mut state = AgentOsState::empty();
+        state
+            .register_github_skill_source(github_skill_source_request("superpowers"))
+            .expect("github skill source should be registered");
+
+        state
+            .approve_skill_source_permissions("superpowers", sample_permission_policy())
+            .expect("skill source permissions should approve");
+
+        assert!(state.skill_sources[0].permission_gate.approved);
+        assert_eq!(
+            state.skill_sources[0].permission_gate.policy.network,
+            vec![NetworkPermissionScope {
+                host: "api.github.com".to_owned(),
+            }]
         );
     }
 
@@ -1000,6 +1057,23 @@ mod tests {
             id: source_id.to_owned(),
             repository_url: "https://github.com/obra/superpowers".to_owned(),
             selected_ref: "main".to_owned(),
+        }
+    }
+
+    fn sample_permission_policy() -> ApprovedPermissionPolicy {
+        ApprovedPermissionPolicy {
+            file_system: vec![FileSystemPermissionScope {
+                path: "workspaces/research".to_owned(),
+                writable: true,
+            }],
+            git: true,
+            docker: false,
+            network: vec![NetworkPermissionScope {
+                host: "api.github.com".to_owned(),
+            }],
+            commands: vec![CommandPermissionScope {
+                command: "git".to_owned(),
+            }],
         }
     }
 

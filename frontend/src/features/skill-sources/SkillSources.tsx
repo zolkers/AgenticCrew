@@ -43,6 +43,14 @@ export function SkillSources({ snapshot }: SkillSourcesProps) {
                   <dd>{t(`skillSources.lastSyncStatus.${source.lastSyncStatus}`)}</dd>
                 </div>
                 <div>
+                  <dt>{t("skillSources.labels.permissionGate", { defaultValue: "Permissions" })}</dt>
+                  <dd>
+                    {source.permissionGate.approved
+                      ? t("skillSources.permissionGate.approved", { defaultValue: "Approved" })
+                      : t("skillSources.permissionGate.pending", { defaultValue: "Pending approval" })}
+                  </dd>
+                </div>
+                <div>
                   <dt>{t("skillSources.labels.ref", { defaultValue: "Ref" })}</dt>
                   <dd>{source.selectedRef}</dd>
                 </div>

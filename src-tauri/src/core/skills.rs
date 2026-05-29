@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use super::permissions::{ApprovedPermissionPolicy, PermissionGate};
 use super::state::AgentOsState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -55,6 +56,8 @@ pub struct SkillSource {
     pub status: SkillSourceActivationStatus,
     #[serde(default)]
     pub last_sync_status: SkillSourceSyncStatus,
+    #[serde(default)]
+    pub permission_gate: PermissionGate,
     pub active: bool,
 }
 
@@ -94,6 +97,7 @@ impl SkillSource {
             trust_level: SkillSourceTrustLevel::External,
             status: SkillSourceActivationStatus::PendingValidation,
             last_sync_status: SkillSourceSyncStatus::NeverSynced,
+            permission_gate: PermissionGate::default(),
             active: false,
         })
     }
@@ -108,9 +112,17 @@ impl SkillSource {
             return Err(SkillSourceError::NotValidated);
         }
 
+        if !self.permission_gate.approved {
+            return Err(SkillSourceError::PermissionsNotApproved);
+        }
+
         self.active = true;
 
         Ok(())
+    }
+
+    pub fn approve_permissions(&mut self, policy: ApprovedPermissionPolicy) {
+        self.permission_gate.approve(policy);
     }
 }
 
@@ -119,6 +131,7 @@ pub enum SkillSourceError {
     NonGitHubRepository,
     EmptySelectedRef,
     NotValidated,
+    PermissionsNotApproved,
 }
 
 impl fmt::Display for SkillSourceError {
@@ -136,6 +149,12 @@ impl fmt::Display for SkillSourceError {
                     "skill source must be validated before activation"
                 )
             }
+            SkillSourceError::PermissionsNotApproved => {
+                write!(
+                    formatter,
+                    "skill source permissions must be approved before activation"
+                )
+            }
         }
     }
 }
@@ -147,6 +166,10 @@ mod tests {
     use super::{
         skill_sources_snapshot_from_state, RegisterGitHubSkillSourceRequest, SkillSource,
         SkillSourceActivationStatus, SkillSourceKind, SkillSourceSyncStatus, SkillSourceTrustLevel,
+    };
+    use crate::core::permissions::{
+        ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
+        NetworkPermissionScope,
     };
     use crate::core::state::AgentOsState;
 
@@ -170,6 +193,12 @@ mod tests {
         );
         assert_eq!(source.last_sync_status, SkillSourceSyncStatus::NeverSynced);
         assert!(!source.active);
+        assert!(!source.permission_gate.approved);
+        assert!(source.permission_gate.policy.file_system.is_empty());
+        assert!(source.permission_gate.policy.network.is_empty());
+        assert!(source.permission_gate.policy.commands.is_empty());
+        assert!(!source.permission_gate.policy.git);
+        assert!(!source.permission_gate.policy.docker);
     }
 
     #[test]
@@ -184,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    fn only_validated_skill_sources_can_activate() {
+    fn validated_skill_sources_still_require_approved_permissions_to_activate() {
         let mut pending_source = github_skill_source();
 
         let error = pending_source
@@ -197,11 +226,51 @@ mod tests {
         );
 
         pending_source.mark_validated();
+        let error = pending_source
+            .activate()
+            .expect_err("validated source without permissions should not activate");
+
+        assert_eq!(
+            error.to_string(),
+            "skill source permissions must be approved before activation"
+        );
+
+        pending_source.approve_permissions(sample_permission_policy());
         pending_source
             .activate()
-            .expect("validated source should activate");
+            .expect("validated source with approved permissions should activate");
 
         assert!(pending_source.active);
+    }
+
+    #[test]
+    fn approved_skill_source_permissions_record_user_approved_scopes() {
+        let mut source = github_skill_source();
+
+        source.approve_permissions(sample_permission_policy());
+
+        assert!(source.permission_gate.approved);
+        assert_eq!(
+            source.permission_gate.policy.file_system,
+            vec![FileSystemPermissionScope {
+                path: "workspaces/research".to_owned(),
+                writable: true,
+            }]
+        );
+        assert!(source.permission_gate.policy.git);
+        assert!(!source.permission_gate.policy.docker);
+        assert_eq!(
+            source.permission_gate.policy.network,
+            vec![NetworkPermissionScope {
+                host: "api.github.com".to_owned(),
+            }]
+        );
+        assert_eq!(
+            source.permission_gate.policy.commands,
+            vec![CommandPermissionScope {
+                command: "git".to_owned(),
+            }]
+        );
     }
 
     #[test]
@@ -279,5 +348,22 @@ mod tests {
             selected_ref: "main".to_owned(),
         })
         .expect("github skill source should be accepted")
+    }
+
+    fn sample_permission_policy() -> ApprovedPermissionPolicy {
+        ApprovedPermissionPolicy {
+            file_system: vec![FileSystemPermissionScope {
+                path: "workspaces/research".to_owned(),
+                writable: true,
+            }],
+            git: true,
+            docker: false,
+            network: vec![NetworkPermissionScope {
+                host: "api.github.com".to_owned(),
+            }],
+            commands: vec![CommandPermissionScope {
+                command: "git".to_owned(),
+            }],
+        }
     }
 }

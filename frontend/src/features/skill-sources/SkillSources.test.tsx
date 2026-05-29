@@ -14,6 +14,16 @@ describe("SkillSources", () => {
           id: "superpowers",
           kind: "git_hub",
           lastSyncStatus: "never_synced",
+          permissionGate: {
+            approved: false,
+            policy: {
+              commands: [],
+              docker: false,
+              fileSystem: [],
+              git: false,
+              network: []
+            }
+          },
           repositoryUrl: "https://github.com/obra/superpowers",
           selectedRef: "main",
           status: "pending_validation",
@@ -30,6 +40,7 @@ describe("SkillSources", () => {
     expect(screen.getByText("External")).toBeInTheDocument();
     expect(screen.getByText("Pending validation")).toBeInTheDocument();
     expect(screen.getByText("Never synced")).toBeInTheDocument();
+    expect(screen.getByText("Pending approval")).toBeInTheDocument();
     expect(screen.getByText("https://github.com/obra/superpowers")).toBeInTheDocument();
   });
 
