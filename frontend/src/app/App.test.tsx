@@ -213,13 +213,34 @@ describe("App", () => {
     expect(screen.getAllByText("fullstack-app").length).toBeGreaterThan(0);
     expect(screen.getByText("Active terminal stream")).toBeInTheDocument();
     expect(screen.getByText("UI architect / active")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Run profile" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Stage selected run profile" })).toHaveAttribute(
-      "title",
-      "developer-pi"
-    );
+    expect(screen.getByRole("heading", { name: "Agent overview" })).toBeInTheDocument();
+    expect(screen.getByLabelText("frontend-lead tools")).toHaveTextContent("react");
+    expect(screen.getByRole("button", { name: "Queue agent instruction" })).toBeDisabled();
     expect(screen.getByLabelText("Run status")).toHaveTextContent("engine: langgraph");
     expect(screen.queryByRole("heading", { name: "Skill Sources" })).not.toBeInTheDocument();
+  });
+
+  it("opens an agent overview from the cockpit team list", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(await screen.findByRole("button", { name: /accessibility-review/ }));
+
+    expect(screen.getByRole("heading", { name: "Agent overview" })).toBeInTheDocument();
+    expect(screen.getByText("Semantic QA")).toBeInTheDocument();
+    expect(screen.getByLabelText("accessibility-review tools")).toHaveTextContent("axe-notes");
+    fireEvent.change(screen.getByLabelText("Instruction"), {
+      target: { value: "Prioritize layout regressions before handoff." }
+    });
+    expect(screen.getByRole("button", { name: "Queue agent instruction" })).toBeEnabled();
   });
 
   it("switches workspace and updates visible agent context", async () => {
@@ -352,10 +373,6 @@ describe("App", () => {
       expect(screen.getByRole("heading", { name: "Release Agent" })).toBeInTheDocument();
       expect(screen.getByText("release / gpt-5.1")).toBeInTheDocument();
       expect(screen.getByText("Harness: Release Harness")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Stage selected run profile" })).toHaveAttribute(
-        "title",
-        "release-agent"
-      );
     });
   });
 
@@ -375,10 +392,7 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
     expect(screen.getByText("UI architect / gpt-5")).toBeInTheDocument();
     expect(screen.getByText("Harness: None")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Stage selected run profile" })).toHaveAttribute(
-      "title",
-      "ui-architect"
-    );
+    expect(screen.getByRole("heading", { name: "Agent overview" })).toBeInTheDocument();
   });
 
   it("offers inactive saved templates when none are active", async () => {

@@ -615,15 +615,6 @@ type WorkspaceLoadout = Readonly<{
   harnessProfileId: string;
 }>;
 
-type RunProfile = Readonly<{
-  agentId: string;
-  agentName: string;
-  branch: string;
-  harnessId: string;
-  harnessName: string;
-  workspaceId: string;
-}>;
-
 function Cockpit({
   activeWorkspace,
   agentStudioSnapshot,
@@ -637,6 +628,9 @@ function Cockpit({
     CockpitWorkspace["agents"][number]
   >;
   const activeAgent = agentsById[activeWorkspace.activeAgentId];
+  const [selectedAgentId, setSelectedAgentId] = useState(activeAgent.id);
+  const [agentInstruction, setAgentInstruction] = useState("");
+  const selectedAgent = agentsById[selectedAgentId] ?? activeAgent;
   const agentTemplates = preferredActiveItems(agentStudioSnapshot.templates);
   const harnessProfiles = preferredActiveItems(harnessStudioSnapshot.profiles);
   const selectedAgentTemplateId =
@@ -645,7 +639,6 @@ function Cockpit({
     activeWorkspace.selectedHarnessProfileId ?? (harnessProfiles.at(0)?.id ?? "");
   const selectedAgentTemplate = agentTemplates.find((template) => template.id === selectedAgentTemplateId);
   const selectedHarnessProfile = harnessProfiles.find((profile) => profile.id === selectedHarnessProfileId);
-  const runProfile = buildRunProfile(activeWorkspace, selectedAgentTemplate, selectedHarnessProfile, activeAgent);
   const budgetPercent = Math.round((activeWorkspace.budgetUsedUsd / activeWorkspace.budgetLimitUsd) * 100);
   const updateLoadout = (next: Partial<WorkspaceLoadout>) => {
     onLoadoutChange({
@@ -684,15 +677,64 @@ function Cockpit({
             {activeWorkspace.agents.map((agent) => (
               <li key={agent.id}>
                 <span className={`status-dot status-dot-${agent.status}`} aria-hidden="true" />
-                <span>
+                <button
+                  aria-pressed={agent.id === selectedAgent.id}
+                  className="agent-list-button"
+                  onClick={() => {
+                    setSelectedAgentId(agent.id);
+                  }}
+                  type="button"
+                >
                   <strong>{agent.name}</strong>
                   <small>
                     {agent.role} / {agent.status}
                   </small>
-                </span>
+                </button>
               </li>
             ))}
           </ul>
+        </section>
+
+        <section aria-labelledby="agent-overview-title" className="agent-overview-panel">
+          <h2 id="agent-overview-title">Agent overview</h2>
+          <div className="agent-overview-card">
+            <strong>{selectedAgent.name}</strong>
+            <span>{selectedAgent.role}</span>
+            <dl>
+              <div>
+                <dt>Status</dt>
+                <dd>{selectedAgent.status}</dd>
+              </div>
+              <div>
+                <dt>Model</dt>
+                <dd>{selectedAgent.model}</dd>
+              </div>
+            </dl>
+          </div>
+          <ul className="tool-list" aria-label={`${selectedAgent.name} tools`}>
+            {selectedAgent.tools.map((tool) => (
+              <li key={tool}>{tool}</li>
+            ))}
+          </ul>
+          <label>
+            <span>Instruction</span>
+            <textarea
+              onChange={(event) => {
+                setAgentInstruction(event.target.value);
+              }}
+              placeholder={`Give ${selectedAgent.name} a focused instruction...`}
+              value={agentInstruction}
+            />
+          </label>
+          <button
+            disabled={agentInstruction.trim().length === 0}
+            onClick={() => {
+              setAgentInstruction("");
+            }}
+            type="button"
+          >
+            Queue agent instruction
+          </button>
         </section>
 
         <section aria-labelledby="loadout-title" className="loadout-panel">
@@ -732,34 +774,6 @@ function Cockpit({
               ))}
             </select>
           </label>
-        </section>
-
-        <section aria-labelledby="run-profile-title" className="run-profile-panel">
-          <h2 id="run-profile-title">
-            <SlidersHorizontal aria-hidden="true" size={16} />
-            Run profile
-          </h2>
-          <dl>
-            <div>
-              <dt>Workspace</dt>
-              <dd>{runProfile.workspaceId}</dd>
-            </div>
-            <div>
-              <dt>Agent</dt>
-              <dd>{runProfile.agentName}</dd>
-            </div>
-            <div>
-              <dt>Harness</dt>
-              <dd>{runProfile.harnessName}</dd>
-            </div>
-            <div>
-              <dt>Branch</dt>
-              <dd>{runProfile.branch}</dd>
-            </div>
-          </dl>
-          <button aria-label="Stage selected run profile" title={runProfile.agentId} type="button">
-            <ChevronRight aria-hidden="true" size={16} />
-          </button>
         </section>
 
         <section aria-labelledby="progress-title">
@@ -865,22 +879,6 @@ function preferredActiveItems<T extends AgentTemplate | HarnessProfile>(items: r
   const activeItems = items.filter((item) => item.active);
 
   return activeItems.length > 0 ? activeItems : [...items];
-}
-
-function buildRunProfile(
-  workspace: CockpitWorkspace,
-  agentTemplate: AgentTemplate | undefined,
-  harnessProfile: HarnessProfile | undefined,
-  fallbackAgent: CockpitWorkspace["agents"][number]
-): RunProfile {
-  return {
-    agentId: agentTemplate?.id ?? fallbackAgent.id,
-    agentName: agentTemplate?.name ?? fallbackAgent.name,
-    branch: workspace.branch,
-    harnessId: harnessProfile?.id ?? "none",
-    harnessName: harnessProfile?.name ?? "None",
-    workspaceId: workspace.id
-  };
 }
 
 function slugify(value: string): string {
