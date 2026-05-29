@@ -17,6 +17,7 @@ export type CockpitWorkspace = Readonly<{
   name: string;
   mission: string;
   branch: string;
+  path: string;
   status: string;
   budgetUsedUsd: number;
   budgetLimitUsd: number;
@@ -65,6 +66,7 @@ export const cockpitWorkspaces: readonly CockpitWorkspace[] = [
       { label: "Verify cockpit navigation", state: "queued" }
     ],
     id: "fullstack-app",
+    path: "C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew",
     logs: [
       "$ agenticcrew attach fullstack-app --workspace frontend",
       "workspace resolved: fullstack-app / branch codex/cockpit-prototype",
@@ -106,6 +108,7 @@ export const cockpitWorkspaces: readonly CockpitWorkspace[] = [
       { label: "Capture regression notes", state: "queued" }
     ],
     id: "mobile-qa",
+    path: "C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew",
     logs: [
       "$ agenticcrew run mobile-qa --viewport compact",
       "playwright-runner: checking topbar, terminal stream, and sidebar density",

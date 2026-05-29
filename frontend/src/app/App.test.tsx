@@ -203,6 +203,47 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Open plugin bay" })).toBeInTheDocument();
   });
 
+  it("creates a workspace from the launchpad and opens it", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    expect(await screen.findByRole("heading", { name: "Choose a workspace" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Workspace name"), { target: { value: "API_{2-Platform" } });
+    fireEvent.change(screen.getByLabelText("Workspace path"), { target: { value: "D:\\work\\api-platform" } });
+    fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "feature/api-platform" } });
+    fireEvent.change(screen.getByLabelText("Mission"), { target: { value: "Build API agents" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create workspace" }));
+
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/api_-2-platform/cockpit");
+    expect(screen.getByRole("heading", { name: "Build API agents" })).toBeInTheDocument();
+    expect(screen.getByText("feature/api-platform")).toBeInTheDocument();
+  });
+
+  it("keeps navigation out of the topbar and exposes it in a workspace rail", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+
+    expect(await screen.findByRole("navigation", { name: "Workspace sections" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Workspace navigation" })).not.toHaveTextContent("Mission Control");
+  });
+
   it("selects the active agent and harness loadout from saved templates", async () => {
     const multiHarnessSnapshot: HarnessStudioSnapshot = {
       ...harnessStudioSnapshot,
@@ -535,6 +576,9 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Git Panel" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workspace/fullstack-app/git");
     expect(screen.getByText("PR workflow ready")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "feature/manual-branch" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Git context" }));
+    expect(screen.getAllByText("feature/manual-branch").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();

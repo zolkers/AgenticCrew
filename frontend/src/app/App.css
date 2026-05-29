@@ -55,7 +55,7 @@ button {
   top: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(210px, 1.2fr) minmax(160px, 0.9fr) minmax(150px, 0.8fr) repeat(5, auto);
+  grid-template-columns: minmax(210px, 1.2fr) minmax(160px, 0.9fr) minmax(150px, 0.8fr) auto;
   gap: 0.75rem;
   align-items: center;
   padding: 0.75rem 1rem;
@@ -152,6 +152,41 @@ button {
   padding: 1rem;
 }
 
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  min-height: calc(100vh - 4.55rem);
+}
+
+.workspace-rail {
+  position: sticky;
+  top: 4.55rem;
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+  height: calc(100vh - 4.55rem);
+  padding: 1rem 0.65rem;
+  border-right: 1px solid var(--color-border);
+  background: #192127;
+}
+
+.workspace-rail .topbar-tab {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  min-width: 0;
+  padding: 0.65rem 0.35rem;
+}
+
+.workspace-rail .topbar-tab span {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--color-muted);
+  font-size: 0.64rem;
+  line-height: 1.15;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+
 .workspace-launchpad {
   display: grid;
   gap: 1.25rem;
@@ -197,6 +232,71 @@ button {
   margin: 0.65rem 0 0;
   color: var(--color-muted);
   font-size: 1rem;
+}
+
+.workspace-create-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(240px, 1.5fr) minmax(150px, 0.8fr) minmax(220px, 1.2fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+  max-width: 1180px;
+  padding: 1rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  background: rgba(29, 36, 43, 0.8);
+}
+
+.workspace-create-form label,
+.git-context-form label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.workspace-create-form label span,
+.git-context-form label span {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.workspace-create-form input,
+.git-context-form input {
+  min-width: 0;
+  min-height: 2.55rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  background: var(--color-terminal);
+}
+
+.workspace-create-form input:focus,
+.git-context-form input:focus {
+  border-color: rgba(78, 212, 200, 0.72);
+  outline: 0;
+}
+
+.workspace-create-form button,
+.git-context-form button {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.55rem;
+  padding: 0 0.85rem;
+  border: 1px solid rgba(78, 212, 200, 0.54);
+  border-radius: 6px;
+  color: var(--color-ink);
+  background: var(--color-teal);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.workspace-create-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .launchpad-grid {
@@ -837,6 +937,16 @@ section[aria-label="Settings"] {
   color: var(--color-muted);
 }
 
+.git-context-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.4fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
 .surface-list > li {
   display: grid;
   gap: 0.75rem;
@@ -875,11 +985,30 @@ section[aria-label="Settings"] {
 @media (max-width: 920px) {
   .topbar,
   .launchpad-header,
+  .workspace-create-form,
   .cockpit-grid,
   .cockpit-hero,
   .agent-header,
-  .command-bar {
+  .command-bar,
+  .git-context-form {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-rail {
+    position: static;
+    display: flex;
+    height: auto;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .workspace-rail .topbar-tab {
+    flex: 0 0 4.5rem;
   }
 
   .topbar-workspace,

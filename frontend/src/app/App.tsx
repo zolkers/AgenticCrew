@@ -11,7 +11,8 @@ import {
   Store,
   Route,
   Settings2,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Plus
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AgentStudio } from "../features/agents/AgentStudio";
@@ -101,6 +102,7 @@ export function App({
 }: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
   const [routeState, setRouteState] = useState<AppRouteState>(() => resolveInitialRoute());
+  const [workspaces, setWorkspaces] = useState<CockpitWorkspace[]>(() => [...cockpitWorkspaces]);
   const [workspaceLoadouts, setWorkspaceLoadouts] = useState<Record<string, WorkspaceLoadout>>({});
   const { t } = useTranslation();
   const activeView = routeState.view;
@@ -159,10 +161,9 @@ export function App({
   const harnessStudioLabel = "Harness Studio";
   const agentStudioLabel = "Agent Studio";
   const workspacesById = Object.fromEntries(
-    cockpitWorkspaces.map((workspace) => [workspace.id, workspace])
+    workspaces.map((workspace) => [workspace.id, workspace])
   ) as Record<string, CockpitWorkspace>;
   const activeWorkspace = activeWorkspaceId === null ? null : workspacesById[activeWorkspaceId];
-  const activeLoadout = activeWorkspace === null ? undefined : workspaceLoadouts[activeWorkspace.id];
   const openWorkspace = (workspaceId: string, view: AppView = "cockpit") => {
     setRouteState({ view, workspaceId });
     window.history.pushState(null, "", `/workspace/${workspaceId}/${routeSegmentByView[view]}`);
@@ -171,22 +172,34 @@ export function App({
     setRouteState({ view: "cockpit", workspaceId: null });
     window.history.pushState(null, "", "/workspaces");
   };
+  const createWorkspace = (request: CreateWorkspaceRequest) => {
+    const workspace = createLocalWorkspace(request);
+    setWorkspaces((current) => [...current, workspace]);
+    openWorkspace(workspace.id);
+  };
 
   if (activeWorkspace === null) {
     return (
       <MantineProvider defaultColorScheme="dark">
         <WorkspaceLaunchpad
+          onWorkspaceCreate={createWorkspace}
           onWorkspaceSelect={(workspaceId) => {
             openWorkspace(workspaceId);
           }}
-          workspaces={cockpitWorkspaces}
+          workspaces={workspaces}
         />
       </MantineProvider>
     );
   }
 
+  const activeLoadout = workspaceLoadouts[activeWorkspace.id];
   const openView = (view: AppView) => {
     openWorkspace(activeWorkspace.id, view);
+  };
+  const updateActiveWorkspace = (changes: Partial<Pick<CockpitWorkspace, "branch" | "path">>) => {
+    setWorkspaces((current) =>
+      current.map((workspace) => (workspace.id === activeWorkspace.id ? { ...workspace, ...changes } : workspace))
+    );
   };
 
   return (
@@ -211,7 +224,7 @@ export function App({
         </button>
         <div className="topbar-workspace" aria-label="Active workspace">
           <span>{activeWorkspace.id}</span>
-          <strong>{activeWorkspace.status}</strong>
+          <strong>{activeWorkspace.branch}</strong>
         </div>
         <div className="topbar-budget" aria-label="Budget status">
           <span>Budget</span>
@@ -230,55 +243,58 @@ export function App({
         >
           <FolderKanban aria-hidden="true" size={18} />
         </button>
-        <NavButton
-          active={activeView === "missionControl"}
-          icon={<LayoutDashboard aria-hidden="true" size={18} />}
-          label={missionControlLabel}
-          onClick={() => {
-            openView("missionControl");
-          }}
-        />
-        <NavButton
-          active={activeView === "skillSources"}
-          icon={<Store aria-hidden="true" size={18} />}
-          label={skillSourcesLabel}
-          onClick={() => {
-            openView("skillSources");
-          }}
-        />
-        <NavButton
-          active={activeView === "harnessStudio"}
-          icon={<Route aria-hidden="true" size={18} />}
-          label={harnessStudioLabel}
-          onClick={() => {
-            openView("harnessStudio");
-          }}
-        />
-        <NavButton
-          active={activeView === "agentStudio"}
-          icon={<Bot aria-hidden="true" size={18} />}
-          label={agentStudioLabel}
-          onClick={() => {
-            openView("agentStudio");
-          }}
-        />
-        <NavButton
-          active={activeView === "gitPanel"}
-          icon={<GitBranch aria-hidden="true" size={18} />}
-          label="Git"
-          onClick={() => {
-            openView("gitPanel");
-          }}
-        />
-        <NavButton
-          active={activeView === "settings"}
-          icon={<KeyRound aria-hidden="true" size={18} />}
-          label="Settings"
-          onClick={() => {
-            openView("settings");
-          }}
-        />
       </nav>
+      <div className="workspace-layout">
+        <nav aria-label="Workspace sections" className="workspace-rail">
+          <NavButton
+            active={activeView === "missionControl"}
+            icon={<LayoutDashboard aria-hidden="true" size={18} />}
+            label={missionControlLabel}
+            onClick={() => {
+              openView("missionControl");
+            }}
+          />
+          <NavButton
+            active={activeView === "skillSources"}
+            icon={<Store aria-hidden="true" size={18} />}
+            label={skillSourcesLabel}
+            onClick={() => {
+              openView("skillSources");
+            }}
+          />
+          <NavButton
+            active={activeView === "harnessStudio"}
+            icon={<Route aria-hidden="true" size={18} />}
+            label={harnessStudioLabel}
+            onClick={() => {
+              openView("harnessStudio");
+            }}
+          />
+          <NavButton
+            active={activeView === "agentStudio"}
+            icon={<Bot aria-hidden="true" size={18} />}
+            label={agentStudioLabel}
+            onClick={() => {
+              openView("agentStudio");
+            }}
+          />
+          <NavButton
+            active={activeView === "gitPanel"}
+            icon={<GitBranch aria-hidden="true" size={18} />}
+            label="Git"
+            onClick={() => {
+              openView("gitPanel");
+            }}
+          />
+          <NavButton
+            active={activeView === "settings"}
+            icon={<KeyRound aria-hidden="true" size={18} />}
+            label="Settings"
+            onClick={() => {
+              openView("settings");
+            }}
+          />
+        </nav>
       <main aria-label={t("app.mainLabel", { defaultValue: "Workspace" })} className="app-main">
         {activeView === "cockpit" ? (
           <Cockpit
@@ -293,7 +309,7 @@ export function App({
               }));
             }}
             onWorkspaceChange={openWorkspace}
-            workspaces={cockpitWorkspaces}
+            workspaces={workspaces}
           />
         ) : null}
         {activeView === "missionControl" ? (
@@ -327,7 +343,9 @@ export function App({
             snapshot={loadState.agentStudioSnapshot}
           />
         ) : null}
-        {activeView === "gitPanel" ? <GitPanel workspace={activeWorkspace} /> : null}
+        {activeView === "gitPanel" ? (
+          <GitPanel onWorkspaceChange={updateActiveWorkspace} workspace={activeWorkspace} />
+        ) : null}
         {activeView === "settings" ? (
           <SettingsPanel
             invoke={settingsInvoke}
@@ -341,6 +359,7 @@ export function App({
           />
         ) : null}
       </main>
+      </div>
       </div>
     </MantineProvider>
   );
@@ -385,11 +404,24 @@ function NavButton({ active, icon, label, onClick }: NavButtonProps) {
 }
 
 type WorkspaceLaunchpadProps = Readonly<{
+  onWorkspaceCreate: (request: CreateWorkspaceRequest) => void;
   onWorkspaceSelect: (workspaceId: string) => void;
   workspaces: readonly CockpitWorkspace[];
 }>;
 
-function WorkspaceLaunchpad({ onWorkspaceSelect, workspaces }: WorkspaceLaunchpadProps) {
+type CreateWorkspaceRequest = Readonly<{
+  branch: string;
+  mission: string;
+  name: string;
+  path: string;
+}>;
+
+function WorkspaceLaunchpad({ onWorkspaceCreate, onWorkspaceSelect, workspaces }: WorkspaceLaunchpadProps) {
+  const [branch, setBranch] = useState("main");
+  const [mission, setMission] = useState("Start a new agent mission");
+  const [name, setName] = useState("New Workspace");
+  const [path, setPath] = useState("C:\\Users\\vriegert\\IdeaProjects");
+
   return (
     <main aria-labelledby="workspace-launchpad-title" className="workspace-launchpad">
       <header className="launchpad-header">
@@ -402,6 +434,56 @@ function WorkspaceLaunchpad({ onWorkspaceSelect, workspaces }: WorkspaceLaunchpa
           <p>Load agents, harnesses, skills, and Git context for the mission you want to run.</p>
         </div>
       </header>
+
+      <form
+        aria-label="Create workspace"
+        className="workspace-create-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onWorkspaceCreate({ branch, mission, name, path });
+        }}
+      >
+        <label>
+          <span>Workspace name</span>
+          <input
+            onChange={(event) => {
+              setName(event.target.value);
+            }}
+            value={name}
+          />
+        </label>
+        <label>
+          <span>Workspace path</span>
+          <input
+            onChange={(event) => {
+              setPath(event.target.value);
+            }}
+            value={path}
+          />
+        </label>
+        <label>
+          <span>Branch</span>
+          <input
+            onChange={(event) => {
+              setBranch(event.target.value);
+            }}
+            value={branch}
+          />
+        </label>
+        <label>
+          <span>Mission</span>
+          <input
+            onChange={(event) => {
+              setMission(event.target.value);
+            }}
+            value={mission}
+          />
+        </label>
+        <button disabled={slugify(name).length === 0} type="submit">
+          <Plus aria-hidden="true" size={16} />
+          <span>Create workspace</span>
+        </button>
+      </form>
 
       <section aria-label="Available workspaces" className="launchpad-grid">
         {workspaces.map((workspace) => {
@@ -447,6 +529,43 @@ function WorkspaceLaunchpad({ onWorkspaceSelect, workspaces }: WorkspaceLaunchpa
       </section>
     </main>
   );
+}
+
+function createLocalWorkspace(request: CreateWorkspaceRequest): CockpitWorkspace {
+  const id = slugify(request.name);
+
+  return {
+    activeAgentId: "director",
+    agents: [
+      {
+        id: "director",
+        model: "gpt-5",
+        name: "director",
+        role: "Workspace director",
+        status: "active",
+        tools: ["planning", "git", "workspace"]
+      }
+    ],
+    branch: request.branch,
+    budgetLimitUsd: 10,
+    budgetUsedUsd: 0,
+    checkpoints: [
+      { label: "Workspace created", state: "done" },
+      { label: request.mission, state: "running" },
+      { label: "First run validation", state: "queued" }
+    ],
+    id,
+    logs: [
+      `$ agenticcrew attach ${id} --workspace ${request.path}`,
+      `workspace resolved: ${id} / branch ${request.branch}`,
+      `mission: ${request.mission}`
+    ],
+    mission: request.mission,
+    name: request.name,
+    path: request.path,
+    skills: ["superpowers:tdd", "git:workspace-context"],
+    status: "configured"
+  };
 }
 
 type CockpitProps = Readonly<{
@@ -677,4 +796,27 @@ function preferredActiveItems<T extends AgentTemplate | HarnessProfile>(items: r
   const activeItems = items.filter((item) => item.active);
 
   return activeItems.length > 0 ? activeItems : [...items];
+}
+
+function slugify(value: string): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .split("")
+    .map((character) => (isSlugCharacter(character) ? character : "-"))
+    .join("");
+
+  return slug
+    .split("-")
+    .filter((part) => part.length > 0)
+    .join("-");
+}
+
+function isSlugCharacter(character: string): boolean {
+  return (
+    (character >= "a" && character <= "z") ||
+    (character >= "0" && character <= "9") ||
+    character === "_" ||
+    character === "-"
+  );
 }
