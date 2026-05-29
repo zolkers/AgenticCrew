@@ -1,0 +1,450 @@
+:root {
+  color: #e8e6de;
+  background: #0e0e0f;
+  font-family:
+    "Cascadia Code", "SFMono-Regular", Consolas, ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #0e0e0f;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(210px, 1.2fr) minmax(160px, 0.9fr) minmax(150px, 0.8fr) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #1e1e20;
+  background: #111112;
+}
+
+.brand-button,
+.topbar-tab,
+.workspace-card,
+.plugins-panel button,
+.command-bar button {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  color: #e8e6de;
+  background: #141415;
+  border-radius: 4px;
+}
+
+.brand-button {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+}
+
+.brand-button strong,
+.brand-button small,
+.topbar-workspace span,
+.topbar-workspace strong,
+.topbar-budget span,
+.topbar-budget strong {
+  display: block;
+}
+
+.brand-button small,
+.topbar-workspace span,
+.topbar-budget span,
+.eyebrow,
+.agent-header p,
+.agent-list small,
+.checkpoint-list small,
+.plugins-panel p,
+.command-bar label {
+  color: #93a4b5;
+}
+
+.brand-mark {
+  display: grid;
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border-radius: 3px;
+  color: #3a1e0e;
+  font-weight: 800;
+  background: #cc785c;
+}
+
+.topbar-workspace,
+.topbar-budget {
+  min-width: 0;
+  padding: 0.4rem 0.7rem;
+  border-left: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.topbar-tab {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.75rem;
+}
+
+.brand-button[aria-pressed="true"],
+.topbar-tab[aria-pressed="true"],
+.workspace-card[aria-pressed="true"] {
+  border-color: rgba(89, 224, 197, 0.75);
+  background: #1a1a1c;
+}
+
+.app-main {
+  padding: 1rem;
+}
+
+.cockpit-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.cockpit-sidebar,
+.terminal-panel {
+  border: 1px solid #1e1e20;
+  border-radius: 0;
+  background: #111112;
+}
+
+.cockpit-sidebar {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  padding: 1rem;
+}
+
+.cockpit-sidebar h2,
+.plugins-panel h2 {
+  margin: 0 0 0.6rem;
+  color: #f6fafc;
+  font-size: 0.82rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.workspace-list,
+.agent-list,
+.checkpoint-list,
+.pill-list,
+.tool-list {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.workspace-card {
+  display: grid;
+  width: 100%;
+  gap: 0.15rem;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.workspace-card strong {
+  color: #9debdc;
+  font-size: 0.82rem;
+}
+
+.agent-list li {
+  display: grid;
+  grid-template-columns: 0.75rem minmax(0, 1fr);
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.agent-list strong,
+.agent-list small,
+.checkpoint-list span,
+.checkpoint-list small {
+  display: block;
+}
+
+.status-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.status-dot-active {
+  background: #59e0c5;
+}
+
+.status-dot-reviewing {
+  background: #f3c969;
+}
+
+.checkpoint-list {
+  counter-reset: checkpoints;
+}
+
+.checkpoint-list li {
+  counter-increment: checkpoints;
+  position: relative;
+  padding: 0.55rem 0.65rem 0.55rem 2.1rem;
+  border-radius: 4px;
+  background: #141415;
+}
+
+.checkpoint-list li::before {
+  content: counter(checkpoints);
+  position: absolute;
+  left: 0.65rem;
+  top: 0.65rem;
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  place-items: center;
+  border-radius: 999px;
+  color: #3a1e0e;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: #93a4b5;
+}
+
+.checkpoint-running::before {
+  background: #63a355;
+}
+
+.checkpoint-done::before {
+  background: #6a8fb5;
+}
+
+.pill-list,
+.tool-list {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.pill-list li,
+.tool-list li {
+  overflow-wrap: anywhere;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #2a3e2a;
+  border-radius: 3px;
+  color: #8aaa8a;
+  background: #141e14;
+  font-size: 0.82rem;
+}
+
+.plugins-panel {
+  padding-top: 1rem;
+  border-top: 1px solid #1e1e20;
+}
+
+.plugins-panel p {
+  margin: 0 0 0.75rem;
+}
+
+.plugins-panel button,
+.command-bar button {
+  min-height: 2.4rem;
+  padding: 0 0.8rem;
+}
+
+.terminal-panel {
+  display: grid;
+  grid-template-rows: auto minmax(360px, 1fr) auto auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cockpit-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
+  gap: 1rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.eyebrow {
+  margin: 0 0 0.3rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.cockpit-hero h1,
+.cockpit-hero h2,
+.agent-header h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.cockpit-hero h1 {
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.cockpit-hero h2 {
+  margin-top: 0.35rem;
+  color: #cc785c;
+  font-size: 1.1rem;
+}
+
+.metric-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  align-self: end;
+  margin: 0;
+}
+
+.metric-strip div {
+  min-width: 0;
+  padding: 0.7rem;
+  border-left: 1px solid #1e1e20;
+  background: #141415;
+}
+
+.metric-strip dt {
+  color: #93a4b5;
+  font-size: 0.75rem;
+}
+
+.metric-strip dd {
+  margin: 0.25rem 0 0;
+  font-weight: 800;
+}
+
+.agent-terminal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: #05090c;
+}
+
+.agent-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.agent-header p {
+  margin: 0.35rem 0 0;
+}
+
+.terminal-stream {
+  min-height: 20rem;
+  padding: 1rem;
+  overflow: auto;
+  color: #c8f7d6;
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+.terminal-caption {
+  margin-bottom: 0.85rem;
+  color: #93a4b5;
+  font-family:
+    "Cascadia Code", "SFMono-Regular", Consolas, ui-monospace, monospace;
+}
+
+.terminal-stream p {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  gap: 0.5rem;
+  margin: 0 0 0.55rem;
+}
+
+.terminal-stream code {
+  overflow-wrap: anywhere;
+  color: inherit;
+}
+
+.command-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.command-bar input {
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 8px;
+  color: #e7edf1;
+  background: rgba(5, 9, 12, 0.95);
+}
+
+.run-status-bar {
+  display: flex;
+  min-height: 1.7rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.25rem 1rem;
+  color: #3a1e0e;
+  background: #cc785c;
+  font-size: 0.78rem;
+  overflow-x: auto;
+}
+
+.run-status-bar span {
+  flex: 0 0 auto;
+}
+
+.run-status-bar span + span {
+  padding-left: 1rem;
+  border-left: 1px solid #a85e3a;
+}
+
+section[aria-label="Mission Control"],
+section[aria-label="Skill Sources"] {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  background: rgba(10, 16, 21, 0.86);
+}
+
+@media (max-width: 920px) {
+  .topbar,
+  .cockpit-grid,
+  .cockpit-hero,
+  .agent-header,
+  .command-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar-workspace,
+  .topbar-budget {
+    border-left: 0;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+  }
+
+  .terminal-panel {
+    grid-template-rows: auto auto auto;
+  }
+}

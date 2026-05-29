@@ -64,7 +64,7 @@ describe("App", () => {
     cleanup();
   });
 
-  it("renders Mission Control as the default screen", async () => {
+  it("renders the AgenticCrew cockpit as the default screen", async () => {
     render(
       <App
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
@@ -73,8 +73,61 @@ describe("App", () => {
     );
 
     expect(screen.getByText("Loading Mission Control")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Mission Control" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
+    expect(screen.getAllByText("fullstack-app").length).toBeGreaterThan(0);
+    expect(screen.getByText("Active terminal stream")).toBeInTheDocument();
+    expect(screen.getByText("UI architect / active")).toBeInTheDocument();
+    expect(screen.getByLabelText("Run status")).toHaveTextContent("engine: langgraph");
     expect(screen.queryByRole("heading", { name: "Skill Sources" })).not.toBeInTheDocument();
+  });
+
+  it("switches workspace and updates visible agent context", async () => {
+    render(
+      <App
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    expect(await screen.findByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Mobile QA/ }));
+
+    expect(screen.getByRole("heading", { name: "Stabilize device smoke" })).toBeInTheDocument();
+    expect(screen.getAllByText("playwright-runner").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("heading", { name: "Build UI shell" })).not.toBeInTheDocument();
+  });
+
+  it("shows a plugins entry point in the cockpit sidebar", async () => {
+    render(
+      <App
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Plugins" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open plugin bay" })).toBeInTheDocument();
+  });
+
+  it("returns to the cockpit from the product mark", async () => {
+    render(
+      <App
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
+    expect(await screen.findByText("Injected from invoke")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /AgenticCrew/ }));
+
+    expect(screen.getByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(screen.queryByText("Injected from invoke")).not.toBeInTheDocument();
   });
 
   it("renders injected mission control data", async () => {
@@ -84,6 +137,9 @@ describe("App", () => {
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
+
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
 
     expect(await screen.findByText("Injected from invoke")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
@@ -98,6 +154,10 @@ describe("App", () => {
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
+
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
 
     expect(await screen.findByRole("heading", { name: "Mission Control" })).toBeInTheDocument();
 
