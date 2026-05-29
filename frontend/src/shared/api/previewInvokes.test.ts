@@ -516,6 +516,26 @@ describe("previewInvokes", () => {
     });
   });
 
+  it("returns synced preview models with a transient api key", async () => {
+    const snapshot = await previewSettingsInvoke("sync_provider_models", {
+      request: {
+        apiKey: "sk-proj-9999",
+        providerId: "openai"
+      }
+    });
+
+    expect(snapshot.aiProvider).toMatchObject({
+      apiKeyConfigured: true,
+      apiKeyLastFour: "9999",
+      modelSyncError: null,
+      modelSyncStatus: "synced",
+      selectedModelId: "gpt-preview-live"
+    });
+    expect(snapshot.aiProvider.availableModels).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "gpt-preview-live" })])
+    );
+  });
+
   it("keeps preview settings defaults when update args are absent", async () => {
     await expect(previewSettingsInvoke("update_ai_provider_settings")).resolves.toMatchObject({
       aiProvider: {

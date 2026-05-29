@@ -255,8 +255,51 @@ describe("SettingsPanel", () => {
       expect(onSnapshotChange).toHaveBeenCalledWith(syncedSnapshot);
     });
     expect(invoke).toHaveBeenCalledWith("sync_provider_models", {
-      request: { providerId: "openai" }
+      request: { apiKey: undefined, providerId: "openai" }
     });
+  });
+
+  it("passes a typed API key only as transient sync input", async () => {
+    const syncedSnapshot: SettingsSnapshot = {
+      aiProvider: {
+        apiKeyConfigured: true,
+        apiKeyLastFour: "9999",
+        availableModels: [{ id: "gpt-live", label: "gpt-live", providerId: "openai" }],
+        displayName: "OpenAI",
+        modelSyncError: null,
+        modelSyncStatus: "synced",
+        modelsLastSyncedAt: "sync-2",
+        providerId: "openai",
+        selectedModelId: "gpt-live"
+      }
+    };
+    const invoke = vi.fn().mockResolvedValue(syncedSnapshot);
+
+    render(
+      <SettingsPanel
+        invoke={invoke}
+        snapshot={{
+          aiProvider: {
+            apiKeyConfigured: false,
+            apiKeyLastFour: null,
+            availableModels: openAiModels,
+            displayName: "OpenAI",
+            providerId: "openai",
+            selectedModelId: "gpt-5"
+          }
+        }}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("API key"), { target: { value: "sk-proj-secret9999" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith("sync_provider_models", {
+        request: { apiKey: "sk-proj-secret9999", providerId: "openai" }
+      });
+    });
+    expect(screen.getByLabelText("API key")).toHaveValue("");
   });
 
   it("surfaces recoverable model sync failures from the provider", async () => {

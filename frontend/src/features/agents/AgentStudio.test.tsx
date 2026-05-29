@@ -249,7 +249,14 @@ describe("AgentStudio", () => {
   it("creates a local agent with empty optional form values", async () => {
     const invoke = vi.fn().mockResolvedValue(emptySnapshot);
 
-    render(<AgentStudio harnessSnapshot={noHarnessSnapshot} invoke={invoke} snapshot={emptySnapshot} />);
+    render(
+      <AgentStudio
+        harnessSnapshot={noHarnessSnapshot}
+        invoke={invoke}
+        modelOptions={modelOptions}
+        snapshot={emptySnapshot}
+      />
+    );
 
     fireEvent.change(screen.getByLabelText("Budget"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Skill routes"), { target: { value: "" } });
@@ -273,6 +280,12 @@ describe("AgentStudio", () => {
     });
   });
 
+  it("keeps creation disabled until a provider model is available", () => {
+    render(<AgentStudio harnessSnapshot={noHarnessSnapshot} invoke={vi.fn()} snapshot={emptySnapshot} />);
+
+    expect(screen.getByRole("button", { name: "Create agent" })).toBeDisabled();
+  });
+
   it("adds discovered marketplace skill routes to the agent form", async () => {
     const invoke = vi.fn().mockResolvedValue(emptySnapshot);
 
@@ -281,6 +294,7 @@ describe("AgentStudio", () => {
         availableSkillRoutes={availableSkillRoutes}
         harnessSnapshot={noHarnessSnapshot}
         invoke={invoke}
+        modelOptions={modelOptions}
         snapshot={emptySnapshot}
       />
     );
@@ -316,6 +330,7 @@ describe("AgentStudio", () => {
       <AgentStudio
         harnessSnapshot={harnessSnapshot}
         invoke={vi.fn().mockRejectedValue(new Error("duplicate"))}
+        modelOptions={modelOptions}
         snapshot={emptySnapshot}
       />
     );

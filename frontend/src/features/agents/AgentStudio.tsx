@@ -37,18 +37,17 @@ export function AgentStudio({
   const [editingTemplateId, setEditingTemplateId] = useState<null | string>(null);
   const [error, setError] = useState<null | string>(null);
   const [harnessProfileId, setHarnessProfileId] = useState(harnessSnapshot.profiles[0]?.id ?? "");
-  const [modelId, setModelId] = useState("gpt-5.2");
+  const defaultModelId = firstAvailableModelId(modelOptions, snapshot);
+  const [modelId, setModelId] = useState(defaultModelId);
   const [name, setName] = useState("Review Agent");
   const [role, setRole] = useState("reviewer");
   const [saving, setSaving] = useState(false);
   const [skillRoutesText, setSkillRoutesText] = useState("agenticcrew://skills/superpowers/subagent-driven-development");
-  const availableModels =
-    modelOptions === undefined || modelOptions.length === 0
-      ? [{ id: modelId, label: modelId, providerId: "openai" }]
-      : modelOptions;
-  const modelSelectOptions = availableModels.some((model) => model.id === modelId)
-    ? availableModels
-    : [{ id: modelId, label: modelId, providerId: "openai" }, ...availableModels];
+  const availableModels = modelOptions ?? [];
+  const modelSelectOptions =
+    availableModels.some((model) => model.id === modelId) || modelId.length === 0
+      ? availableModels
+      : [{ id: modelId, label: modelId, providerId: "openai" }, ...availableModels];
   const selectedSkillRoutes = splitSkillRoutes(skillRoutesText);
   const versionSummaries = snapshot.versionSummaries ?? agentVersionSummaries(snapshot);
   const generatedId = useMemo(() => slugify(name), [name]);
@@ -106,7 +105,7 @@ export function AgentStudio({
     setName("Review Agent");
     setRole("reviewer");
     setDescription("Custom workspace agent.");
-    setModelId("gpt-5.2");
+    setModelId(defaultModelId);
     setHarnessProfileId(harnessSnapshot.profiles[0]?.id ?? "");
     setBudgetDollars("2.00");
     setSkillRoutesText("agenticcrew://skills/superpowers/subagent-driven-development");
@@ -445,7 +444,10 @@ export function AgentStudio({
           </div>
         )}
         <div className="settings-actions">
-          <button disabled={saving || (editingTemplateId === null && generatedId.length === 0)} type="submit">
+          <button
+            disabled={saving || modelId.length === 0 || (editingTemplateId === null && generatedId.length === 0)}
+            type="submit"
+          >
             <Plus aria-hidden="true" size={16} />
             <span>{submitLabel}</span>
           </button>
@@ -477,6 +479,14 @@ function splitSkillRoutes(value: string): string[] {
 
 function getAgentSubmitLabel(editingTemplateId: null | string): string {
   return editingTemplateId === null ? "Create agent" : "Save agent";
+}
+
+function firstAvailableModelId(modelOptions: readonly AiModelRecord[] | undefined, snapshot: AgentStudioSnapshot): string {
+  if (modelOptions !== undefined && modelOptions.length > 0) {
+    return modelOptions[0].id;
+  }
+
+  return snapshot.templates[0]?.modelId ?? "";
 }
 
 function agentVersionSummaries(snapshot: AgentStudioSnapshot) {

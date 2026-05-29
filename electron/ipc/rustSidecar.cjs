@@ -16,6 +16,7 @@ function invokeRust(command, args) {
     const child = spawn(sidecarCommand, resolveSidecarArgs(sidecarCommand, command, args), {
       cwd: repoRoot
     });
+    child.stdin.end(JSON.stringify(args ?? {}));
     let stdout = "";
     let stderr = "";
 
@@ -59,8 +60,7 @@ function resolveSidecarArgs(sidecarCommand, command, args) {
     "--state-path",
     statePath,
     command,
-    "--args-json",
-    JSON.stringify(args ?? {}),
+    "--args-stdin",
     "--cache-root",
     cacheRoot
   ];

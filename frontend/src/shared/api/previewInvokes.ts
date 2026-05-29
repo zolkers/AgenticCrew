@@ -667,6 +667,26 @@ export const previewSkillSourcesInvoke: InvokeSkillSources = (command) => {
 
 export const previewSettingsInvoke: InvokeSettings = (command, args) => {
   if (command === "sync_provider_models") {
+    const request = args?.request as { apiKey?: string | null } | undefined;
+    const apiKey = request?.apiKey?.trim();
+    if (apiKey !== undefined && apiKey.length > 0) {
+      return Promise.resolve({
+        aiProvider: {
+          ...previewSettingsSnapshot.aiProvider,
+          apiKeyConfigured: true,
+          apiKeyLastFour: apiKey.slice(-4),
+          availableModels: [
+            { id: "gpt-preview-live", label: "gpt-preview-live", providerId: "openai" },
+            ...(previewSettingsSnapshot.aiProvider.availableModels ?? [])
+          ],
+          modelSyncError: null,
+          modelSyncStatus: "synced",
+          modelsLastSyncedAt: "preview",
+          selectedModelId: "gpt-preview-live"
+        }
+      });
+    }
+
     return Promise.resolve({
       aiProvider: {
         ...previewSettingsSnapshot.aiProvider,

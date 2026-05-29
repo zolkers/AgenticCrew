@@ -20,8 +20,8 @@ use core::{
     permissions::ApprovedPermissionPolicy,
     pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
     settings::{
-        settings_snapshot_from_state, SettingsSnapshot, SyncProviderModelsRequest,
-        UpdateAiProviderSettingsRequest,
+        settings_snapshot_from_state, sync_provider_models_with_catalog, ProviderModelCatalog,
+        SettingsSnapshot, SyncProviderModelsRequest, UpdateAiProviderSettingsRequest,
     },
     skill_manifest::{inspect_skill_manifests, SkillManifestInspectionError},
     skill_sync::{sync_github_skill_source_to_cache, SkillSourceSyncError},
@@ -423,6 +423,23 @@ pub fn sync_provider_models_at_path(
 ) -> Result<SettingsSnapshot, DesktopCommandError> {
     let synced_at = current_unix_timestamp_string()?;
     let state = mutate_state_at_path(path, |state| state.sync_provider_models(request, synced_at))?;
+
+    Ok(settings_snapshot_from_state(&state))
+}
+
+pub fn sync_provider_models_at_path_with_catalog(
+    path: impl AsRef<Path>,
+    request: SyncProviderModelsRequest,
+    catalog: &impl ProviderModelCatalog,
+) -> Result<SettingsSnapshot, DesktopCommandError> {
+    let synced_at = current_unix_timestamp_string()?;
+    let state = mutate_state_at_path(path, |state| {
+        let previous = state.desktop_settings.ai_provider.clone();
+        state.desktop_settings.ai_provider =
+            sync_provider_models_with_catalog(&previous, request, synced_at, catalog)
+                .map_err(StateMutationError::InvalidDesktopSettings)?;
+        Ok(())
+    })?;
 
     Ok(settings_snapshot_from_state(&state))
 }

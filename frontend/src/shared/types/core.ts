@@ -422,6 +422,7 @@ export type UpdateAiProviderSettingsRequest = {
 };
 
 export type SyncProviderModelsRequest = {
+  apiKey?: string | null;
   providerId: string;
 };
 

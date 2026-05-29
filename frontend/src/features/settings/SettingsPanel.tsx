@@ -87,9 +87,13 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
     setSyncing(true);
 
     try {
-      const nextSnapshot = await syncProviderModels(invoke, { providerId: provider.providerId });
+      const nextSnapshot = await syncProviderModels(invoke, {
+        apiKey: apiKey.trim().length > 0 ? apiKey : undefined,
+        providerId: provider.providerId
+      });
       onSnapshotChange?.(nextSnapshot);
       setModelId(nextSnapshot.aiProvider.selectedModelId);
+      setApiKey("");
       setSaved(nextSnapshot.aiProvider.modelSyncStatus === "synced");
       if (nextSnapshot.aiProvider.modelSyncStatus === "failed") {
         setError(nextSnapshot.aiProvider.modelSyncError ?? "Model sync failed");

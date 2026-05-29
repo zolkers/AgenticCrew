@@ -140,11 +140,81 @@ impl UpdateAiProviderSettingsRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SyncProviderModelsRequest {
     pub provider_id: String,
+    #[serde(default)]
+    pub api_key: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProviderModelCatalogError {
+    MissingApiKey,
+    FetchFailed(String),
+}
+
+impl std::fmt::Display for ProviderModelCatalogError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ProviderModelCatalogError::MissingApiKey => {
+                write!(
+                    formatter,
+                    "OpenAI API key is required before syncing models"
+                )
+            }
+            ProviderModelCatalogError::FetchFailed(message) => {
+                write!(formatter, "OpenAI model sync failed: {message}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ProviderModelCatalogError {}
+
+pub trait ProviderModelCatalog {
+    fn load_models(
+        &self,
+        request: &SyncProviderModelsRequest,
+    ) -> Result<Vec<AiModelRecord>, ProviderModelCatalogError>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StaticOpenAiModelCatalog {
+    models: Vec<AiModelRecord>,
+}
+
+impl StaticOpenAiModelCatalog {
+    pub fn new(models: Vec<AiModelRecord>) -> Self {
+        Self { models }
+    }
+}
+
+impl Default for StaticOpenAiModelCatalog {
+    fn default() -> Self {
+        Self::new(openai_model_registry())
+    }
+}
+
+impl ProviderModelCatalog for StaticOpenAiModelCatalog {
+    fn load_models(
+        &self,
+        request: &SyncProviderModelsRequest,
+    ) -> Result<Vec<AiModelRecord>, ProviderModelCatalogError> {
+        if request
+            .api_key
+            .as_deref()
+            .map(str::trim)
+            .unwrap_or("")
+            .is_empty()
+        {
+            return Err(ProviderModelCatalogError::MissingApiKey);
+        }
+
+        Ok(self.models.clone())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SettingsValidationError {
     EmptyModel,
+    EmptyModelCatalog,
     UnsupportedProvider { provider_id: String },
 }
 
@@ -152,6 +222,9 @@ impl std::fmt::Display for SettingsValidationError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SettingsValidationError::EmptyModel => write!(formatter, "model id is required"),
+            SettingsValidationError::EmptyModelCatalog => {
+                write!(formatter, "provider model catalog is empty")
+            }
             SettingsValidationError::UnsupportedProvider { provider_id } => {
                 write!(formatter, "provider '{provider_id}' is not supported")
             }
@@ -192,6 +265,20 @@ pub fn sync_provider_models(
     request: SyncProviderModelsRequest,
     synced_at: String,
 ) -> Result<AiProviderSettings, SettingsValidationError> {
+    sync_provider_models_with_catalog(
+        previous,
+        request,
+        synced_at,
+        &StaticOpenAiModelCatalog::default(),
+    )
+}
+
+pub fn sync_provider_models_with_catalog(
+    previous: &AiProviderSettings,
+    request: SyncProviderModelsRequest,
+    synced_at: String,
+    catalog: &impl ProviderModelCatalog,
+) -> Result<AiProviderSettings, SettingsValidationError> {
     if request.provider_id != "openai" {
         return Err(SettingsValidationError::UnsupportedProvider {
             provider_id: request.provider_id,
@@ -202,13 +289,22 @@ pub fn sync_provider_models(
     next.provider_id = "openai".to_owned();
     next.display_name = "OpenAI".to_owned();
 
-    if !previous.api_key_configured {
+    let available_models = match catalog.load_models(&request) {
+        Ok(models) => normalize_openai_models(models),
+        Err(error) => {
+            next.model_sync_status = ProviderModelSyncStatus::Failed;
+            next.model_sync_error = Some(error.to_string());
+            return Ok(next);
+        }
+    };
+
+    if available_models.is_empty() {
         next.model_sync_status = ProviderModelSyncStatus::Failed;
-        next.model_sync_error = Some("OpenAI API key is required before syncing models".to_owned());
+        next.model_sync_error = Some(SettingsValidationError::EmptyModelCatalog.to_string());
         return Ok(next);
     }
 
-    next.available_models = openai_model_registry();
+    next.available_models = available_models;
     next.model_sync_status = ProviderModelSyncStatus::Synced;
     next.models_last_synced_at = Some(synced_at);
     next.model_sync_error = None;
@@ -218,17 +314,41 @@ pub fn sync_provider_models(
         .iter()
         .any(|model| model.id == next.selected_model_id)
     {
-        next.available_models.insert(
-            0,
-            AiModelRecord {
-                id: next.selected_model_id.clone(),
-                label: next.selected_model_id.clone(),
-                provider_id: "openai".to_owned(),
-            },
-        );
+        next.selected_model_id = next
+            .available_models
+            .first()
+            .map(|model| model.id.clone())
+            .unwrap_or_else(|| previous.selected_model_id.clone());
     }
 
     Ok(next)
+}
+
+fn normalize_openai_models(models: Vec<AiModelRecord>) -> Vec<AiModelRecord> {
+    let mut normalized = models
+        .into_iter()
+        .filter_map(|model| {
+            let id = model.id.trim();
+            if id.is_empty() {
+                return None;
+            }
+
+            let label = model.label.trim();
+            Some(AiModelRecord {
+                id: id.to_owned(),
+                label: if label.is_empty() {
+                    id.to_owned()
+                } else {
+                    label.to_owned()
+                },
+                provider_id: "openai".to_owned(),
+            })
+        })
+        .collect::<Vec<_>>();
+
+    normalized.sort_by(|left, right| left.id.cmp(&right.id));
+    normalized.dedup_by(|left, right| left.id == right.id);
+    normalized
 }
 
 #[cfg(test)]
@@ -328,6 +448,7 @@ mod tests {
         let settings = sync_provider_models(
             &AiProviderSettings::openai_default(),
             SyncProviderModelsRequest {
+                api_key: None,
                 provider_id: "openai".to_owned(),
             },
             "sync-1".to_owned(),
@@ -359,6 +480,7 @@ mod tests {
         let settings = sync_provider_models(
             &previous,
             SyncProviderModelsRequest {
+                api_key: Some("sk-test".to_owned()),
                 provider_id: "openai".to_owned(),
             },
             "sync-2".to_owned(),
@@ -372,5 +494,47 @@ mod tests {
             .available_models
             .iter()
             .any(|model| model.id == "gpt-5.2"));
+    }
+
+    #[test]
+    fn sync_provider_models_uses_injected_catalog() {
+        let previous = AiProviderSettings {
+            api_key_configured: false,
+            api_key_last_four: None,
+            available_models: openai_model_registry(),
+            model_sync_status: ProviderModelSyncStatus::NeverSynced,
+            models_last_synced_at: None,
+            model_sync_error: None,
+            display_name: "OpenAI".to_owned(),
+            provider_id: "openai".to_owned(),
+            selected_model_id: "gpt-old".to_owned(),
+        };
+        let catalog = StaticOpenAiModelCatalog::new(vec![AiModelRecord {
+            id: " gpt-live ".to_owned(),
+            label: "".to_owned(),
+            provider_id: "other".to_owned(),
+        }]);
+
+        let settings = sync_provider_models_with_catalog(
+            &previous,
+            SyncProviderModelsRequest {
+                api_key: Some("sk-test".to_owned()),
+                provider_id: "openai".to_owned(),
+            },
+            "sync-3".to_owned(),
+            &catalog,
+        )
+        .expect("configured request should sync through injected catalog");
+
+        assert_eq!(settings.model_sync_status, ProviderModelSyncStatus::Synced);
+        assert_eq!(settings.selected_model_id, "gpt-live");
+        assert_eq!(
+            settings.available_models,
+            vec![AiModelRecord {
+                id: "gpt-live".to_owned(),
+                label: "gpt-live".to_owned(),
+                provider_id: "openai".to_owned()
+            }]
+        );
     }
 }
