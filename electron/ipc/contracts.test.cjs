@@ -19,6 +19,7 @@ test("accepts known snapshot commands", () => {
     assertCommand("create_agent_template");
     assertCommand("set_agent_template_active");
     assertCommand("update_agent_template");
+    assertCommand("promote_agent_training_run");
     assertCommand("settings_snapshot");
     assertCommand("sync_github_skill_source");
     assertCommand("sync_provider_models");

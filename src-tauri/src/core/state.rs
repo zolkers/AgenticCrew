@@ -6,8 +6,9 @@ use std::{
 
 use super::{
     agents::{
-        AgentTemplate, AgentTemplateError, AgentTrainingRun, CreateAgentTemplateRequest,
-        SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
+        AgentTemplate, AgentTemplateError, AgentTrainingRun, AgentTrainingStatus,
+        CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest,
+        UpdateAgentTemplateRequest,
     },
     costs::ModelCallEstimate,
     evidence::{CommandExitCodeEvidence, Evidence},
@@ -469,6 +470,41 @@ impl AgentOsState {
         Ok(())
     }
 
+    pub fn promote_agent_training_run(
+        &mut self,
+        request: PromoteAgentTrainingRunRequest,
+    ) -> Result<(), StateMutationError> {
+        let training_run_position = self
+            .agent_training_runs
+            .iter()
+            .position(|run| run.id == request.training_run_id)
+            .ok_or_else(|| StateMutationError::MissingAgentTrainingRun {
+                training_run_id: request.training_run_id.clone(),
+            })?;
+
+        let training_run = &self.agent_training_runs[training_run_position];
+        let training_run_id = training_run.id.clone();
+        let agent_template_id = training_run.agent_template_id.clone();
+        if training_run.status != AgentTrainingStatus::Completed {
+            return Err(StateMutationError::InvalidAgentTrainingRun {
+                training_run_id,
+                status: training_run.status,
+            });
+        }
+
+        let template = self
+            .agent_templates
+            .iter_mut()
+            .find(|template| template.id == agent_template_id)
+            .ok_or_else(|| StateMutationError::MissingAgentTemplate {
+                template_id: agent_template_id,
+            })?;
+        template.version = template.version.saturating_add(1);
+        self.agent_training_runs[training_run_position].promote_to_version(template.version);
+
+        Ok(())
+    }
+
     pub fn update_ai_provider_settings(
         &mut self,
         request: UpdateAiProviderSettingsRequest,
@@ -673,6 +709,13 @@ pub enum StateMutationError {
     MissingAgentTemplate {
         template_id: String,
     },
+    MissingAgentTrainingRun {
+        training_run_id: String,
+    },
+    InvalidAgentTrainingRun {
+        training_run_id: String,
+        status: AgentTrainingStatus,
+    },
     DuplicateWorkspace {
         workspace_id: String,
     },
@@ -731,6 +774,18 @@ impl fmt::Display for StateMutationError {
             }
             StateMutationError::MissingAgentTemplate { template_id } => {
                 write!(formatter, "agent template '{template_id}' does not exist")
+            }
+            StateMutationError::MissingAgentTrainingRun { training_run_id } => {
+                write!(formatter, "agent training run '{training_run_id}' does not exist")
+            }
+            StateMutationError::InvalidAgentTrainingRun {
+                training_run_id,
+                status,
+            } => {
+                write!(
+                    formatter,
+                    "agent training run '{training_run_id}' cannot be promoted from status '{status:?}'"
+                )
             }
             StateMutationError::DuplicateWorkspace { workspace_id } => {
                 write!(formatter, "workspace '{workspace_id}' already exists")
@@ -916,8 +971,8 @@ mod tests {
     };
     use crate::core::{
         agents::{
-            AgentTemplate, CreateAgentTemplateRequest, SetAgentTemplateActiveRequest,
-            UpdateAgentTemplateRequest,
+            AgentTemplate, AgentTrainingRun, AgentTrainingStatus, CreateAgentTemplateRequest,
+            PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
         },
         costs::ModelCallEstimate,
         evidence::{CommandExitCodeEvidence, Evidence},
@@ -1261,6 +1316,56 @@ mod tests {
             error,
             StateMutationError::MissingHarnessProfile {
                 profile_id: "missing-harness".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn promote_agent_training_run_bumps_template_version() {
+        let mut state = AgentOsState::empty();
+        state.agent_training_runs.push(AgentTrainingRun {
+            agent_template_id: "developer-pi".to_owned(),
+            critic_score: Some(94),
+            dataset_id: "release-regression".to_owned(),
+            id: "train-release".to_owned(),
+            promoted_version: None,
+            status: AgentTrainingStatus::Completed,
+        });
+
+        state
+            .promote_agent_training_run(PromoteAgentTrainingRunRequest {
+                training_run_id: "train-release".to_owned(),
+            })
+            .expect("training run should promote");
+
+        assert_eq!(state.agent_templates[0].version, 2);
+        assert_eq!(state.agent_training_runs[0].status, AgentTrainingStatus::Promoted);
+        assert_eq!(state.agent_training_runs[0].promoted_version, Some(2));
+    }
+
+    #[test]
+    fn promote_agent_training_run_rejects_non_completed_runs() {
+        let mut state = AgentOsState::empty();
+        state.agent_training_runs.push(AgentTrainingRun {
+            agent_template_id: "developer-pi".to_owned(),
+            critic_score: None,
+            dataset_id: "draft".to_owned(),
+            id: "train-draft".to_owned(),
+            promoted_version: None,
+            status: AgentTrainingStatus::Draft,
+        });
+
+        let error = state
+            .promote_agent_training_run(PromoteAgentTrainingRunRequest {
+                training_run_id: "train-draft".to_owned(),
+            })
+            .expect_err("draft training should not promote");
+
+        assert_eq!(
+            error,
+            StateMutationError::InvalidAgentTrainingRun {
+                training_run_id: "train-draft".to_owned(),
+                status: AgentTrainingStatus::Draft
             }
         );
     }

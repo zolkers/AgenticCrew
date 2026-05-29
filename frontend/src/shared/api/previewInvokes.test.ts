@@ -233,10 +233,15 @@ describe("previewInvokes", () => {
   });
 
   it("returns Agent Studio preview data for browser previews", async () => {
-    await expect(previewAgentStudioInvoke("agent_studio_snapshot")).resolves.toMatchObject({
+    const snapshot = await previewAgentStudioInvoke("agent_studio_snapshot");
+
+    expect(snapshot).toMatchObject({
       activeTemplateCount: 1,
       templates: [{ id: "developer-pi", harnessProfileId: "pi-execution-discipline" }]
     });
+    expect(snapshot.trainingRuns).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "preview-train-release", status: "completed" })])
+    );
   });
 
   it("handles preview agent creation and activation toggles", async () => {
@@ -372,6 +377,52 @@ describe("previewInvokes", () => {
     ).resolves.toMatchObject({
       templates: [{ id: "developer-pi", name: "Developer Agent" }]
     });
+  });
+
+  it("promotes preview agent training runs", async () => {
+    const snapshot = await previewAgentStudioInvoke("promote_agent_training_run", {
+      request: { trainingRunId: "preview-train-release" }
+    });
+
+    expect(snapshot.templates).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "developer-pi", version: 2 })])
+    );
+    expect(snapshot.trainingRuns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "preview-train-release", promotedVersion: 2, status: "promoted" })
+      ])
+    );
+  });
+
+  it("keeps preview agent data when a training promotion target is missing", async () => {
+    const snapshot = await previewAgentStudioInvoke("promote_agent_training_run", {
+      request: { trainingRunId: "missing-run" }
+    });
+
+    expect(snapshot.templates).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "developer-pi", version: 1 })])
+    );
+    expect(snapshot.trainingRuns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "preview-train-release", promotedVersion: null, status: "completed" })
+      ])
+    );
+  });
+
+  it("keeps preview agent data when a training promotion is not eligible", async () => {
+    const promotedSnapshot = await previewAgentStudioInvoke("promote_agent_training_run", {
+      request: { trainingRunId: "preview-train-smoke" }
+    });
+    const orphanSnapshot = await previewAgentStudioInvoke("promote_agent_training_run", {
+      request: { trainingRunId: "preview-train-orphan" }
+    });
+
+    expect(promotedSnapshot.templates).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "developer-pi", version: 1 })])
+    );
+    expect(orphanSnapshot.templates).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "developer-pi", version: 1 })])
+    );
   });
 
   it("returns and updates preview settings metadata", async () => {

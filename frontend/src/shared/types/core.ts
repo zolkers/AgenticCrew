@@ -344,6 +344,10 @@ export type SetAgentTemplateActiveRequest = {
   templateId: string;
 };
 
+export type PromoteAgentTrainingRunRequest = {
+  trainingRunId: string;
+};
+
 export type UpdateAgentTemplateRequest = {
   budgetCents: number;
   description: string;
@@ -399,6 +403,7 @@ export type ElectronCommandMap = {
   harness_studio_snapshot: HarnessStudioSnapshot;
   inspect_cached_skill_source: unknown;
   mission_control_snapshot: MissionControlSnapshot;
+  promote_agent_training_run: AgentStudioSnapshot;
   refresh_workspace_git_status: WorkspaceSnapshot;
   settings_snapshot: SettingsSnapshot;
   set_agent_template_active: AgentStudioSnapshot;

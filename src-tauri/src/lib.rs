@@ -10,7 +10,7 @@ use serde::Serialize;
 use core::{
     agents::{
         agent_studio_snapshot_from_state, AgentStudioSnapshot, CreateAgentTemplateRequest,
-        SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
+        PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
     },
     harnesses::{
         harness_studio_snapshot_from_state, CreateHarnessProfileRequest, HarnessStudioSnapshot,
@@ -204,6 +204,15 @@ pub fn update_agent_template_at_path(
     request: UpdateAgentTemplateRequest,
 ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
     let state = mutate_state_at_path(path, |state| state.update_agent_template(request))?;
+
+    Ok(agent_studio_snapshot_from_state(&state))
+}
+
+pub fn promote_agent_training_run_at_path(
+    path: impl AsRef<Path>,
+    request: PromoteAgentTrainingRunRequest,
+) -> Result<AgentStudioSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.promote_agent_training_run(request))?;
 
     Ok(agent_studio_snapshot_from_state(&state))
 }
@@ -429,7 +438,8 @@ mod commands {
         activate_skill_source_at_path, add_checkpoint_at_path, agent_studio_snapshot_at_path,
         approve_skill_source_permissions_at_path, close_feature_session_at_path,
         core::agents::{
-            CreateAgentTemplateRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
+            CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest,
+            SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
         },
         core::harnesses::{
             CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
@@ -446,7 +456,8 @@ mod commands {
         create_agent_template_at_path, create_feature_session_at_path,
         create_harness_profile_at_path, create_workspace_at_path, durable_state_snapshot_at_path,
         harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
-        mission_control_snapshot_at_path, record_command_evidence_at_path,
+        mission_control_snapshot_at_path, promote_agent_training_run_at_path,
+        record_command_evidence_at_path,
         refresh_workspace_git_status_at_path, register_github_skill_source_at_path,
         skill_sources_snapshot_at_path, state_file_path, set_agent_template_active_at_path,
         set_harness_profile_active_at_path, settings_snapshot_at_path, sync_github_skill_source_at_path,
@@ -579,6 +590,14 @@ mod commands {
         request: UpdateAgentTemplateRequest,
     ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
         update_agent_template_at_path(app_state_path(&app)?, request)
+    }
+
+    #[tauri::command]
+    pub fn promote_agent_training_run(
+        app: tauri::AppHandle,
+        request: PromoteAgentTrainingRunRequest,
+    ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
+        promote_agent_training_run_at_path(app_state_path(&app)?, request)
     }
 
     #[tauri::command]
@@ -720,6 +739,7 @@ pub fn run() {
             commands::create_agent_template,
             commands::set_agent_template_active,
             commands::update_agent_template,
+            commands::promote_agent_training_run,
             commands::settings_snapshot,
             commands::create_feature_session,
             commands::add_checkpoint,
@@ -757,8 +777,8 @@ mod tests {
         create_agent_template_at_path, create_feature_session_at_path,
         create_harness_profile_at_path, create_workspace_at_path, durable_state_snapshot_at_path,
         harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
-        record_command_evidence_at_path, record_skill_source_sync_success_at_path,
-        refresh_workspace_git_status_at_path,
+        promote_agent_training_run_at_path, record_command_evidence_at_path,
+        record_skill_source_sync_success_at_path, refresh_workspace_git_status_at_path,
         register_github_skill_source_at_path, set_agent_template_active_at_path,
         set_harness_profile_active_at_path, skill_sources_snapshot_at_path, state_file_path,
         update_agent_template_at_path, update_harness_profile_at_path,
@@ -767,7 +787,8 @@ mod tests {
     };
     use crate::core::{
         agents::{
-            CreateAgentTemplateRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
+            AgentTrainingRun, AgentTrainingStatus, CreateAgentTemplateRequest,
+            PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
         },
         harnesses::{
             CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
@@ -779,7 +800,8 @@ mod tests {
         sessions::GoalObject,
         skills::RegisterGitHubSkillSourceRequest,
         state::{
-            CreateCheckpointRequest, CreateFeatureSessionRequest, RecordCommandEvidenceRequest,
+            AgentOsState, CreateCheckpointRequest, CreateFeatureSessionRequest, JsonStateStore,
+            RecordCommandEvidenceRequest,
         },
         workspaces::{
             CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest,
@@ -1221,6 +1243,41 @@ mod tests {
         assert_eq!(template.harness_profile_id, None);
         assert_eq!(template.skill_routes, vec!["agenticcrew://skills/release"]);
         assert_eq!(template.version, 2);
+        assert_eq!(
+            snapshot,
+            agent_studio_snapshot_at_path(&path).expect("snapshot should load")
+        );
+    }
+
+    #[test]
+    fn promote_agent_training_run_command_persists_version() {
+        let path = test_path(
+            "promote_agent_training_run_command_persists_version",
+            "state.json",
+        );
+        let store = JsonStateStore::new(&path);
+        let mut state = AgentOsState::empty();
+        state.agent_training_runs.push(AgentTrainingRun {
+            agent_template_id: "developer-pi".to_owned(),
+            critic_score: Some(97),
+            dataset_id: "release-regression".to_owned(),
+            id: "train-release".to_owned(),
+            promoted_version: None,
+            status: AgentTrainingStatus::Completed,
+        });
+        store.save(&state).expect("state should save");
+
+        let snapshot = promote_agent_training_run_at_path(
+            &path,
+            PromoteAgentTrainingRunRequest {
+                training_run_id: "train-release".to_owned(),
+            },
+        )
+        .expect("training run should promote");
+
+        assert_eq!(snapshot.templates[0].version, 2);
+        assert_eq!(snapshot.training_runs[0].status, AgentTrainingStatus::Promoted);
+        assert_eq!(snapshot.training_runs[0].promoted_version, Some(2));
         assert_eq!(
             snapshot,
             agent_studio_snapshot_at_path(&path).expect("snapshot should load")

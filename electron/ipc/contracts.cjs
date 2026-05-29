@@ -14,6 +14,7 @@ const COMMANDS = new Set([
   "create_agent_template",
   "set_agent_template_active",
   "update_agent_template",
+  "promote_agent_training_run",
   "settings_snapshot",
   "approve_skill_source_permissions",
   "inspect_cached_skill_source",

@@ -126,7 +126,32 @@ const previewAgentStudioSnapshot: AgentStudioSnapshot = {
       version: 1
     }
   ],
-  trainingRuns: []
+  trainingRuns: [
+    {
+      agentTemplateId: "developer-pi",
+      criticScore: 94,
+      datasetId: "preview-release",
+      id: "preview-train-release",
+      promotedVersion: null,
+      status: "completed"
+    },
+    {
+      agentTemplateId: "developer-pi",
+      criticScore: 91,
+      datasetId: "preview-smoke",
+      id: "preview-train-smoke",
+      promotedVersion: 1,
+      status: "promoted"
+    },
+    {
+      agentTemplateId: "missing-agent",
+      criticScore: 90,
+      datasetId: "preview-orphan",
+      id: "preview-train-orphan",
+      promotedVersion: null,
+      status: "completed"
+    }
+  ]
 };
 
 const previewSettingsSnapshot: SettingsSnapshot = {
@@ -464,6 +489,40 @@ export const previewAgentStudioInvoke: InvokeAgentStudio = (command, args) => {
     return Promise.resolve({
       ...previewAgentStudioSnapshot,
       templates
+    });
+  }
+
+  if (command === "promote_agent_training_run") {
+    const request = args?.request as { trainingRunId?: string } | undefined;
+    const run = previewAgentStudioSnapshot.trainingRuns.find(
+      (trainingRun) => trainingRun.id === request?.trainingRunId
+    );
+    if (run === undefined || run.status !== "completed") {
+      return Promise.resolve(previewAgentStudioSnapshot);
+    }
+
+    const templates = previewAgentStudioSnapshot.templates.map((template) =>
+      template.id === run.agentTemplateId ? { ...template, version: template.version + 1 } : template
+    );
+    const promotedTemplate = templates.find((template) => template.id === run.agentTemplateId);
+    if (promotedTemplate === undefined) {
+      return Promise.resolve(previewAgentStudioSnapshot);
+    }
+
+    const trainingRuns = previewAgentStudioSnapshot.trainingRuns.map((trainingRun) =>
+      trainingRun.id === request?.trainingRunId
+        ? {
+            ...trainingRun,
+            promotedVersion: promotedTemplate.version,
+            status: "promoted" as const
+          }
+        : trainingRun
+    );
+
+    return Promise.resolve({
+      ...previewAgentStudioSnapshot,
+      templates,
+      trainingRuns
     });
   }
 

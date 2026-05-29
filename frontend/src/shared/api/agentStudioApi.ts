@@ -1,6 +1,7 @@
 import type {
   AgentStudioSnapshot,
   CreateAgentTemplateRequest,
+  PromoteAgentTrainingRunRequest,
   SetAgentTemplateActiveRequest,
   UpdateAgentTemplateRequest
 } from "../types/core";
@@ -9,7 +10,8 @@ export type AgentStudioCommand =
   | "agent_studio_snapshot"
   | "create_agent_template"
   | "set_agent_template_active"
-  | "update_agent_template";
+  | "update_agent_template"
+  | "promote_agent_training_run";
 
 export type InvokeAgentStudio = (
   command: AgentStudioCommand,
@@ -39,4 +41,11 @@ export async function updateAgentTemplate(
   request: UpdateAgentTemplateRequest
 ): Promise<AgentStudioSnapshot> {
   return invoke("update_agent_template", { request });
+}
+
+export async function promoteAgentTrainingRun(
+  invoke: InvokeAgentStudio,
+  request: PromoteAgentTrainingRunRequest
+): Promise<AgentStudioSnapshot> {
+  return invoke("promote_agent_training_run", { request });
 }

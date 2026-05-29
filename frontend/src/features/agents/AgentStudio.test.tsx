@@ -76,7 +76,7 @@ const templateSnapshot: AgentStudioSnapshot = {
       datasetId: "smoke",
       id: "train-1",
       promotedVersion: null,
-      status: "draft"
+      status: "completed"
     },
     {
       agentTemplateId: "loose-agent",
@@ -127,7 +127,8 @@ describe("AgentStudio", () => {
     expect(screen.getAllByText("promoted").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Training lane" })).toBeInTheDocument();
     expect(screen.getByText("smoke")).toBeInTheDocument();
-    expect(screen.getByText("loose-agent / draft")).toBeInTheDocument();
+    expect(screen.getByText("loose-agent / completed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Promote training run smoke" })).toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
     expect(screen.getByText("release-regression")).toBeInTheDocument();
     expect(screen.getByText("0.91")).toBeInTheDocument();
@@ -322,6 +323,74 @@ describe("AgentStudio", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create agent" }));
 
     expect(await screen.findByText("Agent creation failed")).toBeInTheDocument();
+  });
+
+  it("promotes a completed training run", async () => {
+    const nextSnapshot: AgentStudioSnapshot = {
+      ...templateSnapshot,
+      templates: templateSnapshot.templates.map((template) => ({ ...template, version: 3 })),
+      trainingRuns: templateSnapshot.trainingRuns.map((run) =>
+        run.id === "train-1" ? { ...run, promotedVersion: 3, status: "promoted" } : run
+      )
+    };
+    const invoke = vi.fn().mockResolvedValue(nextSnapshot);
+    const onSnapshotChange = vi.fn();
+
+    render(
+      <AgentStudio
+        harnessSnapshot={harnessSnapshot}
+        invoke={invoke}
+        onSnapshotChange={onSnapshotChange}
+        snapshot={templateSnapshot}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Promote training run smoke" }));
+
+    await waitFor(() => {
+      expect(onSnapshotChange).toHaveBeenCalledWith(nextSnapshot);
+    });
+    expect(invoke).toHaveBeenCalledWith("promote_agent_training_run", {
+      request: { trainingRunId: "train-1" }
+    });
+  });
+
+  it("does not show a promote action for already versioned completed runs", () => {
+    render(
+      <AgentStudio
+        harnessSnapshot={harnessSnapshot}
+        invoke={vi.fn()}
+        snapshot={{
+          ...templateSnapshot,
+          trainingRuns: [
+            {
+              agentTemplateId: "loose-agent",
+              criticScore: 0.88,
+              datasetId: "already-versioned",
+              id: "train-versioned",
+              promotedVersion: 4,
+              status: "completed"
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: "Promote training run already-versioned" })).toBeNull();
+  });
+
+  it("surfaces training promotion failures", async () => {
+    render(
+      <AgentStudio
+        harnessSnapshot={harnessSnapshot}
+        invoke={vi.fn().mockRejectedValue(new Error("promotion failed"))}
+        snapshot={templateSnapshot}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Promote training run smoke" }));
+
+    expect(await screen.findByText("Training promotion failed")).toBeInTheDocument();
   });
 
   it("edits an existing agent template", async () => {

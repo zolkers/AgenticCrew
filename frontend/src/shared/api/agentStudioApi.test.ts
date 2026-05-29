@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createAgentTemplate,
   loadAgentStudioSnapshot,
+  promoteAgentTrainingRun,
   setAgentTemplateActive,
   updateAgentTemplate
 } from "./agentStudioApi";
@@ -88,6 +89,23 @@ describe("agentStudioApi", () => {
     await expect(
       updateAgentTemplate((command, args) => {
         expect(command).toBe("update_agent_template");
+        expect(args).toEqual({ request });
+        return Promise.resolve(snapshot);
+      }, request)
+    ).resolves.toEqual(snapshot);
+  });
+
+  it("promotes a training run through the injected invoke", async () => {
+    const snapshot = {
+      activeTemplateCount: 1,
+      templates: [],
+      trainingRuns: []
+    };
+    const request = { trainingRunId: "train-release" };
+
+    await expect(
+      promoteAgentTrainingRun((command, args) => {
+        expect(command).toBe("promote_agent_training_run");
         expect(args).toEqual({ request });
         return Promise.resolve(snapshot);
       }, request)

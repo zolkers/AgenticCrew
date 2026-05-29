@@ -67,6 +67,11 @@ describe("electronInvokes", () => {
       })
     ).resolves.toBeUndefined();
     await expect(
+      electronAgentStudioInvoke("promote_agent_training_run", {
+        request: { trainingRunId: "train-release" }
+      })
+    ).resolves.toBeUndefined();
+    await expect(
       electronWorkspaceInvoke("update_workspace_git_context", {
         request: { branch: "main", path: "D:\\repo", workspaceId: "repo" }
       })
@@ -108,6 +113,9 @@ describe("electronInvokes", () => {
         skillRoutes: [],
         templateId: "local"
       }
+    });
+    expect(invoke).toHaveBeenCalledWith("promote_agent_training_run", {
+      request: { trainingRunId: "train-release" }
     });
     expect(invoke).toHaveBeenCalledWith("update_workspace_git_context", {
       request: { branch: "main", path: "D:\\repo", workspaceId: "repo" }

@@ -3,7 +3,8 @@ use std::{env, path::PathBuf, process};
 use agenticcrew_desktop::{
     agent_studio_snapshot_at_path, approve_skill_source_permissions_at_path,
     core::agents::{
-        CreateAgentTemplateRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
+        CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest,
+        UpdateAgentTemplateRequest,
     },
     core::harnesses::{
         CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
@@ -15,6 +16,7 @@ use agenticcrew_desktop::{
     },
     create_agent_template_at_path, create_harness_profile_at_path, harness_studio_snapshot_at_path,
     inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
+    promote_agent_training_run_at_path,
     set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
     skill_sources_snapshot_at_path, sync_github_skill_source_at_path, sync_provider_models_at_path,
     update_agent_template_at_path, update_ai_provider_settings_at_path, update_harness_profile_at_path,
@@ -88,6 +90,12 @@ struct SetAgentTemplateActiveArgs {
 #[serde(rename_all = "camelCase")]
 struct UpdateAgentTemplateArgs {
     request: UpdateAgentTemplateRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PromoteAgentTrainingRunArgs {
+    request: PromoteAgentTrainingRunRequest,
 }
 
 #[derive(Deserialize)]
@@ -210,6 +218,11 @@ fn run() -> Result<(), DesktopCommandError> {
             let args = parse_args::<UpdateAgentTemplateArgs>(&args_json)?;
 
             print_json(&update_agent_template_at_path(state_path, args.request)?)
+        }
+        "promote_agent_training_run" => {
+            let args = parse_args::<PromoteAgentTrainingRunArgs>(&args_json)?;
+
+            print_json(&promote_agent_training_run_at_path(state_path, args.request)?)
         }
         "settings_snapshot" => print_json(&settings_snapshot_at_path(state_path)?),
         "sync_github_skill_source" => {

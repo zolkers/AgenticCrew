@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Bot, Edit3, FlaskConical, Plus, Power, Route, Trophy, X } from "lucide-react";
 import {
   createAgentTemplate,
+  promoteAgentTrainingRun,
   setAgentTemplateActive,
   updateAgentTemplate,
   type InvokeAgentStudio
@@ -132,6 +133,20 @@ export function AgentStudio({
       onSnapshotChange?.(nextSnapshot);
     } catch {
       setError("Agent status update failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function promoteTrainingRun(trainingRunId: string) {
+    setError(null);
+    setSaving(true);
+
+    try {
+      const nextSnapshot = await promoteAgentTrainingRun(invoke, { trainingRunId });
+      onSnapshotChange?.(nextSnapshot);
+    } catch {
+      setError("Training promotion failed");
     } finally {
       setSaving(false);
     }
@@ -289,6 +304,21 @@ export function AgentStudio({
                     </dd>
                   </div>
                 </dl>
+                {run.status === "completed" &&
+                (run.promotedVersion === null || run.promotedVersion === undefined) ? (
+                  <button
+                    aria-label={`Promote training run ${run.datasetId}`}
+                    className="icon-action"
+                    disabled={saving}
+                    onClick={() => {
+                      void promoteTrainingRun(run.id);
+                    }}
+                    title="Promote"
+                    type="button"
+                  >
+                    <Trophy aria-hidden="true" size={15} />
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>

@@ -30,6 +30,13 @@ pub struct AgentTrainingRun {
     pub promoted_version: Option<u32>,
 }
 
+impl AgentTrainingRun {
+    pub fn promote_to_version(&mut self, version: u32) {
+        self.status = AgentTrainingStatus::Promoted;
+        self.promoted_version = Some(version);
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentTrainingStatus {
@@ -81,6 +88,12 @@ pub struct CreateAgentTemplateRequest {
 pub struct SetAgentTemplateActiveRequest {
     pub template_id: String,
     pub active: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromoteAgentTrainingRunRequest {
+    pub training_run_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -264,8 +277,8 @@ fn validate_identifier(field: &'static str, value: String) -> Result<String, Age
 #[cfg(test)]
 mod tests {
     use super::{
-        agent_studio_snapshot_from_state, AgentTemplate, CreateAgentTemplateRequest,
-        UpdateAgentTemplateRequest,
+        agent_studio_snapshot_from_state, AgentTemplate, AgentTrainingRun, AgentTrainingStatus,
+        CreateAgentTemplateRequest, UpdateAgentTemplateRequest,
     };
     use crate::core::state::AgentOsState;
 
@@ -359,5 +372,22 @@ mod tests {
         assert_eq!(template.skill_routes, vec!["agenticcrew://skills/review"]);
         assert_eq!(template.budget_cents, 500);
         assert_eq!(template.version, 2);
+    }
+
+    #[test]
+    fn training_run_promotion_records_version() {
+        let mut run = AgentTrainingRun {
+            agent_template_id: "developer-pi".to_owned(),
+            critic_score: Some(93),
+            dataset_id: "release".to_owned(),
+            id: "train-release".to_owned(),
+            promoted_version: None,
+            status: AgentTrainingStatus::Completed,
+        };
+
+        run.promote_to_version(2);
+
+        assert_eq!(run.status, AgentTrainingStatus::Promoted);
+        assert_eq!(run.promoted_version, Some(2));
     }
 }
