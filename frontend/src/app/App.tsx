@@ -21,8 +21,11 @@ type AppLoadState =
     }>
   | Readonly<{ status: "loading" }>;
 
+type AppView = "missionControl" | "skillSources";
+
 export function App({ missionControlInvoke, skillSourcesInvoke }: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
+  const [activeView, setActiveView] = useState<AppView>("missionControl");
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -53,10 +56,38 @@ export function App({ missionControlInvoke, skillSourcesInvoke }: AppProps) {
     return <p>{t("missionControl.loading", { defaultValue: "Loading Mission Control" })}</p>;
   }
 
+  const missionControlLabel = t("missionControl.title", { defaultValue: "Mission Control" });
+  const skillSourcesLabel = t("skillSources.title", { defaultValue: "Skill Sources" });
+
   return (
-    <>
-      <MissionControl snapshot={loadState.missionControlSnapshot} />
-      <SkillSources snapshot={loadState.skillSourcesSnapshot} />
-    </>
+    <div>
+      <nav aria-label={t("app.navigationLabel", { defaultValue: "Workspace navigation" })}>
+        <button
+          aria-pressed={activeView === "missionControl"}
+          onClick={() => {
+            setActiveView("missionControl");
+          }}
+          type="button"
+        >
+          {missionControlLabel}
+        </button>
+        <button
+          aria-pressed={activeView === "skillSources"}
+          onClick={() => {
+            setActiveView("skillSources");
+          }}
+          type="button"
+        >
+          {skillSourcesLabel}
+        </button>
+      </nav>
+      <main aria-label={t("app.mainLabel", { defaultValue: "Workspace" })}>
+        {activeView === "missionControl" ? (
+          <MissionControl snapshot={loadState.missionControlSnapshot} />
+        ) : (
+          <SkillSources snapshot={loadState.skillSourcesSnapshot} />
+        )}
+      </main>
+    </div>
   );
 }

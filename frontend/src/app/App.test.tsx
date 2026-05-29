@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "./App";
 import type { MissionControlSnapshot, SkillSourcesSnapshot } from "../shared/types/core";
@@ -74,6 +74,7 @@ describe("App", () => {
 
     expect(screen.getByText("Loading Mission Control")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Mission Control" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Skill Sources" })).not.toBeInTheDocument();
   });
 
   it("renders injected mission control data", async () => {
@@ -90,7 +91,7 @@ describe("App", () => {
     expect(screen.getByText("Open")).toBeInTheDocument();
   });
 
-  it("renders injected skill source data", async () => {
+  it("switches between Mission Control and Skill Sources", async () => {
     render(
       <App
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
@@ -98,9 +99,19 @@ describe("App", () => {
       />
     );
 
+    expect(await screen.findByRole("heading", { name: "Mission Control" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Skill Sources" }));
+
     expect(await screen.findByRole("heading", { name: "Skill Sources" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Mission Control" })).not.toBeInTheDocument();
     expect(screen.getByText("superpowers")).toBeInTheDocument();
     expect(screen.getByText("Pending validation")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
+
+    expect(await screen.findByRole("heading", { name: "Mission Control" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Skill Sources" })).not.toBeInTheDocument();
   });
 
   it("renders an error state when the desktop command fails", async () => {

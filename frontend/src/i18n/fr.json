@@ -1,4 +1,8 @@
 {
+  "app": {
+    "mainLabel": "Espace de travail",
+    "navigationLabel": "Navigation de l'espace de travail"
+  },
   "missionControl": {
     "humanGateStatus": {
       "blocked": "Bloque",
