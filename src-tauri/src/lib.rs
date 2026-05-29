@@ -40,6 +40,10 @@ impl DesktopCommandError {
             message: message.into(),
         }
     }
+
+    pub fn public(message: impl Into<String>) -> Self {
+        Self::new(message)
+    }
 }
 
 impl fmt::Display for DesktopCommandError {

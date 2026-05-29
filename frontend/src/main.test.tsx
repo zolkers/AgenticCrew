@@ -2,6 +2,12 @@ import { StrictMode, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./app/App";
 import {
+  electronAgentStudioInvoke,
+  electronHarnessStudioInvoke,
+  electronMissionControlInvoke,
+  electronSkillSourcesInvoke
+} from "./shared/api/electronInvokes";
+import {
   previewAgentStudioInvoke,
   previewHarnessStudioInvoke,
   previewMissionControlInvoke,
@@ -15,6 +21,10 @@ import { tauriSkillSourcesInvoke } from "./shared/api/tauriSkillSourcesInvoke";
 const mocks = vi.hoisted(() => ({
   app: vi.fn(() => null),
   createRoot: vi.fn(),
+  electronAgentStudioInvoke: vi.fn(),
+  electronHarnessStudioInvoke: vi.fn(),
+  electronMissionControlInvoke: vi.fn(),
+  electronSkillSourcesInvoke: vi.fn(),
   previewAgentStudioInvoke: vi.fn(),
   previewHarnessStudioInvoke: vi.fn(),
   previewMissionControlInvoke: vi.fn(),
@@ -32,6 +42,13 @@ vi.mock("react-dom/client", () => ({
 
 vi.mock("./app/App", () => ({
   App: mocks.app
+}));
+
+vi.mock("./shared/api/electronInvokes", () => ({
+  electronAgentStudioInvoke: mocks.electronAgentStudioInvoke,
+  electronHarnessStudioInvoke: mocks.electronHarnessStudioInvoke,
+  electronMissionControlInvoke: mocks.electronMissionControlInvoke,
+  electronSkillSourcesInvoke: mocks.electronSkillSourcesInvoke
 }));
 
 vi.mock("./shared/api/tauriMissionControlInvoke", () => ({
@@ -61,11 +78,13 @@ describe("main", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.createRoot.mockReturnValue({ render: mocks.render });
+    Reflect.deleteProperty(window, "agenticcrew");
     Reflect.deleteProperty(window, "__TAURI_INTERNALS__");
   });
 
   afterEach(() => {
     document.body.innerHTML = "";
+    Reflect.deleteProperty(window, "agenticcrew");
     vi.clearAllMocks();
   });
 
@@ -115,6 +134,34 @@ describe("main", () => {
     expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(tauriHarnessStudioInvoke);
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(tauriMissionControlInvoke);
     expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(tauriSkillSourcesInvoke);
+  });
+
+  it("prefers Electron commands when the Electron bridge is present", async () => {
+    document.body.innerHTML = '<div id="root"></div>';
+    Object.defineProperty(window, "agenticcrew", {
+      configurable: true,
+      value: { invoke: vi.fn() }
+    });
+    Object.defineProperty(window, "__TAURI_INTERNALS__", {
+      configurable: true,
+      value: {}
+    });
+
+    await import("./main");
+
+    const renderedElement = mocks.render.mock.calls[0]?.[0] as ReactElement<{
+      children: ReactElement<{
+        agentStudioInvoke: unknown;
+        harnessStudioInvoke: unknown;
+        missionControlInvoke: unknown;
+        skillSourcesInvoke: unknown;
+      }>;
+    }>;
+
+    expect(renderedElement.props.children.props.agentStudioInvoke).toBe(electronAgentStudioInvoke);
+    expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(electronHarnessStudioInvoke);
+    expect(renderedElement.props.children.props.missionControlInvoke).toBe(electronMissionControlInvoke);
+    expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(electronSkillSourcesInvoke);
   });
 
   it("does not render when the root is absent", async () => {

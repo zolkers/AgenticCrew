@@ -5,7 +5,10 @@
     "frontend"
   ],
   "scripts": {
-    "desktop:test": "node scripts/desktop-test.mjs",
+    "desktop:test": "node scripts/desktop-test.mjs && npm run electron:test",
+    "electron:dev": "concurrently -k -n vite,electron \"npm run dev -w frontend\" \"wait-on http://127.0.0.1:5173 && cross-env AGENTICCREW_DEV_SERVER_URL=http://127.0.0.1:5173 electron electron/main.cjs\"",
+    "electron:start": "npm run build -w frontend && electron electron/main.cjs",
+    "electron:test": "node --test electron/**/*.test.cjs",
     "lint": "npm run lint -w frontend",
     "typecheck": "npm run typecheck -w frontend",
     "test": "npm run test -w frontend",
@@ -21,5 +24,12 @@
     "worker:test": "cd workers/python && python -m pytest tests -q",
     "worker:typecheck": "cd workers/python && python -m mypy agenticcrew_worker",
     "worker:quality": "npm run worker:test && npm run worker:lint && npm run worker:typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^9.0.3"
   }
 }

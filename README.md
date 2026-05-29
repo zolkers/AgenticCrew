@@ -8,6 +8,7 @@ The current slice includes:
 
 - React Mission Control shell with i18n resources.
 - Rust-owned core domain for sessions, evidence, costs, and harness policy seeds.
+- Electron shell entrypoint with a preload bridge and Rust sidecar-backed snapshot IPC.
 - Optional Python worker package for future model/tool adapters.
 - SonarLint workspace recommendation and strict local quality gates.
 
@@ -35,13 +36,27 @@ npm run docker:desktop:test
 
 The Docker workflow mounts the current workspace into the container and keeps `node_modules`, Cargo registry/git cache, and `src-tauri/target` in Docker volumes so repeated checks do not need a full image rebuild. Compose clears the mounted `node_modules` volumes before `npm ci` so the lockfile stays authoritative.
 
+Run Electron IPC contract tests:
+
+```bash
+npm run electron:test
+```
+
+Run the Electron shell in development:
+
+```bash
+npm run electron:dev
+```
+
+The Electron shell exposes `window.agenticcrew.invoke` from a context-isolated preload and calls the Rust sidecar for current snapshots.
+
 Run the frontend quickly in Docker:
 
 ```bash
 npm run docker:frontend
 ```
 
-Docker Desktop or a Docker-compatible daemon must be running. Then open `http://localhost:5173`. This launches the React frontend preview; the native Tauri desktop shell still runs on the host OS because it needs the platform WebView.
+Docker Desktop or a Docker-compatible daemon must be running. Then open `http://localhost:5173`. This launches the React frontend preview. Electron is the target desktop shell; the older Tauri shell remains during migration until the Electron sidecar bridge is complete.
 
 Use the convenience scripts from the repository root:
 
@@ -73,9 +88,10 @@ npm run worker:typecheck
 
 ## Platform Tooling Notes
 
-- AgenticCrew Core state is owned by Rust under `src-tauri/src/core`.
+- AgenticCrew Core state is owned by Rust under `src-tauri/src/core` during migration, then moves to `crates/agenticcrew-core`.
 - Python lives under `workers/python` and must not own sessions, checkpoints, audit, costs, or gates.
 - Python 3.12 is required for optional workers.
+- Electron owns windows, preload, packaging direction, and IPC routing only; it must not own durable product state.
 - Rust/Tauri on Windows requires Microsoft C++ Build Tools and the Windows SDK. Install the Visual Studio Build Tools "Desktop development with C++" workload, including MSVC v143 x64/x86 build tools and a Windows 10 or Windows 11 SDK, so `link.exe` and Windows import libraries such as `kernel32.lib` are available. `rust-lld` alone is not enough for the MSVC target in this workspace because it still needs those SDK import libraries.
 - If MSVC is not available on Windows, `npm run desktop:test` falls back to the Rust GNU toolchain for core tests. Install it with `rustup toolchain install stable-x86_64-pc-windows-gnu`; MinGW binutils must also be available on `PATH` or through CLion's bundled MinGW.
 - Rust/Tauri on Linux requires WebKitGTK/GTK system packages. The GitHub Actions workflow installs the Ubuntu packages before running `cargo test`.

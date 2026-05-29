@@ -156,3 +156,13 @@ export type AgentStudioSnapshot = {
   templates: AgentTemplate[];
   trainingRuns: AgentTrainingRun[];
 };
+
+export type ElectronCommandMap = {
+  approve_skill_source_permissions: unknown;
+  agent_studio_snapshot: AgentStudioSnapshot;
+  harness_studio_snapshot: HarnessStudioSnapshot;
+  inspect_cached_skill_source: unknown;
+  mission_control_snapshot: MissionControlSnapshot;
+  skill_sources_snapshot: SkillSourcesSnapshot;
+  sync_github_skill_source: unknown;
+};
