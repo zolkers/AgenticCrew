@@ -45,14 +45,14 @@ describe("SkillSources", () => {
 
     expect(screen.getByRole("heading", { name: "Skill Sources" })).toBeInTheDocument();
     expect(screen.getAllByText("superpowers").length).toBeGreaterThan(0);
-    expect(screen.getByText("1 source matches")).toBeInTheDocument();
+    expect(screen.getByText("1 matching")).toBeInTheDocument();
     expect(screen.getByText("0 skills indexed")).toBeInTheDocument();
     expect(screen.getByText("GitHub")).toBeInTheDocument();
     expect(screen.getAllByText("External").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Pending validation").length).toBeGreaterThan(0);
     expect(screen.getByText("Never synced")).toBeInTheDocument();
     expect(screen.getByText("Pending approval")).toBeInTheDocument();
-    expect(screen.getByText("https://github.com/obra/superpowers")).toBeInTheDocument();
+    expect(screen.getAllByText("https://github.com/obra/superpowers").length).toBeGreaterThan(0);
   });
 
   it("renders sync cache provenance and validation errors", () => {
@@ -102,7 +102,7 @@ describe("SkillSources", () => {
 
     render(<SkillSources snapshot={snapshot} />);
 
-    expect(screen.getByText("Failed")).toBeInTheDocument();
+    expect(screen.getAllByText("Failed").length).toBeGreaterThan(0);
     expect(screen.getByText("abc123")).toBeInTheDocument();
     expect(screen.getByText("C:/AgenticCrew/cache/skills/superpowers")).toBeInTheDocument();
     expect(screen.getByText("git fetch failed")).toBeInTheDocument();
@@ -262,8 +262,7 @@ describe("SkillSources", () => {
     expect(screen.queryByText("local-pack")).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Search skills"), { target: { value: "" } });
-    fireEvent.change(screen.getByLabelText("Filter status"), { target: { value: "pending_validation" } });
-    fireEvent.change(screen.getByLabelText("Filter trust"), { target: { value: "local" } });
+    fireEvent.click(screen.getByRole("button", { name: "Needs review" }));
     expect(screen.getAllByText("local-pack").length).toBeGreaterThan(0);
     expect(screen.queryByText("superpowers")).not.toBeInTheDocument();
 
@@ -359,25 +358,20 @@ describe("SkillSources", () => {
       <SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Add source" }));
     fireEvent.click(screen.getByRole("button", { name: "Register" }));
     await waitFor(() => {
       expect(onSnapshotChange).toHaveBeenCalledWith({ activeSourceCount: 0, sources: [source] });
     });
 
     rerender(<SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />);
-    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sync source" }));
     await waitFor(() => {
       expect(snapshot.sources[0].discoveredSkills?.[0]?.name).toBe("planning");
     });
     rerender(<SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />);
     expect(screen.getAllByText("planning").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
-    await waitFor(() => {
-      expect(calls).toEqual(expect.arrayContaining([expect.objectContaining({ command: "inspect_cached_skill_source" })]));
-    });
-
-    rerender(<SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />);
-    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review permissions" }));
     await waitFor(() => {
       expect(snapshot.sources[0].permissionGate.approved).toBe(true);
     });
@@ -433,7 +427,7 @@ describe("SkillSources", () => {
 
     render(<SkillSources invoke={invoke} snapshot={snapshot} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect source" }));
 
     expect(await screen.findByText("Skill source inspection failed")).toBeInTheDocument();
   });

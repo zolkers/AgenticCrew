@@ -1,6 +1,16 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, CheckCircle2, Download, Play, Plus, Route, Search, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  Box,
+  CheckCircle2,
+  Download,
+  Play,
+  Plus,
+  Search,
+  ShieldCheck,
+  Sparkles
+} from "lucide-react";
 import {
   activateSkillSource,
   approveSkillSourcePermissions,
@@ -14,7 +24,6 @@ import type {
   DiscoveredSkillManifest,
   SkillSource,
   SkillSourceActivationStatus,
-  SkillSourceTrustLevel,
   SkillSourcesSnapshot
 } from "../../shared/types/core";
 
@@ -31,12 +40,12 @@ export function SkillSources({ invoke, onSnapshotChange, snapshot }: SkillSource
   const [formId, setFormId] = useState("superpowers");
   const [formRef, setFormRef] = useState("main");
   const [formRepositoryUrl, setFormRepositoryUrl] = useState("https://github.com/obra/superpowers");
+  const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [selectedSkillRoute, setSelectedSkillRoute] = useState("");
   const [selectedSourceId, setSelectedSourceId] = useState(snapshot.sources[0]?.id ?? "");
   const [statusFilter, setStatusFilter] = useState<"all" | SkillSourceActivationStatus>("all");
-  const [trustFilter, setTrustFilter] = useState<"all" | SkillSourceTrustLevel>("all");
   const discoveredSkillCount = snapshot.sources.reduce(
     (count, source) => count + (source.discoveredSkills?.length ?? 0),
     0
@@ -62,11 +71,10 @@ export function SkillSources({ invoke, onSnapshotChange, snapshot }: SkillSource
           .toLowerCase()
           .includes(normalizedQuery);
       const matchesStatus = statusFilter === "all" || source.status === statusFilter;
-      const matchesTrust = trustFilter === "all" || source.trustLevel === trustFilter;
 
-      return matchesQuery && matchesStatus && matchesTrust;
+      return matchesQuery && matchesStatus;
     });
-  }, [query, snapshot.sources, statusFilter, trustFilter]);
+  }, [query, snapshot.sources, statusFilter]);
   const selectedSource =
     filteredSources.length === 0
       ? null
@@ -81,36 +89,44 @@ export function SkillSources({ invoke, onSnapshotChange, snapshot }: SkillSource
     <section aria-label={title}>
       <header className="surface-header">
         <div>
-          <p className="eyebrow">Marketplace</p>
+          <p className="eyebrow">Library</p>
           <h2>{title}</h2>
         </div>
-        <strong>
-          {t("skillSources.activeCount", {
-            count: snapshot.activeSourceCount,
-            defaultValue: "{{count}} active source"
-          })}
-        </strong>
+        <div className="skill-source-header-actions">
+          <strong>
+            {t("skillSources.activeCount", {
+              count: snapshot.activeSourceCount,
+              defaultValue: "{{count}} active source"
+            })}
+          </strong>
+          {invoke === undefined ? null : (
+            <button
+              className="inline-action"
+              onClick={() => {
+                setIsAddSourceOpen((isOpen) => !isOpen);
+              }}
+              type="button"
+            >
+              <Plus aria-hidden="true" size={16} />
+              <span>Add source</span>
+            </button>
+          )}
+        </div>
       </header>
-      <div className="surface-grid compact">
-        <article className="surface-card">
-          <Search aria-hidden="true" size={20} />
-          <strong>Search</strong>
-          <span>{filteredSources.length} source matches</span>
-        </article>
-        <article className="surface-card">
-          <Route aria-hidden="true" size={20} />
-          <strong>Routes</strong>
-          <span>{discoveredSkillCount} skills indexed</span>
-        </article>
-        <article className="surface-card">
-          <ShieldCheck aria-hidden="true" size={20} />
-          <strong>Trust</strong>
-          <span>Permission gated</span>
-        </article>
+      <div className="skill-source-summary" aria-label="Skill source summary">
+        <span>{snapshot.sources.length} sources</span>
+        <span>{filteredSources.length} matching</span>
+        <span>{discoveredSkillCount} skills indexed</span>
       </div>
-      <div className="settings-form marketplace-filters">
-        {invoke === undefined ? null : (
-          <>
+      {invoke !== undefined && isAddSourceOpen ? (
+        <section className="skill-source-add-panel" aria-label="Add skill source">
+          <header>
+            <div>
+              <h3>Add source</h3>
+              <span>Register a GitHub skill source, then sync and inspect it.</span>
+            </div>
+          </header>
+          <div className="settings-form marketplace-filters">
             <label>
               <span>Source id</span>
               <input
@@ -151,9 +167,12 @@ export function SkillSources({ invoke, onSnapshotChange, snapshot }: SkillSource
               <Plus aria-hidden="true" size={16} />
               <span>Register</span>
             </button>
-          </>
-        )}
+          </div>
+        </section>
+      ) : null}
+      <div className="skill-source-toolbar">
         <label>
+          <Search aria-hidden="true" size={16} />
           <span>Search</span>
           <input
             aria-label="Search skills"
@@ -165,37 +184,26 @@ export function SkillSources({ invoke, onSnapshotChange, snapshot }: SkillSource
             value={query}
           />
         </label>
-        <label>
-          <span>Status</span>
-          <select
-            aria-label="Filter status"
-            onChange={(event) => {
-              setStatusFilter(event.target.value as "all" | SkillSourceActivationStatus);
-            }}
-            value={statusFilter}
-          >
-            <option value="all">All statuses</option>
-            <option value="pending_validation">Pending validation</option>
-            <option value="validated">Validated</option>
-            <option value="rejected">Rejected</option>
-            <option value="sync_failed">Sync failed</option>
-          </select>
-        </label>
-        <label>
-          <span>Trust</span>
-          <select
-            aria-label="Filter trust"
-            onChange={(event) => {
-              setTrustFilter(event.target.value as "all" | SkillSourceTrustLevel);
-            }}
-            value={trustFilter}
-          >
-            <option value="all">All trust</option>
-            <option value="built_in">Built in</option>
-            <option value="local">Local</option>
-            <option value="external">External</option>
-          </select>
-        </label>
+        <div className="skill-source-filter-chips" aria-label="Filter status">
+          {[
+            ["all", "All"],
+            ["pending_validation", "Needs review"],
+            ["validated", "Ready"],
+            ["sync_failed", "Failed"],
+            ["rejected", "Rejected"]
+          ].map(([value, label]) => (
+            <button
+              aria-pressed={statusFilter === value}
+              key={value}
+              onClick={() => {
+                setStatusFilter(value as "all" | SkillSourceActivationStatus);
+              }}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       {error ? (
         <output aria-live="polite" className="settings-error">
@@ -325,16 +333,12 @@ function SkillSourcesBrowser({
             }}
             type="button"
           >
-            {source.active ? (
-              <CheckCircle2 aria-label="Active source" size={16} />
-            ) : (
-              <Box aria-label="Inactive source" size={16} />
-            )}
+            <SourceStateIcon source={source} />
             <span>
               <strong>{source.id}</strong>
-              <small>{formatSourceLabel(source.status)}</small>
+              <small>{source.repositoryUrl}</small>
             </span>
-            <code>{source.discoveredSkills?.length ?? 0} skills</code>
+            <code>{source.active ? "Active" : sourceStatusLabel(source)}</code>
           </button>
         ))}
       </nav>
@@ -347,55 +351,14 @@ function SkillSourcesBrowser({
           </div>
           {invokeEnabled ? (
             <div className="skill-source-actions">
-              <button
-                className="inline-action"
-                disabled={saving}
-                onClick={() => {
-                  onSync(selectedSource);
-                }}
-                type="button"
-              >
-                <Download aria-hidden="true" size={16} />
-                <span>Sync</span>
-              </button>
-              <button
-                className="inline-action"
-                disabled={saving || selectedSource.localCachePath === null || selectedSource.localCachePath === undefined}
-                onClick={() => {
-                  onInspect(selectedSource);
-                }}
-                type="button"
-              >
-                <Search aria-hidden="true" size={16} />
-                <span>Inspect</span>
-              </button>
-              <button
-                className="inline-action"
-                disabled={saving || selectedSource.permissionGate.approved}
-                onClick={() => {
-                  onApprove(selectedSource);
-                }}
-                type="button"
-              >
-                <ShieldCheck aria-hidden="true" size={16} />
-                <span>Approve</span>
-              </button>
-              <button
-                className="inline-action"
-                disabled={
-                  saving ||
-                  selectedSource.active ||
-                  selectedSource.status !== "validated" ||
-                  !selectedSource.permissionGate.approved
-                }
-                onClick={() => {
-                  onActivate(selectedSource);
-                }}
-                type="button"
-              >
-                <Play aria-hidden="true" size={16} />
-                <span>Activate</span>
-              </button>
+              <PrimarySourceAction
+                onActivate={onActivate}
+                onApprove={onApprove}
+                onInspect={onInspect}
+                onSync={onSync}
+                saving={saving}
+                source={selectedSource}
+              />
             </div>
           ) : null}
         </header>
@@ -416,15 +379,118 @@ function SkillSourcesBrowser({
             <dt>Permissions</dt>
             <dd>{selectedSource.permissionGate.approved ? "Approved" : "Pending approval"}</dd>
           </div>
+          <div>
+            <dt>Skills</dt>
+            <dd>{selectedSource.discoveredSkills?.length ?? 0}</dd>
+          </div>
         </dl>
-        <SourceDiagnostics source={selectedSource} />
         <SkillPreview
           onSelectSkill={onSelectSkill}
           selectedSkill={selectedSkill}
           skills={selectedSource.discoveredSkills ?? []}
         />
+        <SourceDiagnostics source={selectedSource} />
       </article>
     </div>
+  );
+}
+
+function SourceStateIcon({ source }: Readonly<{ source: SkillSource }>) {
+  if (source.active) {
+    return <CheckCircle2 aria-label="Active source" size={16} />;
+  }
+
+  if (source.status === "sync_failed" || source.status === "rejected") {
+    return <AlertTriangle aria-label="Source needs attention" size={16} />;
+  }
+
+  return <Box aria-label="Inactive source" size={16} />;
+}
+
+function PrimarySourceAction({
+  onActivate,
+  onApprove,
+  onInspect,
+  onSync,
+  saving,
+  source
+}: Readonly<{
+  onActivate: (source: SkillSource) => void;
+  onApprove: (source: SkillSource) => void;
+  onInspect: (source: SkillSource) => void;
+  onSync: (source: SkillSource) => void;
+  saving: boolean;
+  source: SkillSource;
+}>) {
+  if (source.active) {
+    return (
+      <button className="inline-action" disabled type="button">
+        <CheckCircle2 aria-hidden="true" size={16} />
+        <span>Active</span>
+      </button>
+    );
+  }
+
+  if (source.localCachePath === null || source.localCachePath === undefined || source.lastSyncStatus === "never_synced") {
+    return (
+      <button
+        className="inline-action primary"
+        disabled={saving}
+        onClick={() => {
+          onSync(source);
+        }}
+        type="button"
+      >
+        <Download aria-hidden="true" size={16} />
+        <span>Sync source</span>
+      </button>
+    );
+  }
+
+  if (source.status !== "validated" || (source.discoveredSkills?.length ?? 0) === 0) {
+    return (
+      <button
+        className="inline-action primary"
+        disabled={saving}
+        onClick={() => {
+          onInspect(source);
+        }}
+        type="button"
+      >
+        <Search aria-hidden="true" size={16} />
+        <span>Inspect source</span>
+      </button>
+    );
+  }
+
+  if (!source.permissionGate.approved) {
+    return (
+      <button
+        className="inline-action primary"
+        disabled={saving}
+        onClick={() => {
+          onApprove(source);
+        }}
+        type="button"
+      >
+        <ShieldCheck aria-hidden="true" size={16} />
+        <span>Review permissions</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      className="inline-action primary"
+      disabled={saving}
+      onClick={() => {
+        onActivate(source);
+      }}
+      type="button"
+    >
+      <Play aria-hidden="true" size={16} />
+      <span>Activate</span>
+    </button>
   );
 }
 
@@ -487,7 +553,15 @@ function SkillPreview({
   skills: readonly DiscoveredSkillManifest[];
 }>) {
   if (skills.length === 0 || selectedSkill === null) {
-    return <p className="skill-preview-empty">No skill preview available. Sync and inspect this source to load skills.</p>;
+    return (
+      <div className="skill-preview-empty">
+        <Sparkles aria-hidden="true" size={18} />
+        <div>
+          <strong>No skill preview yet</strong>
+          <span>Sync and inspect this source to load skill manifests.</span>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -510,10 +584,9 @@ function SkillPreview({
       <article>
         <header>
           <div>
-            <p className="eyebrow">Skill preview</p>
+            <p className="eyebrow">Preview</p>
             <h4>{selectedSkill.name}</h4>
           </div>
-          <code>{selectedSkill.route}</code>
         </header>
         <p>{selectedSkill.description}</p>
         <dl>
@@ -522,13 +595,29 @@ function SkillPreview({
             <dd>{selectedSkill.relativePath}</dd>
           </div>
           <div>
-            <dt>Id</dt>
-            <dd>{selectedSkill.id}</dd>
+            <dt>Route</dt>
+            <dd>{selectedSkill.route}</dd>
           </div>
         </dl>
       </article>
     </section>
   );
+}
+
+function sourceStatusLabel(source: SkillSource) {
+  if (source.status === "pending_validation") {
+    return "Needs review";
+  }
+
+  if (source.status === "validated" && source.permissionGate.approved) {
+    return "Ready";
+  }
+
+  if (source.status === "sync_failed") {
+    return "Failed";
+  }
+
+  return formatSourceLabel(source.status);
 }
 
 function formatSourceLabel(value: string) {
