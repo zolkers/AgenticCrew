@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadSettingsSnapshot, updateAiProviderSettings } from "./settingsApi";
+import { loadSettingsSnapshot, syncProviderModels, updateAiProviderSettings } from "./settingsApi";
 import type { SettingsSnapshot } from "../types/core";
 
 describe("settingsApi", () => {
@@ -46,6 +46,33 @@ describe("settingsApi", () => {
         apiKey: "sk-proj-1234",
         providerId: "openai",
         selectedModelId: "gpt-5.1"
+      })
+    ).resolves.toEqual(snapshot);
+  });
+
+  it("syncs provider models through a named request payload", async () => {
+    const snapshot: SettingsSnapshot = {
+      aiProvider: {
+        apiKeyConfigured: true,
+        apiKeyLastFour: "1234",
+        displayName: "OpenAI",
+        modelSyncStatus: "synced",
+        providerId: "openai",
+        selectedModelId: "gpt-5.2"
+      }
+    };
+
+    await expect(
+      syncProviderModels((command, args) => {
+        expect(command).toBe("sync_provider_models");
+        expect(args).toEqual({
+          request: {
+            providerId: "openai"
+          }
+        });
+        return Promise.resolve(snapshot);
+      }, {
+        providerId: "openai"
       })
     ).resolves.toEqual(snapshot);
   });

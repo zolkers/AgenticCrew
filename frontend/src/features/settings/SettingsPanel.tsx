@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Check, KeyRound, LockKeyhole, RadioTower, Save, SlidersHorizontal, Trash2 } from "lucide-react";
-import { updateAiProviderSettings, type InvokeSettings } from "../../shared/api/settingsApi";
+import { Check, KeyRound, LockKeyhole, RadioTower, RefreshCw, Save, SlidersHorizontal, Trash2 } from "lucide-react";
+import { syncProviderModels, updateAiProviderSettings, type InvokeSettings } from "../../shared/api/settingsApi";
 import type { SettingsSnapshot } from "../../shared/types/core";
 
 type SettingsPanelProps = Readonly<{
@@ -16,6 +16,7 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
   const [modelId, setModelId] = useState(provider.selectedModelId);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const modelOptions = useMemo(() => {
     const availableModels = provider.availableModels ?? [
       { id: provider.selectedModelId, label: provider.selectedModelId, providerId: provider.providerId }
@@ -34,6 +35,7 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
     ? `Configured ending in ${provider.apiKeyLastFour ?? "****"}`
     : "Not configured";
   const hasPendingChange = modelId !== provider.selectedModelId || apiKey.trim().length > 0;
+  const syncStatus = getModelSyncStatus(provider);
 
   async function saveProviderSettings() {
     setError(null);
@@ -79,6 +81,26 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
     }
   }
 
+  async function syncModels() {
+    setError(null);
+    setSaved(false);
+    setSyncing(true);
+
+    try {
+      const nextSnapshot = await syncProviderModels(invoke, { providerId: provider.providerId });
+      onSnapshotChange?.(nextSnapshot);
+      setModelId(nextSnapshot.aiProvider.selectedModelId);
+      setSaved(nextSnapshot.aiProvider.modelSyncStatus === "synced");
+      if (nextSnapshot.aiProvider.modelSyncStatus === "failed") {
+        setError(nextSnapshot.aiProvider.modelSyncError ?? "Model sync failed");
+      }
+    } catch {
+      setError("Model sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   return (
     <section aria-label="Settings">
       <header className="surface-header">
@@ -99,6 +121,7 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
           <SlidersHorizontal aria-hidden="true" size={20} />
           <strong>Model</strong>
           <span>{provider.selectedModelId}</span>
+          <small>{syncStatus}</small>
         </article>
         <article className="surface-card">
           <KeyRound aria-hidden="true" size={20} />
@@ -156,6 +179,16 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
             <span>{saving ? "Saving" : "Save"}</span>
           </button>
           <button
+            disabled={saving || syncing}
+            onClick={() => {
+              void syncModels();
+            }}
+            type="button"
+          >
+            <RefreshCw aria-hidden="true" size={16} />
+            <span>{syncing ? "Syncing" : "Sync"}</span>
+          </button>
+          <button
             disabled={saving || !provider.apiKeyConfigured}
             onClick={() => {
               void clearApiKey();
@@ -180,4 +213,16 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
       </form>
     </section>
   );
+}
+
+function getModelSyncStatus(provider: SettingsSnapshot["aiProvider"]): string {
+  if (provider.modelSyncStatus === "synced") {
+    return `Synced ${provider.modelsLastSyncedAt ?? ""}`.trim();
+  }
+
+  if (provider.modelSyncStatus === "failed") {
+    return provider.modelSyncError ?? "Model sync failed";
+  }
+
+  return "Not synced";
 }

@@ -20,7 +20,10 @@ use super::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
         SessionTransitionError,
     },
-    settings::{DesktopSettings, SettingsValidationError, UpdateAiProviderSettingsRequest},
+    settings::{
+        sync_provider_models, DesktopSettings, SettingsValidationError, SyncProviderModelsRequest,
+        UpdateAiProviderSettingsRequest,
+    },
     skills::{
         DiscoveredSkillManifest, RegisterGitHubSkillSourceRequest, SkillManifestValidationError,
         SkillSource, SkillSourceError,
@@ -472,6 +475,18 @@ impl AgentOsState {
         let previous = self.desktop_settings.ai_provider.clone();
         self.desktop_settings.ai_provider = request
             .into_settings(&previous)
+            .map_err(StateMutationError::InvalidDesktopSettings)?;
+
+        Ok(())
+    }
+
+    pub fn sync_provider_models(
+        &mut self,
+        request: SyncProviderModelsRequest,
+        synced_at: String,
+    ) -> Result<(), StateMutationError> {
+        let previous = self.desktop_settings.ai_provider.clone();
+        self.desktop_settings.ai_provider = sync_provider_models(&previous, request, synced_at)
             .map_err(StateMutationError::InvalidDesktopSettings)?;
 
         Ok(())

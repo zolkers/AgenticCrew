@@ -19,7 +19,8 @@ use core::{
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
     permissions::ApprovedPermissionPolicy,
     settings::{
-        settings_snapshot_from_state, SettingsSnapshot, UpdateAiProviderSettingsRequest,
+        settings_snapshot_from_state, SettingsSnapshot, SyncProviderModelsRequest,
+        UpdateAiProviderSettingsRequest,
     },
     skill_manifest::{inspect_skill_manifests, SkillManifestInspectionError},
     skill_sync::{sync_github_skill_source_to_cache, SkillSourceSyncError},
@@ -367,6 +368,24 @@ pub fn update_ai_provider_settings_at_path(
     Ok(settings_snapshot_from_state(&state))
 }
 
+pub fn sync_provider_models_at_path(
+    path: impl AsRef<Path>,
+    request: SyncProviderModelsRequest,
+) -> Result<SettingsSnapshot, DesktopCommandError> {
+    let synced_at = current_unix_timestamp_string()?;
+    let state = mutate_state_at_path(path, |state| state.sync_provider_models(request, synced_at))?;
+
+    Ok(settings_snapshot_from_state(&state))
+}
+
+fn current_unix_timestamp_string() -> Result<String, DesktopCommandError> {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|error| DesktopCommandError::public(format!("system clock error: {error}")))?;
+
+    Ok(timestamp.as_secs().to_string())
+}
+
 fn mutate_state_at_path(
     path: impl AsRef<Path>,
     mutate: impl FnOnce(&mut AgentOsState) -> Result<(), StateMutationError>,
@@ -395,7 +414,7 @@ mod commands {
             CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
         },
         core::permissions::ApprovedPermissionPolicy,
-        core::settings::{SettingsSnapshot, UpdateAiProviderSettingsRequest},
+        core::settings::{SettingsSnapshot, SyncProviderModelsRequest, UpdateAiProviderSettingsRequest},
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
         core::workspaces::{
@@ -408,7 +427,7 @@ mod commands {
         mission_control_snapshot_at_path, record_command_evidence_at_path,
         register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
         set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
-        sync_github_skill_source_at_path, update_agent_template_at_path,
+        sync_github_skill_source_at_path, sync_provider_models_at_path, update_agent_template_at_path,
         update_ai_provider_settings_at_path, update_harness_profile_at_path,
         update_workspace_git_context_at_path, validate_skill_source_at_path,
         workspace_snapshot_at_path,
@@ -625,6 +644,14 @@ mod commands {
         update_ai_provider_settings_at_path(app_state_path(&app)?, request)
     }
 
+    #[tauri::command]
+    pub fn sync_provider_models(
+        app: tauri::AppHandle,
+        request: SyncProviderModelsRequest,
+    ) -> Result<SettingsSnapshot, DesktopCommandError> {
+        sync_provider_models_at_path(app_state_path(&app)?, request)
+    }
+
     fn app_state_path(app: &tauri::AppHandle) -> Result<PathBuf, DesktopCommandError> {
         app.path()
             .app_data_dir()
@@ -662,7 +689,8 @@ pub fn run() {
             commands::inspect_cached_skill_source,
             commands::approve_skill_source_permissions,
             commands::activate_skill_source,
-            commands::update_ai_provider_settings
+            commands::update_ai_provider_settings,
+            commands::sync_provider_models
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AgenticCrew desktop shell");

@@ -24,6 +24,12 @@ pub struct AiProviderSettings {
     pub selected_model_id: String,
     #[serde(default = "openai_model_registry")]
     pub available_models: Vec<AiModelRecord>,
+    #[serde(default = "default_model_sync_status")]
+    pub model_sync_status: ProviderModelSyncStatus,
+    #[serde(default)]
+    pub models_last_synced_at: Option<String>,
+    #[serde(default)]
+    pub model_sync_error: Option<String>,
     pub api_key_configured: bool,
     pub api_key_last_four: Option<String>,
 }
@@ -36,6 +42,14 @@ pub struct AiModelRecord {
     pub provider_id: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProviderModelSyncStatus {
+    NeverSynced,
+    Synced,
+    Failed,
+}
+
 impl AiProviderSettings {
     pub fn openai_default() -> Self {
         Self {
@@ -43,6 +57,9 @@ impl AiProviderSettings {
             display_name: "OpenAI".to_owned(),
             selected_model_id: "gpt-5".to_owned(),
             available_models: openai_model_registry(),
+            model_sync_status: ProviderModelSyncStatus::NeverSynced,
+            models_last_synced_at: None,
+            model_sync_error: None,
             api_key_configured: false,
             api_key_last_four: None,
         }
@@ -105,11 +122,24 @@ impl UpdateAiProviderSettingsRequest {
             provider_id: "openai".to_owned(),
             display_name: "OpenAI".to_owned(),
             selected_model_id: selected_model_id.to_owned(),
-            available_models: openai_model_registry(),
+            available_models: if previous.available_models.is_empty() {
+                openai_model_registry()
+            } else {
+                previous.available_models.clone()
+            },
+            model_sync_status: previous.model_sync_status.clone(),
+            models_last_synced_at: previous.models_last_synced_at.clone(),
+            model_sync_error: previous.model_sync_error.clone(),
             api_key_configured,
             api_key_last_four,
         })
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncProviderModelsRequest {
+    pub provider_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -139,6 +169,10 @@ fn last_four(value: &str) -> String {
         .collect()
 }
 
+fn default_model_sync_status() -> ProviderModelSyncStatus {
+    ProviderModelSyncStatus::NeverSynced
+}
+
 pub fn openai_model_registry() -> Vec<AiModelRecord> {
     [
         ("gpt-5.2", "GPT-5.2"),
@@ -156,6 +190,50 @@ pub fn openai_model_registry() -> Vec<AiModelRecord> {
     .collect()
 }
 
+pub fn sync_provider_models(
+    previous: &AiProviderSettings,
+    request: SyncProviderModelsRequest,
+    synced_at: String,
+) -> Result<AiProviderSettings, SettingsValidationError> {
+    if request.provider_id != "openai" {
+        return Err(SettingsValidationError::UnsupportedProvider {
+            provider_id: request.provider_id,
+        });
+    }
+
+    let mut next = previous.clone();
+    next.provider_id = "openai".to_owned();
+    next.display_name = "OpenAI".to_owned();
+
+    if !previous.api_key_configured {
+        next.model_sync_status = ProviderModelSyncStatus::Failed;
+        next.model_sync_error = Some("OpenAI API key is required before syncing models".to_owned());
+        return Ok(next);
+    }
+
+    next.available_models = openai_model_registry();
+    next.model_sync_status = ProviderModelSyncStatus::Synced;
+    next.models_last_synced_at = Some(synced_at);
+    next.model_sync_error = None;
+
+    if !next
+        .available_models
+        .iter()
+        .any(|model| model.id == next.selected_model_id)
+    {
+        next.available_models.insert(
+            0,
+            AiModelRecord {
+                id: next.selected_model_id.clone(),
+                label: next.selected_model_id.clone(),
+                provider_id: "openai".to_owned(),
+            },
+        );
+    }
+
+    Ok(next)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,6 +249,10 @@ mod tests {
             .available_models
             .iter()
             .any(|model| model.id == "gpt-5.2"));
+        assert_eq!(
+            snapshot.ai_provider.model_sync_status,
+            ProviderModelSyncStatus::NeverSynced
+        );
         assert!(!snapshot.ai_provider.api_key_configured);
         assert_eq!(snapshot.ai_provider.api_key_last_four, None);
     }
@@ -195,6 +277,9 @@ mod tests {
             api_key_configured: true,
             api_key_last_four: Some("5678".to_owned()),
             available_models: openai_model_registry(),
+            model_sync_status: ProviderModelSyncStatus::Synced,
+            models_last_synced_at: Some("123".to_owned()),
+            model_sync_error: None,
             display_name: "OpenAI".to_owned(),
             provider_id: "openai".to_owned(),
             selected_model_id: "gpt-5".to_owned(),
@@ -209,6 +294,8 @@ mod tests {
         .expect("valid settings");
 
         assert_eq!(settings.selected_model_id, "gpt-5.2");
+        assert_eq!(settings.model_sync_status, ProviderModelSyncStatus::Synced);
+        assert_eq!(settings.models_last_synced_at, Some("123".to_owned()));
         assert!(settings.api_key_configured);
         assert_eq!(settings.api_key_last_four, Some("5678".to_owned()));
     }
@@ -219,6 +306,9 @@ mod tests {
             api_key_configured: true,
             api_key_last_four: Some("5678".to_owned()),
             available_models: openai_model_registry(),
+            model_sync_status: ProviderModelSyncStatus::NeverSynced,
+            models_last_synced_at: None,
+            model_sync_error: None,
             display_name: "OpenAI".to_owned(),
             provider_id: "openai".to_owned(),
             selected_model_id: "gpt-5".to_owned(),
@@ -234,5 +324,56 @@ mod tests {
 
         assert!(!settings.api_key_configured);
         assert_eq!(settings.api_key_last_four, None);
+    }
+
+    #[test]
+    fn sync_provider_models_records_missing_key_as_recoverable_status() {
+        let settings = sync_provider_models(
+            &AiProviderSettings::openai_default(),
+            SyncProviderModelsRequest {
+                provider_id: "openai".to_owned(),
+            },
+            "sync-1".to_owned(),
+        )
+        .expect("missing key should be a settings state, not a command crash");
+
+        assert_eq!(settings.model_sync_status, ProviderModelSyncStatus::Failed);
+        assert_eq!(
+            settings.model_sync_error,
+            Some("OpenAI API key is required before syncing models".to_owned())
+        );
+        assert_eq!(settings.models_last_synced_at, None);
+    }
+
+    #[test]
+    fn sync_provider_models_caches_openai_catalog_when_key_is_configured() {
+        let previous = AiProviderSettings {
+            api_key_configured: true,
+            api_key_last_four: Some("1234".to_owned()),
+            available_models: Vec::new(),
+            model_sync_status: ProviderModelSyncStatus::NeverSynced,
+            models_last_synced_at: None,
+            model_sync_error: Some("old failure".to_owned()),
+            display_name: "OpenAI".to_owned(),
+            provider_id: "openai".to_owned(),
+            selected_model_id: "gpt-5.2".to_owned(),
+        };
+
+        let settings = sync_provider_models(
+            &previous,
+            SyncProviderModelsRequest {
+                provider_id: "openai".to_owned(),
+            },
+            "sync-2".to_owned(),
+        )
+        .expect("configured OpenAI should sync");
+
+        assert_eq!(settings.model_sync_status, ProviderModelSyncStatus::Synced);
+        assert_eq!(settings.models_last_synced_at, Some("sync-2".to_owned()));
+        assert_eq!(settings.model_sync_error, None);
+        assert!(settings
+            .available_models
+            .iter()
+            .any(|model| model.id == "gpt-5.2"));
     }
 }

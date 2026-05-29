@@ -16,6 +16,7 @@ const COMMANDS = new Set([
   "approve_skill_source_permissions",
   "inspect_cached_skill_source",
   "sync_github_skill_source",
+  "sync_provider_models",
   "update_ai_provider_settings"
 ]);
 

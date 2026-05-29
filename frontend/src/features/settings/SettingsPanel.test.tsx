@@ -213,6 +213,166 @@ describe("SettingsPanel", () => {
     });
   });
 
+  it("syncs provider models and surfaces provider status", async () => {
+    const syncedSnapshot: SettingsSnapshot = {
+      aiProvider: {
+        apiKeyConfigured: true,
+        apiKeyLastFour: "1234",
+        availableModels: openAiModels,
+        displayName: "OpenAI",
+        modelSyncError: null,
+        modelSyncStatus: "synced",
+        modelsLastSyncedAt: "sync-1",
+        providerId: "openai",
+        selectedModelId: "gpt-5.2"
+      }
+    };
+    const invoke = vi.fn().mockResolvedValue(syncedSnapshot);
+    const onSnapshotChange = vi.fn();
+
+    render(
+      <SettingsPanel
+        invoke={invoke}
+        onSnapshotChange={onSnapshotChange}
+        snapshot={{
+          aiProvider: {
+            apiKeyConfigured: true,
+            apiKeyLastFour: "1234",
+            availableModels: openAiModels,
+            displayName: "OpenAI",
+            modelSyncStatus: "never_synced",
+            providerId: "openai",
+            selectedModelId: "gpt-5"
+          }
+        }}
+      />
+    );
+
+    expect(screen.getByText("Not synced")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
+
+    await waitFor(() => {
+      expect(onSnapshotChange).toHaveBeenCalledWith(syncedSnapshot);
+    });
+    expect(invoke).toHaveBeenCalledWith("sync_provider_models", {
+      request: { providerId: "openai" }
+    });
+  });
+
+  it("surfaces recoverable model sync failures from the provider", async () => {
+    const failedSnapshot: SettingsSnapshot = {
+      aiProvider: {
+        apiKeyConfigured: false,
+        apiKeyLastFour: null,
+        availableModels: openAiModels,
+        displayName: "OpenAI",
+        modelSyncError: "OpenAI API key is required before syncing models",
+        modelSyncStatus: "failed",
+        modelsLastSyncedAt: null,
+        providerId: "openai",
+        selectedModelId: "gpt-5"
+      }
+    };
+    const invoke = vi.fn().mockResolvedValue(failedSnapshot);
+
+    render(
+      <SettingsPanel
+        invoke={invoke}
+        snapshot={{
+          aiProvider: {
+            apiKeyConfigured: false,
+            apiKeyLastFour: null,
+            availableModels: openAiModels,
+            displayName: "OpenAI",
+            providerId: "openai",
+            selectedModelId: "gpt-5"
+          }
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
+
+    expect(await screen.findByText("OpenAI API key is required before syncing models")).toBeInTheDocument();
+  });
+
+  it("renders compact sync status fallbacks", async () => {
+    const failedSnapshot: SettingsSnapshot = {
+      aiProvider: {
+        apiKeyConfigured: true,
+        apiKeyLastFour: "1234",
+        availableModels: openAiModels,
+        displayName: "OpenAI",
+        modelSyncError: null,
+        modelSyncStatus: "failed",
+        modelsLastSyncedAt: null,
+        providerId: "openai",
+        selectedModelId: "gpt-5"
+      }
+    };
+
+    const { rerender } = render(
+      <SettingsPanel
+        invoke={vi.fn().mockResolvedValue(failedSnapshot)}
+        snapshot={{
+          aiProvider: {
+            apiKeyConfigured: true,
+            apiKeyLastFour: "1234",
+            availableModels: openAiModels,
+            displayName: "OpenAI",
+            modelSyncError: null,
+            modelSyncStatus: "synced",
+            modelsLastSyncedAt: null,
+            providerId: "openai",
+            selectedModelId: "gpt-5"
+          }
+        }}
+      />
+    );
+
+    expect(screen.getByText("Synced")).toBeInTheDocument();
+
+    rerender(
+      <SettingsPanel
+        invoke={vi.fn().mockResolvedValue(failedSnapshot)}
+        snapshot={{
+          aiProvider: {
+            ...failedSnapshot.aiProvider
+          }
+        }}
+      />
+    );
+
+    expect(screen.getByText("Model sync failed")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Model sync failed")).toHaveLength(2);
+    });
+  });
+
+  it("reports rejected model sync commands", async () => {
+    render(
+      <SettingsPanel
+        invoke={vi.fn().mockRejectedValue(new Error("offline"))}
+        snapshot={{
+          aiProvider: {
+            apiKeyConfigured: true,
+            apiKeyLastFour: "1234",
+            availableModels: openAiModels,
+            displayName: "OpenAI",
+            providerId: "openai",
+            selectedModelId: "gpt-5"
+          }
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
+
+    expect(await screen.findByText("Model sync failed")).toBeInTheDocument();
+  });
+
   it("reports save and clear failures", async () => {
     const invoke = vi.fn().mockRejectedValue(new Error("failed"));
 

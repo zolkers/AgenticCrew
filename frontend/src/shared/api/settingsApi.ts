@@ -1,6 +1,6 @@
-import type { SettingsSnapshot, UpdateAiProviderSettingsRequest } from "../types/core";
+import type { SettingsSnapshot, SyncProviderModelsRequest, UpdateAiProviderSettingsRequest } from "../types/core";
 
-export type SettingsCommand = "settings_snapshot" | "update_ai_provider_settings";
+export type SettingsCommand = "settings_snapshot" | "sync_provider_models" | "update_ai_provider_settings";
 
 export type InvokeSettings = (
   command: SettingsCommand,
@@ -16,4 +16,11 @@ export async function updateAiProviderSettings(
   request: UpdateAiProviderSettingsRequest
 ): Promise<SettingsSnapshot> {
   return invoke("update_ai_provider_settings", { request });
+}
+
+export async function syncProviderModels(
+  invoke: InvokeSettings,
+  request: SyncProviderModelsRequest
+): Promise<SettingsSnapshot> {
+  return invoke("sync_provider_models", { request });
 }

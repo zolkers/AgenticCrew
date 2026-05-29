@@ -8,12 +8,13 @@ use agenticcrew_desktop::{
     core::harnesses::{
         CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
     },
-    core::permissions::ApprovedPermissionPolicy, core::settings::UpdateAiProviderSettingsRequest,
+    core::permissions::ApprovedPermissionPolicy,
+    core::settings::{SyncProviderModelsRequest, UpdateAiProviderSettingsRequest},
     core::workspaces::{CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest},
     create_agent_template_at_path, create_harness_profile_at_path, harness_studio_snapshot_at_path,
     inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
     set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
-    skill_sources_snapshot_at_path, sync_github_skill_source_at_path,
+    skill_sources_snapshot_at_path, sync_github_skill_source_at_path, sync_provider_models_at_path,
     update_agent_template_at_path, update_ai_provider_settings_at_path, update_harness_profile_at_path,
     create_workspace_at_path, update_workspace_git_context_at_path, workspace_snapshot_at_path,
     DesktopCommandError,
@@ -43,6 +44,12 @@ struct ApprovePermissionsArgs {
 #[serde(rename_all = "camelCase")]
 struct UpdateSettingsArgs {
     request: UpdateAiProviderSettingsRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SyncProviderModelsArgs {
+    request: SyncProviderModelsRequest,
 }
 
 #[derive(Deserialize)]
@@ -221,6 +228,11 @@ fn run() -> Result<(), DesktopCommandError> {
             let args = parse_args::<UpdateSettingsArgs>(&args_json)?;
 
             print_json(&update_ai_provider_settings_at_path(state_path, args.request)?)
+        }
+        "sync_provider_models" => {
+            let args = parse_args::<SyncProviderModelsArgs>(&args_json)?;
+
+            print_json(&sync_provider_models_at_path(state_path, args.request)?)
         }
         _ => Err(DesktopCommandError::public(format!(
             "unknown sidecar command '{command}'"

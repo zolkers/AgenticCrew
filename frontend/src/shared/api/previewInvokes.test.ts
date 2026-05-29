@@ -354,6 +354,7 @@ describe("previewInvokes", () => {
     await expect(previewSettingsInvoke("settings_snapshot")).resolves.toMatchObject({
       aiProvider: {
         apiKeyConfigured: false,
+        modelSyncStatus: "never_synced",
         providerId: "openai",
         selectedModelId: "gpt-5"
       }
@@ -372,6 +373,21 @@ describe("previewInvokes", () => {
         apiKeyConfigured: true,
         apiKeyLastFour: "9999",
         selectedModelId: "gpt-5.1"
+      }
+    });
+  });
+
+  it("returns a recoverable preview model sync failure without an api key", async () => {
+    await expect(
+      previewSettingsInvoke("sync_provider_models", {
+        request: {
+          providerId: "openai"
+        }
+      })
+    ).resolves.toMatchObject({
+      aiProvider: {
+        modelSyncError: "OpenAI API key is required before syncing models",
+        modelSyncStatus: "failed"
       }
     });
   });

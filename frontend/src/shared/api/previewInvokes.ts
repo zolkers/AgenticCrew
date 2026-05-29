@@ -125,6 +125,9 @@ const previewSettingsSnapshot: SettingsSnapshot = {
       { id: "gpt-5-nano", label: "GPT-5 nano", providerId: "openai" }
     ],
     displayName: "OpenAI",
+    modelSyncError: null,
+    modelSyncStatus: "never_synced",
+    modelsLastSyncedAt: null,
     providerId: "openai",
     selectedModelId: "gpt-5"
   }
@@ -397,6 +400,16 @@ export const previewSkillSourcesInvoke: InvokeSkillSources = (command) => {
 };
 
 export const previewSettingsInvoke: InvokeSettings = (command, args) => {
+  if (command === "sync_provider_models") {
+    return Promise.resolve({
+      aiProvider: {
+        ...previewSettingsSnapshot.aiProvider,
+        modelSyncError: "OpenAI API key is required before syncing models",
+        modelSyncStatus: "failed"
+      }
+    });
+  }
+
   if (command === "update_ai_provider_settings") {
     const request = args?.request as { apiKey?: string | null; selectedModelId?: string } | undefined;
     const apiKey = request?.apiKey?.trim();

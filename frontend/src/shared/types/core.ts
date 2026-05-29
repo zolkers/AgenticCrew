@@ -261,9 +261,14 @@ export type AiProviderSettings = {
   apiKeyLastFour?: string | null;
   availableModels?: AiModelRecord[];
   displayName: string;
+  modelSyncError?: string | null;
+  modelSyncStatus?: ProviderModelSyncStatus;
+  modelsLastSyncedAt?: string | null;
   providerId: string;
   selectedModelId: string;
 };
+
+export type ProviderModelSyncStatus = "never_synced" | "synced" | "failed";
 
 export type AiModelRecord = {
   id: string;
@@ -281,6 +286,10 @@ export type UpdateAiProviderSettingsRequest = {
   selectedModelId: string;
 };
 
+export type SyncProviderModelsRequest = {
+  providerId: string;
+};
+
 export type ElectronCommandMap = {
   approve_skill_source_permissions: unknown;
   agent_studio_snapshot: AgentStudioSnapshot;
@@ -295,6 +304,7 @@ export type ElectronCommandMap = {
   set_harness_profile_active: HarnessStudioSnapshot;
   skill_sources_snapshot: SkillSourcesSnapshot;
   sync_github_skill_source: unknown;
+  sync_provider_models: SettingsSnapshot;
   update_agent_template: AgentStudioSnapshot;
   update_ai_provider_settings: SettingsSnapshot;
   update_harness_profile: HarnessStudioSnapshot;
