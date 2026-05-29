@@ -259,9 +259,16 @@ export type UpdateAgentTemplateRequest = {
 export type AiProviderSettings = {
   apiKeyConfigured: boolean;
   apiKeyLastFour?: string | null;
+  availableModels?: AiModelRecord[];
   displayName: string;
   providerId: string;
   selectedModelId: string;
+};
+
+export type AiModelRecord = {
+  id: string;
+  label: string;
+  providerId: string;
 };
 
 export type SettingsSnapshot = {

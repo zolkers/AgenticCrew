@@ -22,8 +22,18 @@ pub struct AiProviderSettings {
     pub provider_id: String,
     pub display_name: String,
     pub selected_model_id: String,
+    #[serde(default = "openai_model_registry")]
+    pub available_models: Vec<AiModelRecord>,
     pub api_key_configured: bool,
     pub api_key_last_four: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiModelRecord {
+    pub id: String,
+    pub label: String,
+    pub provider_id: String,
 }
 
 impl AiProviderSettings {
@@ -32,6 +42,7 @@ impl AiProviderSettings {
             provider_id: "openai".to_owned(),
             display_name: "OpenAI".to_owned(),
             selected_model_id: "gpt-5".to_owned(),
+            available_models: openai_model_registry(),
             api_key_configured: false,
             api_key_last_four: None,
         }
@@ -94,6 +105,7 @@ impl UpdateAiProviderSettingsRequest {
             provider_id: "openai".to_owned(),
             display_name: "OpenAI".to_owned(),
             selected_model_id: selected_model_id.to_owned(),
+            available_models: openai_model_registry(),
             api_key_configured,
             api_key_last_four,
         })
@@ -127,6 +139,23 @@ fn last_four(value: &str) -> String {
         .collect()
 }
 
+pub fn openai_model_registry() -> Vec<AiModelRecord> {
+    [
+        ("gpt-5.2", "GPT-5.2"),
+        ("gpt-5.1", "GPT-5.1"),
+        ("gpt-5", "GPT-5"),
+        ("gpt-5-mini", "GPT-5 mini"),
+        ("gpt-5-nano", "GPT-5 nano"),
+    ]
+    .into_iter()
+    .map(|(id, label)| AiModelRecord {
+        id: id.to_owned(),
+        label: label.to_owned(),
+        provider_id: "openai".to_owned(),
+    })
+    .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -137,6 +166,11 @@ mod tests {
 
         assert_eq!(snapshot.ai_provider.provider_id, "openai");
         assert_eq!(snapshot.ai_provider.selected_model_id, "gpt-5");
+        assert!(snapshot
+            .ai_provider
+            .available_models
+            .iter()
+            .any(|model| model.id == "gpt-5.2"));
         assert!(!snapshot.ai_provider.api_key_configured);
         assert_eq!(snapshot.ai_provider.api_key_last_four, None);
     }
@@ -160,6 +194,7 @@ mod tests {
         let previous = AiProviderSettings {
             api_key_configured: true,
             api_key_last_four: Some("5678".to_owned()),
+            available_models: openai_model_registry(),
             display_name: "OpenAI".to_owned(),
             provider_id: "openai".to_owned(),
             selected_model_id: "gpt-5".to_owned(),
@@ -183,6 +218,7 @@ mod tests {
         let previous = AiProviderSettings {
             api_key_configured: true,
             api_key_last_four: Some("5678".to_owned()),
+            available_models: openai_model_registry(),
             display_name: "OpenAI".to_owned(),
             provider_id: "openai".to_owned(),
             selected_model_id: "gpt-5".to_owned(),

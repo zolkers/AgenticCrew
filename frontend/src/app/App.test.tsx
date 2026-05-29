@@ -9,6 +9,12 @@ import type {
   SkillSourcesSnapshot
 } from "../shared/types/core";
 
+const openAiModels = [
+  { id: "gpt-5.2", label: "GPT-5.2", providerId: "openai" },
+  { id: "gpt-5.1", label: "GPT-5.1", providerId: "openai" },
+  { id: "gpt-5", label: "GPT-5", providerId: "openai" }
+] as const;
+
 const missionControlSnapshot: MissionControlSnapshot = {
   activeAgentCount: 9,
   activeSessionCount: 5,
@@ -104,6 +110,7 @@ const settingsSnapshot: SettingsSnapshot = {
   aiProvider: {
     apiKeyConfigured: true,
     apiKeyLastFour: "1234",
+    availableModels: [...openAiModels],
     displayName: "OpenAI",
     providerId: "openai",
     selectedModelId: "gpt-5"
@@ -593,6 +600,7 @@ describe("App", () => {
       aiProvider: {
         apiKeyConfigured: true,
         apiKeyLastFour: "9999",
+        availableModels: [...openAiModels],
         displayName: "OpenAI",
         providerId: "openai",
         selectedModelId: "gpt-5.2"
@@ -618,7 +626,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText("Configured ending in 9999")).toBeInTheDocument();
-    expect(screen.getByText("gpt-5.2")).toBeInTheDocument();
+    expect(screen.getAllByText("gpt-5.2").length).toBeGreaterThan(0);
   });
 
   it("can return to the workspace launchpad from the topbar", async () => {

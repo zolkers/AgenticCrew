@@ -117,6 +117,13 @@ const previewSettingsSnapshot: SettingsSnapshot = {
   aiProvider: {
     apiKeyConfigured: false,
     apiKeyLastFour: null,
+    availableModels: [
+      { id: "gpt-5.2", label: "GPT-5.2", providerId: "openai" },
+      { id: "gpt-5.1", label: "GPT-5.1", providerId: "openai" },
+      { id: "gpt-5", label: "GPT-5", providerId: "openai" },
+      { id: "gpt-5-mini", label: "GPT-5 mini", providerId: "openai" },
+      { id: "gpt-5-nano", label: "GPT-5 nano", providerId: "openai" }
+    ],
     displayName: "OpenAI",
     providerId: "openai",
     selectedModelId: "gpt-5"

@@ -6,16 +6,17 @@ import {
   updateAgentTemplate,
   type InvokeAgentStudio
 } from "../../shared/api/agentStudioApi";
-import type { AgentStudioSnapshot, AgentTemplate, HarnessStudioSnapshot } from "../../shared/types/core";
+import type { AgentStudioSnapshot, AgentTemplate, AiModelRecord, HarnessStudioSnapshot } from "../../shared/types/core";
 
 type AgentStudioProps = Readonly<{
   harnessSnapshot: HarnessStudioSnapshot;
   invoke: InvokeAgentStudio;
+  modelOptions?: readonly AiModelRecord[];
   onSnapshotChange?: (snapshot: AgentStudioSnapshot) => void;
   snapshot: AgentStudioSnapshot;
 }>;
 
-export function AgentStudio({ harnessSnapshot, invoke, onSnapshotChange, snapshot }: AgentStudioProps) {
+export function AgentStudio({ harnessSnapshot, invoke, modelOptions, onSnapshotChange, snapshot }: AgentStudioProps) {
   const [budgetDollars, setBudgetDollars] = useState("2.00");
   const [description, setDescription] = useState("Custom workspace agent.");
   const [editingTemplateId, setEditingTemplateId] = useState<null | string>(null);
@@ -26,6 +27,13 @@ export function AgentStudio({ harnessSnapshot, invoke, onSnapshotChange, snapsho
   const [role, setRole] = useState("reviewer");
   const [saving, setSaving] = useState(false);
   const [skillRoutesText, setSkillRoutesText] = useState("agenticcrew://skills/superpowers/subagent-driven-development");
+  const availableModels =
+    modelOptions === undefined || modelOptions.length === 0
+      ? [{ id: modelId, label: modelId, providerId: "openai" }]
+      : modelOptions;
+  const modelSelectOptions = availableModels.some((model) => model.id === modelId)
+    ? availableModels
+    : [{ id: modelId, label: modelId, providerId: "openai" }, ...availableModels];
   const generatedId = useMemo(() => slugify(name), [name]);
   const submitLabel = saving ? "Saving" : getAgentSubmitLabel(editingTemplateId);
 
@@ -237,10 +245,11 @@ export function AgentStudio({ harnessSnapshot, invoke, onSnapshotChange, snapsho
             }}
             value={modelId}
           >
-            <option value="gpt-5.2">GPT-5.2</option>
-            <option value="gpt-5.1">GPT-5.1</option>
-            <option value="gpt-5">GPT-5</option>
-            <option value="gpt-5-mini">GPT-5 mini</option>
+            {modelSelectOptions.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.label}
+              </option>
+            ))}
           </select>
         </label>
         <label>

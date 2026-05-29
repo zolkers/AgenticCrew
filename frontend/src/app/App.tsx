@@ -366,6 +366,7 @@ export function App({
           <AgentStudio
             harnessSnapshot={loadState.harnessStudioSnapshot}
             invoke={agentStudioInvoke}
+            modelOptions={loadState.settingsSnapshot.aiProvider.availableModels}
             onSnapshotChange={(agentStudioSnapshot) => {
               setLoadState({
                 ...loadState,

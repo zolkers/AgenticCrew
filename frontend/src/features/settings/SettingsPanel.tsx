@@ -9,14 +9,6 @@ type SettingsPanelProps = Readonly<{
   snapshot: SettingsSnapshot;
 }>;
 
-const openAiModelOptions = [
-  { id: "gpt-5.2", label: "GPT-5.2" },
-  { id: "gpt-5.1", label: "GPT-5.1" },
-  { id: "gpt-5", label: "GPT-5" },
-  { id: "gpt-5-mini", label: "GPT-5 mini" },
-  { id: "gpt-5-nano", label: "GPT-5 nano" }
-];
-
 export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPanelProps) {
   const provider = snapshot.aiProvider;
   const [apiKey, setApiKey] = useState("");
@@ -25,15 +17,19 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const modelOptions = useMemo(() => {
-    if (openAiModelOptions.some((option) => option.id === provider.selectedModelId)) {
-      return openAiModelOptions;
+    const availableModels = provider.availableModels ?? [
+      { id: provider.selectedModelId, label: provider.selectedModelId, providerId: provider.providerId }
+    ];
+
+    if (availableModels.some((option) => option.id === provider.selectedModelId)) {
+      return availableModels;
     }
 
     return [
-      { id: provider.selectedModelId, label: provider.selectedModelId },
-      ...openAiModelOptions
+      { id: provider.selectedModelId, label: provider.selectedModelId, providerId: provider.providerId },
+      ...availableModels
     ];
-  }, [provider.selectedModelId]);
+  }, [provider.availableModels, provider.providerId, provider.selectedModelId]);
   const keyStatus = provider.apiKeyConfigured
     ? `Configured ending in ${provider.apiKeyLastFour ?? "****"}`
     : "Not configured";

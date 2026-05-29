@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AgentStudio } from "./AgentStudio";
-import type { AgentStudioSnapshot, HarnessStudioSnapshot } from "../../shared/types/core";
+import type { AgentStudioSnapshot, AiModelRecord, HarnessStudioSnapshot } from "../../shared/types/core";
 
 const harnessSnapshot: HarnessStudioSnapshot = {
   activeProfileCount: 1,
@@ -24,6 +24,12 @@ const emptySnapshot: AgentStudioSnapshot = {
   templates: [],
   trainingRuns: []
 };
+
+const modelOptions: AiModelRecord[] = [
+  { id: "gpt-5.2", label: "GPT-5.2", providerId: "openai" },
+  { id: "gpt-5.1", label: "GPT-5.1", providerId: "openai" },
+  { id: "gpt-5", label: "GPT-5", providerId: "openai" }
+];
 
 const noHarnessSnapshot: HarnessStudioSnapshot = {
   activeProfileCount: 0,
@@ -86,6 +92,21 @@ describe("AgentStudio", () => {
     expect(screen.getByText("1 training run queued")).toBeInTheDocument();
   });
 
+  it("keeps legacy template models selectable when the provider registry omits them", () => {
+    render(
+      <AgentStudio
+        harnessSnapshot={harnessSnapshot}
+        invoke={vi.fn()}
+        modelOptions={modelOptions.filter((model) => model.id !== "gpt-5")}
+        snapshot={templateSnapshot}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    expect(screen.getByRole("option", { name: "gpt-5" })).toHaveValue("gpt-5");
+  });
+
   it("renders inactive templates with an activate action", () => {
     render(
       <AgentStudio
@@ -130,6 +151,7 @@ describe("AgentStudio", () => {
       <AgentStudio
         harnessSnapshot={harnessSnapshot}
         invoke={invoke}
+        modelOptions={modelOptions}
         onSnapshotChange={onSnapshotChange}
         snapshot={templateSnapshot}
       />
@@ -231,6 +253,7 @@ describe("AgentStudio", () => {
       <AgentStudio
         harnessSnapshot={harnessSnapshot}
         invoke={invoke}
+        modelOptions={modelOptions}
         onSnapshotChange={onSnapshotChange}
         snapshot={templateSnapshot}
       />

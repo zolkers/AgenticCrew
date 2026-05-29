@@ -1,7 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SettingsPanel } from "./SettingsPanel";
-import type { SettingsSnapshot } from "../../shared/types/core";
+import type { AiModelRecord, SettingsSnapshot } from "../../shared/types/core";
+
+const openAiModels: AiModelRecord[] = [
+  { id: "gpt-5.2", label: "GPT-5.2", providerId: "openai" },
+  { id: "gpt-5.1", label: "GPT-5.1", providerId: "openai" },
+  { id: "gpt-5", label: "GPT-5", providerId: "openai" }
+];
 
 describe("SettingsPanel", () => {
   afterEach(() => {
@@ -13,6 +19,7 @@ describe("SettingsPanel", () => {
       aiProvider: {
         apiKeyConfigured: true,
         apiKeyLastFour: "1234",
+        availableModels: openAiModels,
         displayName: "OpenAI",
         providerId: "openai",
         selectedModelId: "gpt-5.1"
@@ -23,7 +30,7 @@ describe("SettingsPanel", () => {
 
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByText("ChatGPT provider selected")).toBeInTheDocument();
-    expect(screen.getByText("gpt-5.1")).toBeInTheDocument();
+    expect(screen.getAllByText("gpt-5.1").length).toBeGreaterThan(0);
     expect(screen.getByText("Configured ending in 1234")).toBeInTheDocument();
   });
 
@@ -42,6 +49,45 @@ describe("SettingsPanel", () => {
 
     expect(screen.getByText("local")).toBeInTheDocument();
     expect(screen.getByText("Not configured")).toBeInTheDocument();
+  });
+
+  it("renders model choices from the provider registry", () => {
+    const snapshot: SettingsSnapshot = {
+      aiProvider: {
+        apiKeyConfigured: false,
+        apiKeyLastFour: null,
+        availableModels: [
+          { id: "gpt-5.2", label: "GPT-5.2", providerId: "openai" },
+          { id: "gpt-5-mini", label: "GPT-5 mini", providerId: "openai" }
+        ],
+        displayName: "OpenAI",
+        providerId: "openai",
+        selectedModelId: "gpt-5-mini"
+      }
+    };
+
+    render(<SettingsPanel invoke={vi.fn()} snapshot={snapshot} />);
+
+    expect(screen.getByRole("option", { name: "GPT-5.2" })).toHaveValue("gpt-5.2");
+    expect(screen.getByRole("option", { name: "GPT-5 mini" })).toHaveValue("gpt-5-mini");
+  });
+
+  it("keeps the selected model visible when the provider registry omits it", () => {
+    const snapshot: SettingsSnapshot = {
+      aiProvider: {
+        apiKeyConfigured: false,
+        apiKeyLastFour: null,
+        availableModels: [{ id: "gpt-5.2", label: "GPT-5.2", providerId: "openai" }],
+        displayName: "OpenAI",
+        providerId: "openai",
+        selectedModelId: "gpt-legacy"
+      }
+    };
+
+    render(<SettingsPanel invoke={vi.fn()} snapshot={snapshot} />);
+
+    expect(screen.getByRole("option", { name: "gpt-legacy" })).toHaveValue("gpt-legacy");
+    expect(screen.getByRole("option", { name: "GPT-5.2" })).toHaveValue("gpt-5.2");
   });
 
   it("renders a fallback suffix when the api key metadata is incomplete", () => {
@@ -65,6 +111,7 @@ describe("SettingsPanel", () => {
       aiProvider: {
         apiKeyConfigured: true,
         apiKeyLastFour: "1234",
+        availableModels: openAiModels,
         displayName: "OpenAI",
         providerId: "openai",
         selectedModelId: "gpt-5.2"
@@ -81,6 +128,7 @@ describe("SettingsPanel", () => {
           aiProvider: {
             apiKeyConfigured: true,
             apiKeyLastFour: "1234",
+            availableModels: openAiModels,
             displayName: "OpenAI",
             providerId: "openai",
             selectedModelId: "gpt-5"
