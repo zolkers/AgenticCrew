@@ -3,6 +3,7 @@ import {
   electronAgentStudioInvoke,
   electronHarnessStudioInvoke,
   electronMissionControlInvoke,
+  electronSettingsInvoke,
   electronSkillSourcesInvoke
 } from "./electronInvokes";
 
@@ -19,11 +20,13 @@ describe("electronInvokes", () => {
     await expect(electronSkillSourcesInvoke("skill_sources_snapshot")).resolves.toEqual({ ok: true });
     await expect(electronHarnessStudioInvoke("harness_studio_snapshot")).resolves.toEqual({ ok: true });
     await expect(electronAgentStudioInvoke("agent_studio_snapshot")).resolves.toEqual({ ok: true });
+    await expect(electronSettingsInvoke("settings_snapshot")).resolves.toEqual({ ok: true });
 
     expect(invoke).toHaveBeenCalledWith("mission_control_snapshot", undefined);
     expect(invoke).toHaveBeenCalledWith("skill_sources_snapshot", undefined);
     expect(invoke).toHaveBeenCalledWith("harness_studio_snapshot", undefined);
     expect(invoke).toHaveBeenCalledWith("agent_studio_snapshot", undefined);
+    expect(invoke).toHaveBeenCalledWith("settings_snapshot", undefined);
   });
 
   it("forwards command args through the Electron bridge", async () => {

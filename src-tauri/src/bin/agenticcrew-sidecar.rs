@@ -3,8 +3,9 @@ use std::{env, path::PathBuf, process};
 use agenticcrew_desktop::{
     agent_studio_snapshot_at_path, approve_skill_source_permissions_at_path,
     core::permissions::ApprovedPermissionPolicy, harness_studio_snapshot_at_path,
-    inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
-    skill_sources_snapshot_at_path, sync_github_skill_source_at_path, DesktopCommandError,
+    core::settings::UpdateAiProviderSettingsRequest, inspect_cached_skill_source_at_path,
+    mission_control_snapshot_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
+    sync_github_skill_source_at_path, update_ai_provider_settings_at_path, DesktopCommandError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -25,6 +26,12 @@ struct SourceIdArgs {
 struct ApprovePermissionsArgs {
     source_id: String,
     policy: ApprovedPermissionPolicy,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateSettingsArgs {
+    request: UpdateAiProviderSettingsRequest,
 }
 
 fn main() {
@@ -75,6 +82,7 @@ fn run() -> Result<(), DesktopCommandError> {
         "skill_sources_snapshot" => print_json(&skill_sources_snapshot_at_path(state_path)?),
         "harness_studio_snapshot" => print_json(&harness_studio_snapshot_at_path(state_path)?),
         "agent_studio_snapshot" => print_json(&agent_studio_snapshot_at_path(state_path)?),
+        "settings_snapshot" => print_json(&settings_snapshot_at_path(state_path)?),
         "sync_github_skill_source" => {
             let args = parse_args::<SourceIdArgs>(&args_json)?;
             let cache_root = cache_root
@@ -102,6 +110,11 @@ fn run() -> Result<(), DesktopCommandError> {
                 &args.source_id,
                 args.policy,
             )?)
+        }
+        "update_ai_provider_settings" => {
+            let args = parse_args::<UpdateSettingsArgs>(&args_json)?;
+
+            print_json(&update_ai_provider_settings_at_path(state_path, args.request)?)
         }
         _ => Err(DesktopCommandError::public(format!(
             "unknown sidecar command '{command}'"

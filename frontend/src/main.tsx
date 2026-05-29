@@ -6,17 +6,20 @@ import {
   electronAgentStudioInvoke,
   electronHarnessStudioInvoke,
   electronMissionControlInvoke,
+  electronSettingsInvoke,
   electronSkillSourcesInvoke
 } from "./shared/api/electronInvokes";
 import {
   previewAgentStudioInvoke,
   previewHarnessStudioInvoke,
   previewMissionControlInvoke,
+  previewSettingsInvoke,
   previewSkillSourcesInvoke
 } from "./shared/api/previewInvokes";
 import { tauriAgentStudioInvoke } from "./shared/api/tauriAgentStudioInvoke";
 import { tauriHarnessStudioInvoke } from "./shared/api/tauriHarnessStudioInvoke";
 import { tauriMissionControlInvoke } from "./shared/api/tauriMissionControlInvoke";
+import { tauriSettingsInvoke } from "./shared/api/tauriSettingsInvoke";
 import { tauriSkillSourcesInvoke } from "./shared/api/tauriSkillSourcesInvoke";
 
 const rootElement = document.getElementById("root");
@@ -56,6 +59,11 @@ if (rootElement !== null) {
     tauriSkillSourcesInvoke,
     previewSkillSourcesInvoke
   );
+  const settingsInvoke = selectDesktopInvoke(
+    electronSettingsInvoke,
+    tauriSettingsInvoke,
+    previewSettingsInvoke
+  );
 
   createRoot(rootElement).render(
     <StrictMode>
@@ -63,6 +71,7 @@ if (rootElement !== null) {
         agentStudioInvoke={agentStudioInvoke}
         harnessStudioInvoke={harnessStudioInvoke}
         missionControlInvoke={missionControlInvoke}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={skillSourcesInvoke}
       />
     </StrictMode>

@@ -1,7 +1,13 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { App } from "./App";
-import type { AgentStudioSnapshot, HarnessStudioSnapshot, MissionControlSnapshot, SkillSourcesSnapshot } from "../shared/types/core";
+import type {
+  AgentStudioSnapshot,
+  HarnessStudioSnapshot,
+  MissionControlSnapshot,
+  SettingsSnapshot,
+  SkillSourcesSnapshot
+} from "../shared/types/core";
 
 const missionControlSnapshot: MissionControlSnapshot = {
   activeAgentCount: 9,
@@ -94,6 +100,18 @@ const agentStudioSnapshot: AgentStudioSnapshot = {
   trainingRuns: []
 };
 
+const settingsSnapshot: SettingsSnapshot = {
+  aiProvider: {
+    apiKeyConfigured: true,
+    apiKeyLastFour: "1234",
+    displayName: "OpenAI",
+    providerId: "openai",
+    selectedModelId: "gpt-5"
+  }
+};
+
+const settingsInvoke = () => Promise.resolve(settingsSnapshot);
+
 function createDeferredSnapshot<T>() {
   let resolveSnapshot = (snapshot: T): void => {
     throw new Error(`Deferred snapshot resolve was used before assignment: ${JSON.stringify(snapshot)}`);
@@ -128,6 +146,7 @@ describe("App", () => {
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
@@ -151,6 +170,7 @@ describe("App", () => {
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
@@ -172,6 +192,7 @@ describe("App", () => {
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
@@ -188,6 +209,7 @@ describe("App", () => {
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
@@ -209,6 +231,7 @@ describe("App", () => {
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
@@ -229,6 +252,7 @@ describe("App", () => {
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
@@ -259,6 +283,7 @@ describe("App", () => {
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
@@ -279,6 +304,7 @@ describe("App", () => {
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
@@ -299,6 +325,7 @@ describe("App", () => {
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
@@ -316,12 +343,80 @@ describe("App", () => {
     expect(screen.getByText("ChatGPT provider selected")).toBeInTheDocument();
   });
 
+  it("can return to the workspace launchpad from the topbar", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Choose workspace" }));
+
+    expect(await screen.findByRole("heading", { name: "Choose a workspace" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspaces");
+  });
+
+  it("hydrates a known workspace route on initial render", async () => {
+    window.history.replaceState(null, "", "/workspace/mobile-qa/git");
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    expect(await screen.findByRole("heading", { name: "Git Panel" })).toBeInTheDocument();
+    expect(screen.getAllByText("codex/mobile-smoke").length).toBeGreaterThan(0);
+  });
+
+  it("falls back to the cockpit for unknown workspace route segments", async () => {
+    window.history.replaceState(null, "", "/workspace/fullstack-app/unknown");
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+  });
+
+  it("falls back to launchpad for unknown workspace ids", async () => {
+    window.history.replaceState(null, "", "/workspace/missing/cockpit");
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    expect(await screen.findByRole("heading", { name: "Choose a workspace" })).toBeInTheDocument();
+  });
+
   it("renders an error state when the desktop command fails", async () => {
     render(
       <App
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.reject(new Error("command failed"))}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
@@ -337,6 +432,7 @@ describe("App", () => {
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => pendingMissionControlSnapshot.promise}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => pendingSkillSourcesSnapshot.promise}
       />
     );
@@ -365,6 +461,7 @@ describe("App", () => {
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => pendingMissionControlSnapshot.promise}
+        settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => pendingSkillSourcesSnapshot.promise}
       />
     );
@@ -378,3 +475,4 @@ describe("App", () => {
   });
 
 });
+

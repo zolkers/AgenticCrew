@@ -2,6 +2,7 @@ import type { ElectronCommandMap } from "../types/core";
 import type { InvokeAgentStudio } from "./agentStudioApi";
 import type { InvokeHarnessStudio } from "./harnessStudioApi";
 import type { InvokeMissionControl } from "./missionControlApi";
+import type { InvokeSettings } from "./settingsApi";
 import type { InvokeSkillSources } from "./skillSourcesApi";
 
 function invokeElectron<Command extends keyof ElectronCommandMap>(
@@ -25,4 +26,7 @@ export const electronMissionControlInvoke: InvokeMissionControl = (command) =>
   invokeElectron(command);
 
 export const electronSkillSourcesInvoke: InvokeSkillSources = (command, args) =>
+  invokeElectron(command, args);
+
+export const electronSettingsInvoke: InvokeSettings = (command, args) =>
   invokeElectron(command, args);

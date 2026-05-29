@@ -2,11 +2,13 @@ import type {
   AgentStudioSnapshot,
   HarnessStudioSnapshot,
   MissionControlSnapshot,
+  SettingsSnapshot,
   SkillSourcesSnapshot
 } from "../types/core";
 import type { InvokeAgentStudio } from "./agentStudioApi";
 import type { InvokeHarnessStudio } from "./harnessStudioApi";
 import type { InvokeMissionControl } from "./missionControlApi";
+import type { InvokeSettings } from "./settingsApi";
 import type { InvokeSkillSources } from "./skillSourcesApi";
 
 const previewMissionControlSnapshot: MissionControlSnapshot = {
@@ -104,6 +106,16 @@ const previewAgentStudioSnapshot: AgentStudioSnapshot = {
   trainingRuns: []
 };
 
+const previewSettingsSnapshot: SettingsSnapshot = {
+  aiProvider: {
+    apiKeyConfigured: false,
+    apiKeyLastFour: null,
+    displayName: "OpenAI",
+    providerId: "openai",
+    selectedModelId: "gpt-5"
+  }
+};
+
 export const previewMissionControlInvoke: InvokeMissionControl = () =>
   Promise.resolve(previewMissionControlSnapshot);
 
@@ -119,4 +131,22 @@ export const previewSkillSourcesInvoke: InvokeSkillSources = (command) => {
   }
 
   return Promise.resolve(undefined);
+};
+
+export const previewSettingsInvoke: InvokeSettings = (command, args) => {
+  if (command === "update_ai_provider_settings") {
+    const request = args?.request as { apiKey?: string | null; selectedModelId?: string } | undefined;
+    const apiKey = request?.apiKey?.trim() ?? "";
+
+    return Promise.resolve({
+      aiProvider: {
+        ...previewSettingsSnapshot.aiProvider,
+        apiKeyConfigured: apiKey.length > 0,
+        apiKeyLastFour: apiKey.length > 0 ? apiKey.slice(-4) : null,
+        selectedModelId: request?.selectedModelId ?? previewSettingsSnapshot.aiProvider.selectedModelId
+      }
+    });
+  }
+
+  return Promise.resolve(previewSettingsSnapshot);
 };

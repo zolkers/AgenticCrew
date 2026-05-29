@@ -5,17 +5,20 @@ import {
   electronAgentStudioInvoke,
   electronHarnessStudioInvoke,
   electronMissionControlInvoke,
+  electronSettingsInvoke,
   electronSkillSourcesInvoke
 } from "./shared/api/electronInvokes";
 import {
   previewAgentStudioInvoke,
   previewHarnessStudioInvoke,
   previewMissionControlInvoke,
+  previewSettingsInvoke,
   previewSkillSourcesInvoke
 } from "./shared/api/previewInvokes";
 import { tauriAgentStudioInvoke } from "./shared/api/tauriAgentStudioInvoke";
 import { tauriHarnessStudioInvoke } from "./shared/api/tauriHarnessStudioInvoke";
 import { tauriMissionControlInvoke } from "./shared/api/tauriMissionControlInvoke";
+import { tauriSettingsInvoke } from "./shared/api/tauriSettingsInvoke";
 import { tauriSkillSourcesInvoke } from "./shared/api/tauriSkillSourcesInvoke";
 
 const mocks = vi.hoisted(() => ({
@@ -24,15 +27,18 @@ const mocks = vi.hoisted(() => ({
   electronAgentStudioInvoke: vi.fn(),
   electronHarnessStudioInvoke: vi.fn(),
   electronMissionControlInvoke: vi.fn(),
+  electronSettingsInvoke: vi.fn(),
   electronSkillSourcesInvoke: vi.fn(),
   previewAgentStudioInvoke: vi.fn(),
   previewHarnessStudioInvoke: vi.fn(),
   previewMissionControlInvoke: vi.fn(),
+  previewSettingsInvoke: vi.fn(),
   previewSkillSourcesInvoke: vi.fn(),
   render: vi.fn(),
   tauriAgentStudioInvoke: vi.fn(),
   tauriHarnessStudioInvoke: vi.fn(),
   tauriMissionControlInvoke: vi.fn(),
+  tauriSettingsInvoke: vi.fn(),
   tauriSkillSourcesInvoke: vi.fn()
 }));
 
@@ -48,11 +54,16 @@ vi.mock("./shared/api/electronInvokes", () => ({
   electronAgentStudioInvoke: mocks.electronAgentStudioInvoke,
   electronHarnessStudioInvoke: mocks.electronHarnessStudioInvoke,
   electronMissionControlInvoke: mocks.electronMissionControlInvoke,
+  electronSettingsInvoke: mocks.electronSettingsInvoke,
   electronSkillSourcesInvoke: mocks.electronSkillSourcesInvoke
 }));
 
 vi.mock("./shared/api/tauriMissionControlInvoke", () => ({
   tauriMissionControlInvoke: mocks.tauriMissionControlInvoke
+}));
+
+vi.mock("./shared/api/tauriSettingsInvoke", () => ({
+  tauriSettingsInvoke: mocks.tauriSettingsInvoke
 }));
 
 vi.mock("./shared/api/tauriSkillSourcesInvoke", () => ({
@@ -71,6 +82,7 @@ vi.mock("./shared/api/previewInvokes", () => ({
   previewAgentStudioInvoke: mocks.previewAgentStudioInvoke,
   previewHarnessStudioInvoke: mocks.previewHarnessStudioInvoke,
   previewMissionControlInvoke: mocks.previewMissionControlInvoke,
+  previewSettingsInvoke: mocks.previewSettingsInvoke,
   previewSkillSourcesInvoke: mocks.previewSkillSourcesInvoke
 }));
 
@@ -101,6 +113,7 @@ describe("main", () => {
         agentStudioInvoke: unknown;
         harnessStudioInvoke: unknown;
         missionControlInvoke: unknown;
+        settingsInvoke: unknown;
         skillSourcesInvoke: unknown;
       }>;
     }>;
@@ -109,6 +122,7 @@ describe("main", () => {
     expect(renderedElement.props.children.props.agentStudioInvoke).toBe(previewAgentStudioInvoke);
     expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(previewHarnessStudioInvoke);
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(previewMissionControlInvoke);
+    expect(renderedElement.props.children.props.settingsInvoke).toBe(previewSettingsInvoke);
     expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(previewSkillSourcesInvoke);
   });
 
@@ -126,6 +140,7 @@ describe("main", () => {
         agentStudioInvoke: unknown;
         harnessStudioInvoke: unknown;
         missionControlInvoke: unknown;
+        settingsInvoke: unknown;
         skillSourcesInvoke: unknown;
       }>;
     }>;
@@ -133,6 +148,7 @@ describe("main", () => {
     expect(renderedElement.props.children.props.agentStudioInvoke).toBe(tauriAgentStudioInvoke);
     expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(tauriHarnessStudioInvoke);
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(tauriMissionControlInvoke);
+    expect(renderedElement.props.children.props.settingsInvoke).toBe(tauriSettingsInvoke);
     expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(tauriSkillSourcesInvoke);
   });
 
@@ -154,6 +170,7 @@ describe("main", () => {
         agentStudioInvoke: unknown;
         harnessStudioInvoke: unknown;
         missionControlInvoke: unknown;
+        settingsInvoke: unknown;
         skillSourcesInvoke: unknown;
       }>;
     }>;
@@ -161,6 +178,7 @@ describe("main", () => {
     expect(renderedElement.props.children.props.agentStudioInvoke).toBe(electronAgentStudioInvoke);
     expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(electronHarnessStudioInvoke);
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(electronMissionControlInvoke);
+    expect(renderedElement.props.children.props.settingsInvoke).toBe(electronSettingsInvoke);
     expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(electronSkillSourcesInvoke);
   });
 

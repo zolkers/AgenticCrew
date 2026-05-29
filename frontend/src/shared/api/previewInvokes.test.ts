@@ -3,6 +3,7 @@ import {
   previewAgentStudioInvoke,
   previewHarnessStudioInvoke,
   previewMissionControlInvoke,
+  previewSettingsInvoke,
   previewSkillSourcesInvoke
 } from "./previewInvokes";
 
@@ -45,6 +46,42 @@ describe("previewInvokes", () => {
     await expect(previewAgentStudioInvoke("agent_studio_snapshot")).resolves.toMatchObject({
       activeTemplateCount: 1,
       templates: [{ id: "developer-pi", harnessProfileId: "pi-execution-discipline" }]
+    });
+  });
+
+  it("returns and updates preview settings metadata", async () => {
+    await expect(previewSettingsInvoke("settings_snapshot")).resolves.toMatchObject({
+      aiProvider: {
+        apiKeyConfigured: false,
+        providerId: "openai",
+        selectedModelId: "gpt-5"
+      }
+    });
+
+    await expect(
+      previewSettingsInvoke("update_ai_provider_settings", {
+        request: {
+          apiKey: "sk-proj-9999",
+          providerId: "openai",
+          selectedModelId: "gpt-5.1"
+        }
+      })
+    ).resolves.toMatchObject({
+      aiProvider: {
+        apiKeyConfigured: true,
+        apiKeyLastFour: "9999",
+        selectedModelId: "gpt-5.1"
+      }
+    });
+  });
+
+  it("keeps preview settings defaults when update args are absent", async () => {
+    await expect(previewSettingsInvoke("update_ai_provider_settings")).resolves.toMatchObject({
+      aiProvider: {
+        apiKeyConfigured: false,
+        apiKeyLastFour: null,
+        selectedModelId: "gpt-5"
+      }
     });
   });
 });

@@ -6,6 +6,7 @@ pub mod library;
 pub mod mission_control;
 pub mod permissions;
 pub mod sessions;
+pub mod settings;
 pub mod skill_manifest;
 pub mod skill_sync;
 pub mod skills;

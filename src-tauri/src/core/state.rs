@@ -14,6 +14,7 @@ use super::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
         SessionTransitionError,
     },
+    settings::{DesktopSettings, SettingsValidationError, UpdateAiProviderSettingsRequest},
     skills::{
         DiscoveredSkillManifest, RegisterGitHubSkillSourceRequest, SkillManifestValidationError,
         SkillSource, SkillSourceError,
@@ -40,6 +41,8 @@ pub struct AgentOsState {
     pub agent_templates: Vec<AgentTemplate>,
     #[serde(default)]
     pub agent_training_runs: Vec<AgentTrainingRun>,
+    #[serde(default)]
+    pub desktop_settings: DesktopSettings,
 }
 
 impl AgentOsState {
@@ -56,6 +59,7 @@ impl AgentOsState {
             harness_bindings: Vec::new(),
             agent_templates: vec![AgentTemplate::developer_with_pi()],
             agent_training_runs: Vec::new(),
+            desktop_settings: DesktopSettings::default(),
         }
     }
 
@@ -308,6 +312,17 @@ impl AgentOsState {
 
         Ok(())
     }
+
+    pub fn update_ai_provider_settings(
+        &mut self,
+        request: UpdateAiProviderSettingsRequest,
+    ) -> Result<(), StateMutationError> {
+        self.desktop_settings.ai_provider = request
+            .into_settings()
+            .map_err(StateMutationError::InvalidDesktopSettings)?;
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -374,6 +389,7 @@ pub enum StateMutationError {
         source_id: String,
     },
     InvalidSkillSource(SkillSourceError),
+    InvalidDesktopSettings(SettingsValidationError),
     CheckpointNotPassed(SessionTransitionError),
 }
 
@@ -412,6 +428,9 @@ impl fmt::Display for StateMutationError {
             }
             StateMutationError::InvalidSkillSource(error) => {
                 write!(formatter, "invalid skill source: {error}")
+            }
+            StateMutationError::InvalidDesktopSettings(error) => {
+                write!(formatter, "invalid desktop settings: {error}")
             }
             StateMutationError::CheckpointNotPassed(error) => {
                 write!(formatter, "feature session cannot close: {error:?}")
@@ -587,6 +606,7 @@ mod tests {
             Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
             SessionTransitionError,
         },
+        settings::{DesktopSettings, UpdateAiProviderSettingsRequest},
         skills::RegisterGitHubSkillSourceRequest,
     };
 
@@ -613,6 +633,7 @@ mod tests {
         assert_eq!(state.agent_templates.len(), 1);
         assert_eq!(state.agent_templates[0].id, "developer-pi");
         assert!(state.agent_training_runs.is_empty());
+        assert_eq!(state.desktop_settings.ai_provider.provider_id, "openai");
     }
 
     #[test]
@@ -632,6 +653,27 @@ mod tests {
         assert!(state.harness_bindings.is_empty());
         assert!(state.agent_templates.is_empty());
         assert!(state.agent_training_runs.is_empty());
+        assert_eq!(state.desktop_settings.ai_provider.provider_id, "openai");
+    }
+
+    #[test]
+    fn update_ai_provider_settings_records_redacted_openai_configuration() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .update_ai_provider_settings(UpdateAiProviderSettingsRequest {
+                provider_id: "openai".to_owned(),
+                selected_model_id: "gpt-5.1".to_owned(),
+                api_key: Some("sk-proj-secret5678".to_owned()),
+            })
+            .expect("settings should update");
+
+        assert_eq!(state.desktop_settings.ai_provider.selected_model_id, "gpt-5.1");
+        assert!(state.desktop_settings.ai_provider.api_key_configured);
+        assert_eq!(
+            state.desktop_settings.ai_provider.api_key_last_four,
+            Some("5678".to_owned())
+        );
     }
 
     #[test]
@@ -1227,6 +1269,7 @@ mod tests {
             harness_bindings: Vec::new(),
             agent_templates: vec![AgentTemplate::developer_with_pi()],
             agent_training_runs: Vec::new(),
+            desktop_settings: DesktopSettings::default(),
         }
     }
 

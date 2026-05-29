@@ -8,7 +8,9 @@ test("accepts known snapshot commands", () => {
     assertCommand("skill_sources_snapshot");
     assertCommand("harness_studio_snapshot");
     assertCommand("agent_studio_snapshot");
+    assertCommand("settings_snapshot");
     assertCommand("sync_github_skill_source");
+    assertCommand("update_ai_provider_settings");
   });
 });
 

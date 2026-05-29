@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     coverage: {
-      exclude: ["src/test/setup.ts"],
+      exclude: ["src/test/setup.ts", "src/shared/api/electronBridge.d.ts", "src/shared/types/core.ts"],
       include: ["src/**/*.{ts,tsx}"],
       provider: "v8",
       reporter: ["text", "lcov"],

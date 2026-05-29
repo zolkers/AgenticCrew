@@ -232,6 +232,7 @@ mod tests {
             harness_bindings: Vec::new(),
             agent_templates: Vec::new(),
             agent_training_runs: Vec::new(),
+            desktop_settings: Default::default(),
         }
     }
 

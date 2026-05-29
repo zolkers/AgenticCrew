@@ -22,12 +22,14 @@ import { SkillSources } from "../features/skill-sources/SkillSources";
 import { loadAgentStudioSnapshot, type InvokeAgentStudio } from "../shared/api/agentStudioApi";
 import { loadHarnessStudioSnapshot, type InvokeHarnessStudio } from "../shared/api/harnessStudioApi";
 import { loadMissionControlSnapshot, type InvokeMissionControl } from "../shared/api/missionControlApi";
+import { loadSettingsSnapshot, type InvokeSettings } from "../shared/api/settingsApi";
 import { loadSkillSourcesSnapshot, type InvokeSkillSources } from "../shared/api/skillSourcesApi";
 import { cockpitWorkspaces, type CockpitWorkspace } from "../shared/preview/cockpitData";
 import type {
   AgentStudioSnapshot,
   HarnessStudioSnapshot,
   MissionControlSnapshot,
+  SettingsSnapshot,
   SkillSourcesSnapshot
 } from "../shared/types/core";
 import "../i18n";
@@ -37,6 +39,7 @@ type AppProps = Readonly<{
   agentStudioInvoke: InvokeAgentStudio;
   harnessStudioInvoke: InvokeHarnessStudio;
   missionControlInvoke: InvokeMissionControl;
+  settingsInvoke: InvokeSettings;
   skillSourcesInvoke: InvokeSkillSources;
 }>;
 
@@ -47,6 +50,7 @@ type AppLoadState =
       agentStudioSnapshot: AgentStudioSnapshot;
       harnessStudioSnapshot: HarnessStudioSnapshot;
       skillSourcesSnapshot: SkillSourcesSnapshot;
+      settingsSnapshot: SettingsSnapshot;
       status: "ready";
     }>
   | Readonly<{ status: "loading" }>;
@@ -85,7 +89,13 @@ const viewByRouteSegment: Record<string, AppView> = {
   skills: "skillSources"
 };
 
-export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvoke, skillSourcesInvoke }: AppProps) {
+export function App({
+  agentStudioInvoke,
+  harnessStudioInvoke,
+  missionControlInvoke,
+  settingsInvoke,
+  skillSourcesInvoke
+}: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
   const [routeState, setRouteState] = useState<AppRouteState>(() => resolveInitialRoute());
   const { t } = useTranslation();
@@ -99,14 +109,23 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
       loadMissionControlSnapshot(missionControlInvoke),
       loadSkillSourcesSnapshot(skillSourcesInvoke),
       loadHarnessStudioSnapshot(harnessStudioInvoke),
-      loadAgentStudioSnapshot(agentStudioInvoke)
+      loadAgentStudioSnapshot(agentStudioInvoke),
+      loadSettingsSnapshot(settingsInvoke)
     ])
-      .then(([missionControlSnapshot, skillSourcesSnapshot, harnessStudioSnapshot, agentStudioSnapshot]) => {
+      .then(
+        ([
+          missionControlSnapshot,
+          skillSourcesSnapshot,
+          harnessStudioSnapshot,
+          agentStudioSnapshot,
+          settingsSnapshot
+        ]) => {
         if (isCurrent) {
           setLoadState({
             agentStudioSnapshot,
             harnessStudioSnapshot,
             missionControlSnapshot,
+            settingsSnapshot,
             skillSourcesSnapshot,
             status: "ready"
           });
@@ -121,7 +140,7 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
     return () => {
       isCurrent = false;
     };
-  }, [agentStudioInvoke, harnessStudioInvoke, missionControlInvoke, skillSourcesInvoke]);
+  }, [agentStudioInvoke, harnessStudioInvoke, missionControlInvoke, settingsInvoke, skillSourcesInvoke]);
 
   if (loadState.status === "error") {
     return <p role="alert">{t("missionControl.loadError", { defaultValue: "Mission Control unavailable" })}</p>;
@@ -147,11 +166,6 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
     setRouteState({ view: "cockpit", workspaceId: null });
     window.history.pushState(null, "", "/workspaces");
   };
-  const openView = (view: AppView) => {
-    if (activeWorkspace !== null) {
-      openWorkspace(activeWorkspace.id, view);
-    }
-  };
 
   if (activeWorkspace === null) {
     return (
@@ -165,6 +179,10 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
       </MantineProvider>
     );
   }
+
+  const openView = (view: AppView) => {
+    openWorkspace(activeWorkspace.id, view);
+  };
 
   return (
     <MantineProvider defaultColorScheme="dark">
@@ -275,7 +293,7 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
         ) : null}
         {activeView === "agentStudio" ? <AgentStudio snapshot={loadState.agentStudioSnapshot} /> : null}
         {activeView === "gitPanel" ? <GitPanel workspace={activeWorkspace} /> : null}
-        {activeView === "settings" ? <SettingsPanel /> : null}
+        {activeView === "settings" ? <SettingsPanel invoke={settingsInvoke} snapshot={loadState.settingsSnapshot} /> : null}
       </main>
       </div>
     </MantineProvider>

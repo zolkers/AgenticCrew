@@ -157,12 +157,32 @@ export type AgentStudioSnapshot = {
   trainingRuns: AgentTrainingRun[];
 };
 
+export type AiProviderSettings = {
+  apiKeyConfigured: boolean;
+  apiKeyLastFour?: string | null;
+  displayName: string;
+  providerId: string;
+  selectedModelId: string;
+};
+
+export type SettingsSnapshot = {
+  aiProvider: AiProviderSettings;
+};
+
+export type UpdateAiProviderSettingsRequest = {
+  apiKey?: string | null;
+  providerId: string;
+  selectedModelId: string;
+};
+
 export type ElectronCommandMap = {
   approve_skill_source_permissions: unknown;
   agent_studio_snapshot: AgentStudioSnapshot;
   harness_studio_snapshot: HarnessStudioSnapshot;
   inspect_cached_skill_source: unknown;
   mission_control_snapshot: MissionControlSnapshot;
+  settings_snapshot: SettingsSnapshot;
   skill_sources_snapshot: SkillSourcesSnapshot;
   sync_github_skill_source: unknown;
+  update_ai_provider_settings: SettingsSnapshot;
 };

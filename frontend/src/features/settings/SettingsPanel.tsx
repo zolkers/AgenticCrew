@@ -1,6 +1,18 @@
 import { KeyRound, LockKeyhole, RadioTower, SlidersHorizontal } from "lucide-react";
+import type { SettingsSnapshot } from "../../shared/types/core";
+import type { InvokeSettings } from "../../shared/api/settingsApi";
 
-export function SettingsPanel() {
+type SettingsPanelProps = Readonly<{
+  invoke: InvokeSettings;
+  snapshot: SettingsSnapshot;
+}>;
+
+export function SettingsPanel({ snapshot }: SettingsPanelProps) {
+  const provider = snapshot.aiProvider;
+  const keyStatus = provider.apiKeyConfigured
+    ? `Configured ending in ${provider.apiKeyLastFour ?? "****"}`
+    : "Not configured";
+
   return (
     <section aria-label="Settings">
       <header className="surface-header">
@@ -8,24 +20,24 @@ export function SettingsPanel() {
           <p className="eyebrow">Provider</p>
           <h2>Settings</h2>
         </div>
-        <strong>OpenAI</strong>
+        <strong>{provider.displayName}</strong>
       </header>
 
       <div className="surface-grid">
         <article className="surface-card">
           <RadioTower aria-hidden="true" size={20} />
           <strong>Connection</strong>
-          <span>ChatGPT provider selected</span>
+          <span>{provider.providerId === "openai" ? "ChatGPT provider selected" : provider.providerId}</span>
         </article>
         <article className="surface-card">
           <SlidersHorizontal aria-hidden="true" size={20} />
           <strong>Model</strong>
-          <span>Selectable in backend phase</span>
+          <span>{provider.selectedModelId}</span>
         </article>
         <article className="surface-card">
           <KeyRound aria-hidden="true" size={20} />
           <strong>API key</strong>
-          <span>Encrypted storage pending</span>
+          <span>{keyStatus}</span>
         </article>
         <article className="surface-card">
           <LockKeyhole aria-hidden="true" size={20} />

@@ -12,6 +12,9 @@ use core::{
     harnesses::{harness_studio_snapshot_from_state, HarnessStudioSnapshot},
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
     permissions::ApprovedPermissionPolicy,
+    settings::{
+        settings_snapshot_from_state, SettingsSnapshot, UpdateAiProviderSettingsRequest,
+    },
     skill_manifest::{inspect_skill_manifests, SkillManifestInspectionError},
     skill_sync::{sync_github_skill_source_to_cache, SkillSourceSyncError},
     skills::{
@@ -118,6 +121,14 @@ pub fn agent_studio_snapshot_at_path(
     let state = durable_state_snapshot_at_path(path)?;
 
     Ok(agent_studio_snapshot_from_state(&state))
+}
+
+pub fn settings_snapshot_at_path(
+    path: impl Into<PathBuf>,
+) -> Result<SettingsSnapshot, DesktopCommandError> {
+    let state = durable_state_snapshot_at_path(path)?;
+
+    Ok(settings_snapshot_from_state(&state))
 }
 
 pub fn create_feature_session_at_path(
@@ -257,6 +268,15 @@ pub fn activate_skill_source_at_path(
     mutate_state_at_path(path, |state| state.activate_skill_source(source_id))
 }
 
+pub fn update_ai_provider_settings_at_path(
+    path: impl AsRef<Path>,
+    request: UpdateAiProviderSettingsRequest,
+) -> Result<SettingsSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.update_ai_provider_settings(request))?;
+
+    Ok(settings_snapshot_from_state(&state))
+}
+
 fn mutate_state_at_path(
     path: impl AsRef<Path>,
     mutate: impl FnOnce(&mut AgentOsState) -> Result<(), StateMutationError>,
@@ -279,6 +299,7 @@ mod commands {
         activate_skill_source_at_path, add_checkpoint_at_path, agent_studio_snapshot_at_path,
         approve_skill_source_permissions_at_path, close_feature_session_at_path,
         core::permissions::ApprovedPermissionPolicy,
+        core::settings::{SettingsSnapshot, UpdateAiProviderSettingsRequest},
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
         core::{agents::AgentStudioSnapshot, harnesses::HarnessStudioSnapshot},
@@ -286,9 +307,10 @@ mod commands {
         harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
         mission_control_snapshot_at_path, record_command_evidence_at_path,
         register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
-        sync_github_skill_source_at_path, validate_skill_source_at_path, CreateCheckpointRequest,
-        CreateFeatureSessionRequest, DesktopCommandError, MissionControlSnapshot,
-        RecordCommandEvidenceRequest,
+        sync_github_skill_source_at_path, update_ai_provider_settings_at_path,
+        validate_skill_source_at_path, CreateCheckpointRequest, CreateFeatureSessionRequest,
+        DesktopCommandError, MissionControlSnapshot, RecordCommandEvidenceRequest,
+        settings_snapshot_at_path,
     };
 
     #[tauri::command]
@@ -324,6 +346,13 @@ mod commands {
         app: tauri::AppHandle,
     ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
         agent_studio_snapshot_at_path(app_state_path(&app)?)
+    }
+
+    #[tauri::command]
+    pub fn settings_snapshot(
+        app: tauri::AppHandle,
+    ) -> Result<SettingsSnapshot, DesktopCommandError> {
+        settings_snapshot_at_path(app_state_path(&app)?)
     }
 
     #[tauri::command]
@@ -414,6 +443,14 @@ mod commands {
         approve_skill_source_permissions_at_path(app_state_path(&app)?, &source_id, policy)
     }
 
+    #[tauri::command]
+    pub fn update_ai_provider_settings(
+        app: tauri::AppHandle,
+        request: UpdateAiProviderSettingsRequest,
+    ) -> Result<SettingsSnapshot, DesktopCommandError> {
+        update_ai_provider_settings_at_path(app_state_path(&app)?, request)
+    }
+
     fn app_state_path(app: &tauri::AppHandle) -> Result<PathBuf, DesktopCommandError> {
         app.path()
             .app_data_dir()
@@ -431,6 +468,7 @@ pub fn run() {
             commands::skill_sources_snapshot,
             commands::harness_studio_snapshot,
             commands::agent_studio_snapshot,
+            commands::settings_snapshot,
             commands::create_feature_session,
             commands::add_checkpoint,
             commands::record_command_evidence,
@@ -440,7 +478,8 @@ pub fn run() {
             commands::sync_github_skill_source,
             commands::inspect_cached_skill_source,
             commands::approve_skill_source_permissions,
-            commands::activate_skill_source
+            commands::activate_skill_source,
+            commands::update_ai_provider_settings
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AgenticCrew desktop shell");
