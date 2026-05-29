@@ -720,7 +720,7 @@ describe("App", () => {
     expect(screen.getByText("Working tree clean")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     expect(await screen.findByText("Working tree dirty")).toBeInTheDocument();
-    expect(screen.getByText("1 ahead / 0 behind")).toBeInTheDocument();
+    expect(screen.getAllByText("1 ahead / 0 behind").length).toBeGreaterThan(0);
     expect(screen.queryByText("C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
     expect(screen.getByText("feat(cockpit): expose branch picker and token usage")).toBeInTheDocument();

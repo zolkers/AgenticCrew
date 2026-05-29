@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { GitBranch, GitCommit, GitPullRequest, History, RefreshCcw, Save, ShieldCheck } from "lucide-react";
+import { GitBranch, GitCommit, GitPullRequest, History, RefreshCcw, Save, Send, ShieldCheck } from "lucide-react";
 import type { CockpitWorkspace } from "../../shared/preview/cockpitData";
 import { uniqueStrings } from "../../shared/strings";
 
@@ -87,6 +87,14 @@ export function GitPanel({ branchOptions, onRefreshGitStatus, onWorkspaceChange,
         path={workspace.path}
       />
 
+      <CommitComposer
+        aheadCount={aheadCount}
+        behindCount={behindCount}
+        branch={workspace.branch}
+        hasUntracked={gitStatus?.hasUntracked ?? false}
+        isDirty={isDirty}
+      />
+
       <section className="git-history-panel" aria-labelledby="git-history-title">
         <header>
           <History aria-hidden="true" size={18} />
@@ -114,6 +122,100 @@ export function GitPanel({ branchOptions, onRefreshGitStatus, onWorkspaceChange,
           </ol>
         )}
       </section>
+    </section>
+  );
+}
+
+type CommitComposerProps = Readonly<{
+  aheadCount: number;
+  behindCount: number;
+  branch: string;
+  hasUntracked: boolean;
+  isDirty: boolean;
+}>;
+
+function CommitComposer({ aheadCount, behindCount, branch, hasUntracked, isDirty }: CommitComposerProps) {
+  const [commitMessage, setCommitMessage] = useState("");
+  const [lastAction, setLastAction] = useState<string | null>(null);
+  const trimmedMessage = commitMessage.trim();
+  const canCommit = trimmedMessage.length > 0 && (isDirty || hasUntracked);
+  const changeSummary = isDirty || hasUntracked ? "Changes ready for review" : "No local changes detected";
+
+  const submitCommit = (action: "commit" | "commit-push") => {
+    if (!canCommit) {
+      return;
+    }
+
+    setLastAction(action === "commit" ? "Commit prepared" : "Commit and push prepared");
+  };
+
+  return (
+    <section className="git-commit-panel" aria-labelledby="git-commit-title">
+      <header>
+        <GitCommit aria-hidden="true" size={18} />
+        <div>
+          <h3 id="git-commit-title">Commit</h3>
+          <span>{changeSummary}</span>
+        </div>
+      </header>
+      <div className="git-commit-layout">
+        <label>
+          <span>Commit message</span>
+          <textarea
+            aria-label="Commit message"
+            onChange={(event) => {
+              setCommitMessage(event.target.value);
+              setLastAction(null);
+            }}
+            placeholder="type(scope): describe the change"
+            rows={5}
+            value={commitMessage}
+          />
+        </label>
+        <aside aria-label="Commit context">
+          <dl>
+            <div>
+              <dt>Branch</dt>
+              <dd>{branch}</dd>
+            </div>
+            <div>
+              <dt>Working tree</dt>
+              <dd>{isDirty ? "Modified" : "Clean"}</dd>
+            </div>
+            <div>
+              <dt>Untracked</dt>
+              <dd>{hasUntracked ? "Present" : "None"}</dd>
+            </div>
+            <div>
+              <dt>Remote</dt>
+              <dd>{`${String(aheadCount)} ahead / ${String(behindCount)} behind`}</dd>
+            </div>
+          </dl>
+        </aside>
+      </div>
+      <div className="git-commit-actions">
+        <button
+          disabled={!canCommit}
+          onClick={() => {
+            submitCommit("commit");
+          }}
+          type="button"
+        >
+          <GitCommit aria-hidden="true" size={16} />
+          <span>Commit</span>
+        </button>
+        <button
+          disabled={!canCommit}
+          onClick={() => {
+            submitCommit("commit-push");
+          }}
+          type="button"
+        >
+          <Send aria-hidden="true" size={16} />
+          <span>Commit & Push</span>
+        </button>
+        {lastAction ? <output>{lastAction}: {trimmedMessage}</output> : null}
+      </div>
     </section>
   );
 }
