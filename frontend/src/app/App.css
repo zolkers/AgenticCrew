@@ -1,8 +1,24 @@
 :root {
-  color: #e8e6de;
-  background: #0e0e0f;
+  color: #eef3f0;
+  background: #151a1f;
   font-family:
-    "Cascadia Code", "SFMono-Regular", Consolas, ui-monospace, monospace;
+    Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --color-page: #151a1f;
+  --color-panel: #1d242b;
+  --color-panel-strong: #24313a;
+  --color-terminal: #172026;
+  --color-terminal-deep: #11181d;
+  --color-border: #33414b;
+  --color-border-soft: rgba(132, 154, 164, 0.24);
+  --color-text: #eef3f0;
+  --color-muted: #a8b7b3;
+  --color-dim: #778883;
+  --color-teal: #4ed4c8;
+  --color-teal-deep: #123d3f;
+  --color-sage: #9cbf93;
+  --color-amber: #d9b76b;
+  --color-coral: #dc7d73;
+  --color-ink: #102126;
 }
 
 * {
@@ -12,7 +28,7 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: #0e0e0f;
+  background: var(--color-page);
 }
 
 button,
@@ -37,8 +53,8 @@ button {
   gap: 0.75rem;
   align-items: center;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #1e1e20;
-  background: #111112;
+  border-bottom: 1px solid var(--color-border);
+  background: #1a2026;
 }
 
 .brand-button,
@@ -46,9 +62,9 @@ button {
 .workspace-card,
 .plugins-panel button,
 .command-bar button {
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  color: #e8e6de;
-  background: #141415;
+  border: 1px solid var(--color-border-soft);
+  color: var(--color-text);
+  background: var(--color-panel-strong);
   border-radius: 4px;
 }
 
@@ -79,7 +95,7 @@ button {
 .checkpoint-list small,
 .plugins-panel p,
 .command-bar label {
-  color: #93a4b5;
+  color: var(--color-muted);
 }
 
 .brand-mark {
@@ -89,16 +105,16 @@ button {
   height: 2.25rem;
   place-items: center;
   border-radius: 3px;
-  color: #3a1e0e;
+  color: var(--color-ink);
   font-weight: 800;
-  background: #cc785c;
+  background: var(--color-teal);
 }
 
 .topbar-workspace,
 .topbar-budget {
   min-width: 0;
   padding: 0.4rem 0.7rem;
-  border-left: 1px solid rgba(148, 163, 184, 0.22);
+  border-left: 1px solid var(--color-border-soft);
 }
 
 .topbar-tab {
@@ -110,7 +126,8 @@ button {
 .topbar-tab[aria-pressed="true"],
 .workspace-card[aria-pressed="true"] {
   border-color: rgba(89, 224, 197, 0.75);
-  background: #1a1a1c;
+  color: #f7fffb;
+  background: #263943;
 }
 
 .app-main {
@@ -125,9 +142,9 @@ button {
 
 .cockpit-sidebar,
 .terminal-panel {
-  border: 1px solid #1e1e20;
+  border: 1px solid var(--color-border);
   border-radius: 0;
-  background: #111112;
+  background: var(--color-panel);
 }
 
 .cockpit-sidebar {
@@ -140,7 +157,7 @@ button {
 .cockpit-sidebar h2,
 .plugins-panel h2 {
   margin: 0 0 0.6rem;
-  color: #f6fafc;
+  color: #f7fbf8;
   font-size: 0.82rem;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -167,7 +184,7 @@ button {
 }
 
 .workspace-card strong {
-  color: #9debdc;
+  color: var(--color-teal);
   font-size: 0.82rem;
 }
 
@@ -189,15 +206,15 @@ button {
   width: 0.65rem;
   height: 0.65rem;
   border-radius: 999px;
-  background: #94a3b8;
+  background: var(--color-dim);
 }
 
 .status-dot-active {
-  background: #59e0c5;
+  background: var(--color-teal);
 }
 
 .status-dot-reviewing {
-  background: #f3c969;
+  background: var(--color-amber);
 }
 
 .checkpoint-list {
@@ -209,7 +226,7 @@ button {
   position: relative;
   padding: 0.55rem 0.65rem 0.55rem 2.1rem;
   border-radius: 4px;
-  background: #141415;
+  background: #223039;
 }
 
 .checkpoint-list li::before {
@@ -222,18 +239,18 @@ button {
   height: 1rem;
   place-items: center;
   border-radius: 999px;
-  color: #3a1e0e;
+  color: var(--color-ink);
   font-size: 0.7rem;
   font-weight: 800;
-  background: #93a4b5;
+  background: var(--color-dim);
 }
 
 .checkpoint-running::before {
-  background: #63a355;
+  background: var(--color-sage);
 }
 
 .checkpoint-done::before {
-  background: #6a8fb5;
+  background: #75a7bd;
 }
 
 .pill-list,
@@ -245,16 +262,16 @@ button {
 .tool-list li {
   overflow-wrap: anywhere;
   padding: 0.45rem 0.55rem;
-  border: 1px solid #2a3e2a;
+  border: 1px solid #496154;
   border-radius: 3px;
-  color: #8aaa8a;
-  background: #141e14;
+  color: #d0e6c7;
+  background: #203326;
   font-size: 0.82rem;
 }
 
 .plugins-panel {
   padding-top: 1rem;
-  border-top: 1px solid #1e1e20;
+  border-top: 1px solid var(--color-border);
 }
 
 .plugins-panel p {
@@ -279,7 +296,7 @@ button {
   grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
   gap: 1rem;
   padding: 1.25rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .eyebrow {
@@ -302,7 +319,7 @@ button {
 
 .cockpit-hero h2 {
   margin-top: 0.35rem;
-  color: #cc785c;
+  color: var(--color-teal);
   font-size: 1.1rem;
 }
 
@@ -317,12 +334,12 @@ button {
 .metric-strip div {
   min-width: 0;
   padding: 0.7rem;
-  border-left: 1px solid #1e1e20;
-  background: #141415;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
 }
 
 .metric-strip dt {
-  color: #93a4b5;
+  color: var(--color-muted);
   font-size: 0.75rem;
 }
 
@@ -337,7 +354,7 @@ button {
   margin: 0;
   min-width: 0;
   overflow: hidden;
-  background: #05090c;
+  background: var(--color-terminal-deep);
 }
 
 .agent-header {
@@ -345,7 +362,7 @@ button {
   grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
   gap: 1rem;
   padding: 1rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .agent-header p {
@@ -356,13 +373,14 @@ button {
   min-height: 20rem;
   padding: 1rem;
   overflow: auto;
-  color: #c8f7d6;
+  color: #c6f4df;
   font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  background: var(--color-terminal);
 }
 
 .terminal-caption {
   margin-bottom: 0.85rem;
-  color: #93a4b5;
+  color: var(--color-muted);
   font-family:
     "Cascadia Code", "SFMono-Regular", Consolas, ui-monospace, monospace;
 }
@@ -385,17 +403,17 @@ button {
   gap: 0.75rem;
   align-items: center;
   padding: 1rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  border-top: 1px solid var(--color-border-soft);
 }
 
 .command-bar input {
   min-width: 0;
   min-height: 2.5rem;
   padding: 0 0.75rem;
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  color: #e7edf1;
-  background: rgba(5, 9, 12, 0.95);
+  color: var(--color-text);
+  background: var(--color-terminal);
 }
 
 .run-status-bar {
@@ -404,10 +422,12 @@ button {
   align-items: center;
   gap: 1rem;
   padding: 0.25rem 1rem;
-  color: #3a1e0e;
-  background: #cc785c;
+  color: var(--color-ink);
+  background: var(--color-teal);
   font-size: 0.78rem;
   overflow-x: auto;
+  font-family:
+    "Cascadia Code", "SFMono-Regular", Consolas, ui-monospace, monospace;
 }
 
 .run-status-bar span {
@@ -416,7 +436,7 @@ button {
 
 .run-status-bar span + span {
   padding-left: 1rem;
-  border-left: 1px solid #a85e3a;
+  border-left: 1px solid rgba(16, 33, 38, 0.38);
 }
 
 section[aria-label="Mission Control"],
@@ -424,9 +444,9 @@ section[aria-label="Skill Sources"] {
   max-width: 960px;
   margin: 0 auto;
   padding: 1.25rem;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--color-border-soft);
   border-radius: 8px;
-  background: rgba(10, 16, 21, 0.86);
+  background: var(--color-panel);
 }
 
 @media (max-width: 920px) {
@@ -441,7 +461,7 @@ section[aria-label="Skill Sources"] {
   .topbar-workspace,
   .topbar-budget {
     border-left: 0;
-    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    border-top: 1px solid var(--color-border-soft);
   }
 
   .terminal-panel {
