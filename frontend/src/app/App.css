@@ -1121,6 +1121,7 @@ button {
 .agent-form select,
 .agent-form textarea,
 .harness-form input,
+.harness-form select,
 .harness-form textarea {
   width: 100%;
   min-height: 2.55rem;
@@ -1182,6 +1183,12 @@ button {
   background: var(--color-panel-strong);
 }
 
+.inline-action.primary {
+  border-color: rgba(78, 212, 200, 0.48);
+  color: #e9fffb;
+  background: rgba(78, 212, 200, 0.14);
+}
+
 .icon-action {
   display: inline-flex;
   gap: 0.4rem;
@@ -1200,6 +1207,92 @@ button {
   display: grid;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+.studio-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.studio-editor-panel {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 0.9rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(125, 211, 199, 0.24);
+  background:
+    linear-gradient(90deg, rgba(78, 212, 200, 0.08), transparent 46%),
+    var(--color-terminal);
+}
+
+.studio-editor-panel > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.studio-editor-panel h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+
+.studio-editor-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.studio-editor-summary div {
+  min-width: 0;
+  padding: 0.55rem;
+  border: 1px solid var(--color-border-soft);
+  background: rgba(26, 29, 34, 0.78);
+}
+
+.studio-editor-summary dt {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.studio-editor-summary dd {
+  margin: 0.2rem 0 0;
+  overflow: hidden;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-editor-panel .agent-form,
+.studio-editor-panel .harness-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.studio-editor-panel .agent-form label:nth-of-type(2),
+.studio-editor-panel .agent-form label:nth-of-type(7),
+.studio-editor-panel .agent-form label:nth-of-type(8),
+.studio-editor-panel .harness-form label:nth-of-type(2),
+.studio-editor-panel .harness-form label:nth-of-type(4),
+.studio-editor-panel .harness-form label:nth-of-type(5),
+.studio-editor-panel .route-picker,
+.studio-editor-panel .settings-actions {
+  grid-column: 1 / -1;
+}
+
+.studio-error {
+  display: block;
+  margin-bottom: 0.75rem;
 }
 
 .effective-harness-panel {
@@ -2505,6 +2598,8 @@ section[aria-label="Settings"] {
   .agent-header,
   .command-bar,
   .agent-studio-layout,
+  .studio-editor-panel .agent-form,
+  .studio-editor-panel .harness-form,
   .harness-studio-layout,
   .skill-source-layout,
   .skill-preview-panel,

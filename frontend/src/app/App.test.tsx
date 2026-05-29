@@ -621,6 +621,7 @@ describe("App", () => {
 
     await openDefaultWorkspace();
     fireEvent.click(screen.getByRole("button", { name: "Harness Studio" }));
+    fireEvent.click(await screen.findByRole("button", { name: "New harness" }));
     fireEvent.change(await screen.findByLabelText("Name"), { target: { value: "Review Harness" } });
     fireEvent.change(screen.getByLabelText("Base policy"), {
       target: { value: "Require review before merge." }
@@ -690,6 +691,7 @@ describe("App", () => {
 
     await openDefaultWorkspace();
     fireEvent.click(screen.getByRole("button", { name: "Agent Studio" }));
+    fireEvent.click(await screen.findByRole("button", { name: "New agent" }));
     fireEvent.change(await screen.findByLabelText("Description"), {
       target: { value: "Reviews changes before merge." }
     });

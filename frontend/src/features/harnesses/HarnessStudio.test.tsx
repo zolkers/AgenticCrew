@@ -186,6 +186,7 @@ describe("HarnessStudio", () => {
       />
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "New harness" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Review_1-Harness" } });
     fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Review flow" } });
     fireEvent.change(screen.getByLabelText("Base policy"), {
@@ -253,6 +254,7 @@ describe("HarnessStudio", () => {
       />
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "New harness" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Broken Harness" } });
     fireEvent.click(screen.getByRole("button", { name: "Create harness" }));
 

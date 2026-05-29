@@ -263,6 +263,7 @@ describe("AgentStudio", () => {
       />
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "New agent" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Review_1 Agent" } });
     fireEvent.change(screen.getByLabelText("Role"), { target: { value: "qa" } });
     fireEvent.change(screen.getByLabelText("Model"), { target: { value: "gpt-5.1" } });
@@ -382,6 +383,7 @@ describe("AgentStudio", () => {
       />
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "New agent" }));
     fireEvent.click(screen.getByRole("button", { name: "Create agent" }));
 
     expect(await screen.findByText("Agent creation failed")).toBeInTheDocument();

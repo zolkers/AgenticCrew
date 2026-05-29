@@ -37,6 +37,7 @@ export function AgentStudio({
   const [editingTemplateId, setEditingTemplateId] = useState<null | string>(null);
   const [error, setError] = useState<null | string>(null);
   const [harnessProfileId, setHarnessProfileId] = useState(harnessSnapshot.profiles[0]?.id ?? "");
+  const [isEditorOpen, setIsEditorOpen] = useState(snapshot.templates.length === 0);
   const [selectedTemplateId, setSelectedTemplateId] = useState(snapshot.templates[0]?.id ?? "");
   const defaultModelId = firstAvailableModelId(modelOptions, snapshot);
   const [modelId, setModelId] = useState(defaultModelId);
@@ -84,6 +85,7 @@ export function AgentStudio({
             });
       onSnapshotChange?.(nextSnapshot);
       resetForm();
+      setIsEditorOpen(false);
     } catch {
       setError(editingTemplateId === null ? "Agent creation failed" : "Agent update failed");
     } finally {
@@ -101,9 +103,10 @@ export function AgentStudio({
     setBudgetDollars((template.budgetCents / 100).toFixed(2));
     setSkillRoutesText(template.skillRoutes.join("\n"));
     setError(null);
+    setIsEditorOpen(true);
   }
 
-  function resetForm() {
+  function resetForm(options: { close?: boolean } = {}) {
     setEditingTemplateId(null);
     setName("Review Agent");
     setRole("reviewer");
@@ -112,6 +115,15 @@ export function AgentStudio({
     setHarnessProfileId(harnessSnapshot.profiles[0]?.id ?? "");
     setBudgetDollars("2.00");
     setSkillRoutesText("agenticcrew://skills/superpowers/subagent-driven-development");
+    setError(null);
+    if (options.close === true && snapshot.templates.length > 0) {
+      setIsEditorOpen(false);
+    }
+  }
+
+  function beginCreate() {
+    resetForm();
+    setIsEditorOpen(true);
   }
 
   function toggleSkillRoute(route: string) {
@@ -161,8 +173,19 @@ export function AgentStudio({
           <p className="eyebrow">Custom agents</p>
           <h2>Agent Studio</h2>
         </div>
-        <strong>{snapshot.activeTemplateCount} active</strong>
+        <div className="studio-header-actions">
+          <strong>{snapshot.activeTemplateCount} active</strong>
+          <button className="inline-action primary" onClick={beginCreate} type="button">
+            <Plus aria-hidden="true" size={16} />
+            <span>New agent</span>
+          </button>
+        </div>
       </header>
+      {error && !isEditorOpen ? (
+        <output aria-live="polite" className="settings-error studio-error">
+          {error}
+        </output>
+      ) : null}
       {snapshot.templates.length === 0 ? (
         <p>No custom agent saved</p>
       ) : (
@@ -319,22 +342,146 @@ export function AgentStudio({
           </ul>
         </details>
       ) : null}
+      {isEditorOpen ? (
+        <AgentEditorPanel
+          availableSkillRoutes={availableSkillRoutes}
+          budgetDollars={budgetDollars}
+          description={description}
+          editingTemplateId={editingTemplateId}
+          error={error}
+          generatedId={generatedId}
+          harnessProfileId={harnessProfileId}
+          harnessSnapshot={harnessSnapshot}
+          modelId={modelId}
+          modelSelectOptions={modelSelectOptions}
+          name={name}
+          onBudgetChange={setBudgetDollars}
+          onClose={() => {
+            resetForm({ close: true });
+          }}
+          onDescriptionChange={setDescription}
+          onHarnessChange={setHarnessProfileId}
+          onModelChange={setModelId}
+          onNameChange={setName}
+          onRoleChange={setRole}
+          onSkillRoutesChange={setSkillRoutesText}
+          onSubmit={submitAgentTemplate}
+          role={role}
+          saving={saving}
+          selectedSkillRoutes={selectedSkillRoutes}
+          shouldShowClose={snapshot.templates.length > 0}
+          skillRoutesText={skillRoutesText}
+          submitLabel={submitLabel}
+          toggleSkillRoute={toggleSkillRoute}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+type AgentEditorPanelProps = Readonly<{
+  availableSkillRoutes?: readonly DiscoveredSkillManifest[];
+  budgetDollars: string;
+  description: string;
+  editingTemplateId: null | string;
+  error: null | string;
+  generatedId: string;
+  harnessProfileId: string;
+  harnessSnapshot: HarnessStudioSnapshot;
+  modelId: string;
+  modelSelectOptions: readonly AiModelRecord[];
+  name: string;
+  onBudgetChange: (value: string) => void;
+  onClose: () => void;
+  onDescriptionChange: (value: string) => void;
+  onHarnessChange: (value: string) => void;
+  onModelChange: (value: string) => void;
+  onNameChange: (value: string) => void;
+  onRoleChange: (value: string) => void;
+  onSkillRoutesChange: (value: string) => void;
+  onSubmit: () => Promise<void>;
+  role: string;
+  saving: boolean;
+  selectedSkillRoutes: readonly string[];
+  shouldShowClose: boolean;
+  skillRoutesText: string;
+  submitLabel: string;
+  toggleSkillRoute: (route: string) => void;
+}>;
+
+function AgentEditorPanel({
+  availableSkillRoutes,
+  budgetDollars,
+  description,
+  editingTemplateId,
+  error,
+  generatedId,
+  harnessProfileId,
+  harnessSnapshot,
+  modelId,
+  modelSelectOptions,
+  name,
+  onBudgetChange,
+  onClose,
+  onDescriptionChange,
+  onHarnessChange,
+  onModelChange,
+  onNameChange,
+  onRoleChange,
+  onSkillRoutesChange,
+  onSubmit,
+  role,
+  saving,
+  selectedSkillRoutes,
+  shouldShowClose,
+  skillRoutesText,
+  submitLabel,
+  toggleSkillRoute
+}: AgentEditorPanelProps) {
+  const isCreating = editingTemplateId === null;
+
+  return (
+    <section aria-label={isCreating ? "Create agent panel" : "Edit agent panel"} className="studio-editor-panel">
+      <header>
+        <div>
+          <p className="eyebrow">{isCreating ? "New custom agent" : "Edit custom agent"}</p>
+          <h3>{isCreating ? "Create agent" : "Save agent changes"}</h3>
+        </div>
+        {shouldShowClose ? (
+          <button className="icon-action" disabled={saving} onClick={onClose} type="button">
+            <X aria-hidden="true" size={16} />
+            <span>Close</span>
+          </button>
+        ) : null}
+      </header>
+      <dl className="studio-editor-summary">
+        <div>
+          <dt>Model</dt>
+          <dd>{modelId || "No model"}</dd>
+        </div>
+        <div>
+          <dt>Harness</dt>
+          <dd>{harnessProfileId || "None"}</dd>
+        </div>
+        <div>
+          <dt>Skills</dt>
+          <dd>{selectedSkillRoutes.length}</dd>
+        </div>
+        <div>
+          <dt>Budget</dt>
+          <dd>${Number.parseFloat(budgetDollars || "0").toFixed(2)}</dd>
+        </div>
+      </dl>
       <form
         className="agent-form"
         onSubmit={(event) => {
           event.preventDefault();
-          void submitAgentTemplate();
+          void onSubmit();
         }}
       >
         <label>
           <span>Name</span>
-          <input
-            disabled={saving}
-            onChange={(event) => {
-              setName(event.target.value);
-            }}
-            value={name}
-          />
+          <input disabled={saving} onChange={(event) => { onNameChange(event.target.value); }} value={name} />
         </label>
         <label>
           <span>Route</span>
@@ -342,23 +489,11 @@ export function AgentStudio({
         </label>
         <label>
           <span>Role</span>
-          <input
-            disabled={saving}
-            onChange={(event) => {
-              setRole(event.target.value);
-            }}
-            value={role}
-          />
+          <input disabled={saving} onChange={(event) => { onRoleChange(event.target.value); }} value={role} />
         </label>
         <label>
           <span>Model</span>
-          <select
-            disabled={saving}
-            onChange={(event) => {
-              setModelId(event.target.value);
-            }}
-            value={modelId}
-          >
+          <select disabled={saving} onChange={(event) => { onModelChange(event.target.value); }} value={modelId}>
             {modelSelectOptions.map((model) => (
               <option key={model.id} value={model.id}>
                 {model.label}
@@ -368,13 +503,7 @@ export function AgentStudio({
         </label>
         <label>
           <span>Harness</span>
-          <select
-            disabled={saving}
-            onChange={(event) => {
-              setHarnessProfileId(event.target.value);
-            }}
-            value={harnessProfileId}
-          >
+          <select disabled={saving} onChange={(event) => { onHarnessChange(event.target.value); }} value={harnessProfileId}>
             <option value="">None</option>
             {harnessSnapshot.profiles.map((profile) => (
               <option key={profile.id} value={profile.id}>
@@ -388,9 +517,7 @@ export function AgentStudio({
           <input
             disabled={saving}
             min="0"
-            onChange={(event) => {
-              setBudgetDollars(event.target.value);
-            }}
+            onChange={(event) => { onBudgetChange(event.target.value); }}
             step="0.01"
             type="number"
             value={budgetDollars}
@@ -398,57 +525,25 @@ export function AgentStudio({
         </label>
         <label>
           <span>Description</span>
-          <input
-            disabled={saving}
-            onChange={(event) => {
-              setDescription(event.target.value);
-            }}
-            value={description}
-          />
+          <input disabled={saving} onChange={(event) => { onDescriptionChange(event.target.value); }} value={description} />
         </label>
         <label>
           <span>Skill routes</span>
-          <textarea
-            disabled={saving}
-            onChange={(event) => {
-              setSkillRoutesText(event.target.value);
-            }}
-            value={skillRoutesText}
-          />
+          <textarea disabled={saving} onChange={(event) => { onSkillRoutesChange(event.target.value); }} value={skillRoutesText} />
         </label>
-        {availableSkillRoutes === undefined || availableSkillRoutes.length === 0 ? null : (
-          <div aria-label="Available skill routes" className="route-picker">
-            {availableSkillRoutes.map((skill) => {
-              const selected = selectedSkillRoutes.includes(skill.route);
-
-              return (
-                <button
-                  aria-pressed={selected}
-                  disabled={saving}
-                  key={skill.route}
-                  onClick={() => {
-                    toggleSkillRoute(skill.route);
-                  }}
-                  type="button"
-                >
-                  <Route aria-hidden="true" size={14} />
-                  <span>{skill.name}</span>
-                  <code>{skill.route}</code>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <SkillRoutePicker
+          availableSkillRoutes={availableSkillRoutes}
+          saving={saving}
+          selectedSkillRoutes={selectedSkillRoutes}
+          toggleSkillRoute={toggleSkillRoute}
+        />
         <div className="settings-actions">
-          <button
-            disabled={saving || modelId.length === 0 || (editingTemplateId === null && generatedId.length === 0)}
-            type="submit"
-          >
+          <button disabled={saving || modelId.length === 0 || (isCreating && generatedId.length === 0)} type="submit">
             <Plus aria-hidden="true" size={16} />
             <span>{submitLabel}</span>
           </button>
-          {editingTemplateId === null ? null : (
-            <button disabled={saving} onClick={resetForm} type="button">
+          {isCreating ? null : (
+            <button disabled={saving} onClick={onClose} type="button">
               <X aria-hidden="true" size={16} />
               <span>Cancel</span>
             </button>
@@ -461,6 +556,46 @@ export function AgentStudio({
         </div>
       </form>
     </section>
+  );
+}
+
+function SkillRoutePicker({
+  availableSkillRoutes,
+  saving,
+  selectedSkillRoutes,
+  toggleSkillRoute
+}: Readonly<{
+  availableSkillRoutes?: readonly DiscoveredSkillManifest[];
+  saving: boolean;
+  selectedSkillRoutes: readonly string[];
+  toggleSkillRoute: (route: string) => void;
+}>) {
+  if (availableSkillRoutes === undefined || availableSkillRoutes.length === 0) {
+    return null;
+  }
+
+  return (
+    <div aria-label="Available skill routes" className="route-picker">
+      {availableSkillRoutes.map((skill) => {
+        const selected = selectedSkillRoutes.includes(skill.route);
+
+        return (
+          <button
+            aria-pressed={selected}
+            disabled={saving}
+            key={skill.route}
+            onClick={() => {
+              toggleSkillRoute(skill.route);
+            }}
+            type="button"
+          >
+            <Route aria-hidden="true" size={14} />
+            <span>{skill.name}</span>
+            <code>{skill.route}</code>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

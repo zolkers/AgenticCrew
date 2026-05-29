@@ -30,6 +30,7 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
   const [piBasePolicy, setPiBasePolicy] = useState("Require explicit PI review before release claims.");
   const [piDescription, setPiDescription] = useState("Local PI extension for this workspace.");
   const [piName, setPiName] = useState("Release PI Extension");
+  const [isEditorOpen, setIsEditorOpen] = useState(snapshot.profiles.length === 0);
   const [name, setName] = useState("Workspace Harness");
   const [saving, setSaving] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState(snapshot.profiles[0]?.id ?? "");
@@ -66,6 +67,7 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
             });
       onSnapshotChange?.(nextSnapshot);
       resetForm();
+      setIsEditorOpen(false);
     } catch {
       setError(editingProfileId === null ? "Harness creation failed" : "Harness update failed");
     } finally {
@@ -82,14 +84,24 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
     setBasePolicy(basePolicyModule?.content ?? "");
     setSkillRoutesText(profile.skillRoutes.join("\n"));
     setError(null);
+    setIsEditorOpen(true);
   }
 
-  function resetForm() {
+  function resetForm(options: { close?: boolean } = {}) {
     setEditingProfileId(null);
     setName("Workspace Harness");
     setDescription("Local execution profile for this workspace.");
     setBasePolicy("Validate before final claims.");
     setSkillRoutesText("");
+    setError(null);
+    if (options.close === true && snapshot.profiles.length > 0) {
+      setIsEditorOpen(false);
+    }
+  }
+
+  function beginCreate() {
+    resetForm();
+    setIsEditorOpen(true);
   }
 
   function toggleSkillRoute(route: string) {
@@ -167,8 +179,19 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
           <p className="eyebrow">Runtime control</p>
           <h2>Harness Studio</h2>
         </div>
-        <strong>{snapshot.activeProfileCount} active</strong>
+        <div className="studio-header-actions">
+          <strong>{snapshot.activeProfileCount} active</strong>
+          <button className="inline-action primary" onClick={beginCreate} type="button">
+            <Plus aria-hidden="true" size={16} />
+            <span>New harness</span>
+          </button>
+        </div>
       </header>
+      {error && !isEditorOpen ? (
+        <output aria-live="polite" className="settings-error studio-error">
+          {error}
+        </output>
+      ) : null}
       {snapshot.profiles.length === 0 ? (
         <p>No harness profile registered</p>
       ) : (
@@ -292,22 +315,118 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
           </div>
         </form>
       </details>
+      {isEditorOpen ? (
+        <HarnessEditorPanel
+          availableSkillRoutes={availableSkillRoutes}
+          basePolicy={basePolicy}
+          description={description}
+          editingProfileId={editingProfileId}
+          error={error}
+          generatedId={generatedId}
+          name={name}
+          onBasePolicyChange={setBasePolicy}
+          onClose={() => {
+            resetForm({ close: true });
+          }}
+          onDescriptionChange={setDescription}
+          onNameChange={setName}
+          onSkillRoutesChange={setSkillRoutesText}
+          onSubmit={submitHarnessProfile}
+          saving={saving}
+          selectedSkillRoutes={selectedSkillRoutes}
+          shouldShowClose={snapshot.profiles.length > 0}
+          skillRoutesText={skillRoutesText}
+          submitLabel={submitLabel}
+          toggleSkillRoute={toggleSkillRoute}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+type HarnessEditorPanelProps = Readonly<{
+  availableSkillRoutes?: readonly DiscoveredSkillManifest[];
+  basePolicy: string;
+  description: string;
+  editingProfileId: null | string;
+  error: null | string;
+  generatedId: string;
+  name: string;
+  onBasePolicyChange: (value: string) => void;
+  onClose: () => void;
+  onDescriptionChange: (value: string) => void;
+  onNameChange: (value: string) => void;
+  onSkillRoutesChange: (value: string) => void;
+  onSubmit: () => Promise<void>;
+  saving: boolean;
+  selectedSkillRoutes: readonly string[];
+  shouldShowClose: boolean;
+  skillRoutesText: string;
+  submitLabel: string;
+  toggleSkillRoute: (route: string) => void;
+}>;
+
+function HarnessEditorPanel({
+  availableSkillRoutes,
+  basePolicy,
+  description,
+  editingProfileId,
+  error,
+  generatedId,
+  name,
+  onBasePolicyChange,
+  onClose,
+  onDescriptionChange,
+  onNameChange,
+  onSkillRoutesChange,
+  onSubmit,
+  saving,
+  selectedSkillRoutes,
+  shouldShowClose,
+  skillRoutesText,
+  submitLabel,
+  toggleSkillRoute
+}: HarnessEditorPanelProps) {
+  const isCreating = editingProfileId === null;
+
+  return (
+    <section aria-label={isCreating ? "Create harness panel" : "Edit harness panel"} className="studio-editor-panel">
+      <header>
+        <div>
+          <p className="eyebrow">{isCreating ? "New runtime profile" : "Edit runtime profile"}</p>
+          <h3>{isCreating ? "Create harness" : "Save harness changes"}</h3>
+        </div>
+        {shouldShowClose ? (
+          <button className="icon-action" disabled={saving} onClick={onClose} type="button">
+            <X aria-hidden="true" size={16} />
+            <span>Close</span>
+          </button>
+        ) : null}
+      </header>
+      <dl className="studio-editor-summary">
+        <div>
+          <dt>Route</dt>
+          <dd>{editingProfileId ?? (generatedId || "No route")}</dd>
+        </div>
+        <div>
+          <dt>Skills</dt>
+          <dd>{selectedSkillRoutes.length}</dd>
+        </div>
+        <div>
+          <dt>Policy</dt>
+          <dd>{basePolicy.trim().length > 0 ? "Defined" : "Empty"}</dd>
+        </div>
+      </dl>
       <form
         className="harness-form"
         onSubmit={(event) => {
           event.preventDefault();
-          void submitHarnessProfile();
+          void onSubmit();
         }}
       >
         <label>
           <span>Name</span>
-          <input
-            disabled={saving}
-            onChange={(event) => {
-              setName(event.target.value);
-            }}
-            value={name}
-          />
+          <input disabled={saving} onChange={(event) => { onNameChange(event.target.value); }} value={name} />
         </label>
         <label>
           <span>Route</span>
@@ -315,64 +434,29 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
         </label>
         <label>
           <span>Description</span>
-          <input
-            disabled={saving}
-            onChange={(event) => {
-              setDescription(event.target.value);
-            }}
-            value={description}
-          />
+          <input disabled={saving} onChange={(event) => { onDescriptionChange(event.target.value); }} value={description} />
         </label>
         <label>
           <span>Base policy</span>
-          <textarea
-            disabled={saving}
-            onChange={(event) => {
-              setBasePolicy(event.target.value);
-            }}
-            value={basePolicy}
-          />
+          <textarea disabled={saving} onChange={(event) => { onBasePolicyChange(event.target.value); }} value={basePolicy} />
         </label>
         <label>
           <span>Skill routes</span>
-          <textarea
-            disabled={saving}
-            onChange={(event) => {
-              setSkillRoutesText(event.target.value);
-            }}
-            value={skillRoutesText}
-          />
+          <textarea disabled={saving} onChange={(event) => { onSkillRoutesChange(event.target.value); }} value={skillRoutesText} />
         </label>
-        {availableSkillRoutes === undefined || availableSkillRoutes.length === 0 ? null : (
-          <div aria-label="Available harness skill routes" className="route-picker">
-            {availableSkillRoutes.map((skill) => {
-              const selected = selectedSkillRoutes.includes(skill.route);
-
-              return (
-                <button
-                  aria-pressed={selected}
-                  disabled={saving}
-                  key={skill.route}
-                  onClick={() => {
-                    toggleSkillRoute(skill.route);
-                  }}
-                  type="button"
-                >
-                  <Route aria-hidden="true" size={14} />
-                  <span>{skill.name}</span>
-                  <code>{skill.route}</code>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <HarnessSkillRoutePicker
+          availableSkillRoutes={availableSkillRoutes}
+          saving={saving}
+          selectedSkillRoutes={selectedSkillRoutes}
+          toggleSkillRoute={toggleSkillRoute}
+        />
         <div className="settings-actions">
           <button disabled={saving || generatedId.length === 0} type="submit">
             <Plus aria-hidden="true" size={16} />
             <span>{submitLabel}</span>
           </button>
-          {editingProfileId === null ? null : (
-            <button disabled={saving} onClick={resetForm} type="button">
+          {isCreating ? null : (
+            <button disabled={saving} onClick={onClose} type="button">
               <X aria-hidden="true" size={16} />
               <span>Cancel</span>
             </button>
@@ -385,6 +469,46 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
         </div>
       </form>
     </section>
+  );
+}
+
+function HarnessSkillRoutePicker({
+  availableSkillRoutes,
+  saving,
+  selectedSkillRoutes,
+  toggleSkillRoute
+}: Readonly<{
+  availableSkillRoutes?: readonly DiscoveredSkillManifest[];
+  saving: boolean;
+  selectedSkillRoutes: readonly string[];
+  toggleSkillRoute: (route: string) => void;
+}>) {
+  if (availableSkillRoutes === undefined || availableSkillRoutes.length === 0) {
+    return null;
+  }
+
+  return (
+    <div aria-label="Available harness skill routes" className="route-picker">
+      {availableSkillRoutes.map((skill) => {
+        const selected = selectedSkillRoutes.includes(skill.route);
+
+        return (
+          <button
+            aria-pressed={selected}
+            disabled={saving}
+            key={skill.route}
+            onClick={() => {
+              toggleSkillRoute(skill.route);
+            }}
+            type="button"
+          >
+            <Route aria-hidden="true" size={14} />
+            <span>{skill.name}</span>
+            <code>{skill.route}</code>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
