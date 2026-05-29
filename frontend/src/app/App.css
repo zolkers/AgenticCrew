@@ -526,14 +526,16 @@ button {
   border-top: 1px solid var(--color-border);
 }
 
-.loadout-panel {
+.loadout-panel,
+.run-profile-panel {
   display: grid;
   gap: 0.7rem;
   padding-top: 1rem;
   border-top: 1px solid var(--color-border);
 }
 
-.loadout-panel h2 {
+.loadout-panel h2,
+.run-profile-panel h2 {
   display: flex;
   gap: 0.45rem;
   align-items: center;
@@ -555,6 +557,42 @@ button {
   min-width: 0;
   min-height: 2.35rem;
   padding: 0 0.65rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
+  color: var(--color-text);
+  background: var(--color-terminal);
+}
+
+.run-profile-panel dl {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.run-profile-panel div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.run-profile-panel dt {
+  color: var(--color-muted);
+  font-size: 0.67rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.run-profile-panel dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+.run-profile-panel button {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.1rem;
+  padding: 0 0.7rem;
   border: 1px solid var(--color-border-soft);
   border-radius: 4px;
   color: var(--color-text);

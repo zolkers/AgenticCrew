@@ -206,6 +206,11 @@ describe("App", () => {
     expect(screen.getAllByText("fullstack-app").length).toBeGreaterThan(0);
     expect(screen.getByText("Active terminal stream")).toBeInTheDocument();
     expect(screen.getByText("UI architect / active")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Run profile" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stage selected run profile" })).toHaveAttribute(
+      "title",
+      "developer-pi"
+    );
     expect(screen.getByLabelText("Run status")).toHaveTextContent("engine: langgraph");
     expect(screen.queryByRole("heading", { name: "Skill Sources" })).not.toBeInTheDocument();
   });
@@ -270,7 +275,7 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workspace/api_-2-platform/cockpit");
     expect(screen.getByRole("heading", { name: "Build API agents" })).toBeInTheDocument();
-    expect(screen.getByText("feature/api-platform")).toBeInTheDocument();
+    expect(screen.getAllByText("feature/api-platform").length).toBeGreaterThan(0);
   });
 
   it("keeps navigation out of the topbar and exposes it in a workspace rail", async () => {
@@ -340,6 +345,10 @@ describe("App", () => {
       expect(screen.getByRole("heading", { name: "Release Agent" })).toBeInTheDocument();
       expect(screen.getByText("release / gpt-5.1")).toBeInTheDocument();
       expect(screen.getByText("Harness: Release Harness")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Stage selected run profile" })).toHaveAttribute(
+        "title",
+        "release-agent"
+      );
     });
   });
 
@@ -359,6 +368,10 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
     expect(screen.getByText("UI architect / gpt-5")).toBeInTheDocument();
     expect(screen.getByText("Harness: None")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stage selected run profile" })).toHaveAttribute(
+      "title",
+      "ui-architect"
+    );
   });
 
   it("offers inactive saved templates when none are active", async () => {

@@ -585,6 +585,15 @@ type WorkspaceLoadout = Readonly<{
   harnessProfileId: string;
 }>;
 
+type RunProfile = Readonly<{
+  agentId: string;
+  agentName: string;
+  branch: string;
+  harnessId: string;
+  harnessName: string;
+  workspaceId: string;
+}>;
+
 function Cockpit({
   activeWorkspace,
   agentStudioSnapshot,
@@ -606,6 +615,7 @@ function Cockpit({
     activeWorkspace.selectedHarnessProfileId ?? (harnessProfiles.at(0)?.id ?? "");
   const selectedAgentTemplate = agentTemplates.find((template) => template.id === selectedAgentTemplateId);
   const selectedHarnessProfile = harnessProfiles.find((profile) => profile.id === selectedHarnessProfileId);
+  const runProfile = buildRunProfile(activeWorkspace, selectedAgentTemplate, selectedHarnessProfile, activeAgent);
   const budgetPercent = Math.round((activeWorkspace.budgetUsedUsd / activeWorkspace.budgetLimitUsd) * 100);
   const updateLoadout = (next: Partial<WorkspaceLoadout>) => {
     onLoadoutChange({
@@ -692,6 +702,34 @@ function Cockpit({
               ))}
             </select>
           </label>
+        </section>
+
+        <section aria-labelledby="run-profile-title" className="run-profile-panel">
+          <h2 id="run-profile-title">
+            <SlidersHorizontal aria-hidden="true" size={16} />
+            Run profile
+          </h2>
+          <dl>
+            <div>
+              <dt>Workspace</dt>
+              <dd>{runProfile.workspaceId}</dd>
+            </div>
+            <div>
+              <dt>Agent</dt>
+              <dd>{runProfile.agentName}</dd>
+            </div>
+            <div>
+              <dt>Harness</dt>
+              <dd>{runProfile.harnessName}</dd>
+            </div>
+            <div>
+              <dt>Branch</dt>
+              <dd>{runProfile.branch}</dd>
+            </div>
+          </dl>
+          <button aria-label="Stage selected run profile" title={runProfile.agentId} type="button">
+            <ChevronRight aria-hidden="true" size={16} />
+          </button>
         </section>
 
         <section aria-labelledby="progress-title">
@@ -797,6 +835,22 @@ function preferredActiveItems<T extends AgentTemplate | HarnessProfile>(items: r
   const activeItems = items.filter((item) => item.active);
 
   return activeItems.length > 0 ? activeItems : [...items];
+}
+
+function buildRunProfile(
+  workspace: CockpitWorkspace,
+  agentTemplate: AgentTemplate | undefined,
+  harnessProfile: HarnessProfile | undefined,
+  fallbackAgent: CockpitWorkspace["agents"][number]
+): RunProfile {
+  return {
+    agentId: agentTemplate?.id ?? fallbackAgent.id,
+    agentName: agentTemplate?.name ?? fallbackAgent.name,
+    branch: workspace.branch,
+    harnessId: harnessProfile?.id ?? "none",
+    harnessName: harnessProfile?.name ?? "None",
+    workspaceId: workspace.id
+  };
 }
 
 function slugify(value: string): string {
