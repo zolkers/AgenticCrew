@@ -1381,6 +1381,266 @@ button {
   align-items: end;
 }
 
+.skill-source-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.skill-source-roster {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  min-width: 0;
+  padding: 0.45rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-terminal);
+}
+
+.skill-source-roster button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  min-width: 0;
+  min-height: 3.2rem;
+  padding: 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--color-text);
+  text-align: left;
+  background: transparent;
+}
+
+.skill-source-roster button:hover,
+.skill-source-roster button[aria-pressed="true"] {
+  border-color: rgba(106, 169, 255, 0.42);
+  background: #303746;
+}
+
+.skill-source-roster button > span {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.skill-source-roster strong,
+.skill-source-roster small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-source-roster small {
+  color: var(--color-muted);
+}
+
+.skill-source-roster code {
+  color: var(--color-codex);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.skill-source-detail {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--color-border);
+  background:
+    linear-gradient(90deg, rgba(106, 169, 255, 0.08), transparent 42%),
+    var(--color-terminal);
+}
+
+.skill-source-detail > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.skill-source-detail h3,
+.skill-source-detail h4 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.skill-source-detail h3 {
+  font-size: 1.05rem;
+}
+
+.skill-source-detail header span {
+  display: block;
+  max-width: 48rem;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-source-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
+.skill-source-detail > dl,
+.skill-source-diagnostics dl,
+.skill-preview-panel dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.skill-source-detail > dl div,
+.skill-source-diagnostics dl div,
+.skill-preview-panel dl div {
+  min-width: 0;
+  padding: 0.55rem;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-panel);
+}
+
+.skill-source-detail dt,
+.skill-source-diagnostics dt,
+.skill-preview-panel dt {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.skill-source-detail dd,
+.skill-source-diagnostics dd,
+.skill-preview-panel dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+.skill-source-diagnostics {
+  padding: 0.65rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel);
+}
+
+.skill-source-diagnostics summary {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+}
+
+.skill-source-diagnostics summary::-webkit-details-marker {
+  display: none;
+}
+
+.skill-source-diagnostics h4 {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.skill-source-diagnostics dl,
+.skill-source-errors {
+  margin-top: 0.65rem;
+}
+
+.skill-source-errors {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0;
+  list-style: none;
+}
+
+.skill-source-errors li {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.55rem;
+  border-left: 2px solid var(--color-coral);
+  background: rgba(220, 125, 115, 0.08);
+}
+
+.skill-source-errors span {
+  color: var(--color-muted);
+}
+
+.skill-preview-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1.25fr);
+  gap: 0.75rem;
+  min-width: 0;
+  padding-top: 0.2rem;
+}
+
+.skill-preview-panel nav {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.skill-preview-panel nav button {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+  padding: 0.55rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
+  color: var(--color-text);
+  text-align: left;
+  background: var(--color-panel);
+}
+
+.skill-preview-panel nav button[aria-pressed="true"],
+.skill-preview-panel nav button:hover {
+  border-color: rgba(125, 211, 199, 0.45);
+  background: rgba(125, 211, 199, 0.08);
+}
+
+.skill-preview-panel nav small {
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-preview-panel article {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid rgba(125, 211, 199, 0.24);
+  background: rgba(125, 211, 199, 0.06);
+}
+
+.skill-preview-panel article header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.skill-preview-panel code {
+  max-width: 100%;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--color-border-soft);
+  color: var(--color-codex);
+  overflow-wrap: anywhere;
+  background: var(--color-panel);
+}
+
+.skill-preview-panel p,
+.skill-preview-empty {
+  color: var(--color-muted);
+}
+
 .settings-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1912,6 +2172,8 @@ section[aria-label="Settings"] {
   .command-bar,
   .agent-studio-layout,
   .harness-studio-layout,
+  .skill-source-layout,
+  .skill-preview-panel,
   .git-context-form,
   .mission-grid {
     grid-template-columns: 1fr;

@@ -44,7 +44,7 @@ describe("SkillSources", () => {
     render(<SkillSources snapshot={snapshot} />);
 
     expect(screen.getByRole("heading", { name: "Skill Sources" })).toBeInTheDocument();
-    expect(screen.getByText("superpowers")).toBeInTheDocument();
+    expect(screen.getAllByText("superpowers").length).toBeGreaterThan(0);
     expect(screen.getByText("1 source matches")).toBeInTheDocument();
     expect(screen.getByText("0 skills indexed")).toBeInTheDocument();
     expect(screen.getByText("GitHub")).toBeInTheDocument();
@@ -106,7 +106,7 @@ describe("SkillSources", () => {
     expect(screen.getByText("abc123")).toBeInTheDocument();
     expect(screen.getByText("C:/AgenticCrew/cache/skills/superpowers")).toBeInTheDocument();
     expect(screen.getByText("git fetch failed")).toBeInTheDocument();
-    expect(screen.getByText("planning")).toBeInTheDocument();
+    expect(screen.getAllByText("planning").length).toBeGreaterThan(0);
     expect(screen.getByText("1 skills indexed")).toBeInTheDocument();
     expect(screen.getByText("agenticcrew://skills/superpowers/planning")).toBeInTheDocument();
     expect(screen.getByText("Plan work safely")).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe("SkillSources", () => {
 
     expect(screen.getByText("0 skills indexed")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Search skills"), { target: { value: "legacy" } });
-    expect(screen.getByText("legacy")).toBeInTheDocument();
+    expect(screen.getAllByText("legacy").length).toBeGreaterThan(0);
   });
 
   it("filters sources by skill search, status, and trust", () => {
@@ -258,13 +258,13 @@ describe("SkillSources", () => {
     render(<SkillSources snapshot={snapshot} />);
 
     fireEvent.change(screen.getByLabelText("Search skills"), { target: { value: "browser" } });
-    expect(screen.getByText("superpowers")).toBeInTheDocument();
+    expect(screen.getAllByText("superpowers").length).toBeGreaterThan(0);
     expect(screen.queryByText("local-pack")).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Search skills"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Filter status"), { target: { value: "pending_validation" } });
     fireEvent.change(screen.getByLabelText("Filter trust"), { target: { value: "local" } });
-    expect(screen.getByText("local-pack")).toBeInTheDocument();
+    expect(screen.getAllByText("local-pack").length).toBeGreaterThan(0);
     expect(screen.queryByText("superpowers")).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Search skills"), { target: { value: "no-match" } });
@@ -370,7 +370,7 @@ describe("SkillSources", () => {
       expect(snapshot.sources[0].discoveredSkills?.[0]?.name).toBe("planning");
     });
     rerender(<SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />);
-    expect(screen.getByText("planning")).toBeInTheDocument();
+    expect(screen.getAllByText("planning").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
     await waitFor(() => {
       expect(calls).toEqual(expect.arrayContaining([expect.objectContaining({ command: "inspect_cached_skill_source" })]));
