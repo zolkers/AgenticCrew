@@ -87,9 +87,14 @@ impl fmt::Display for SkillRouteError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SkillRouteError::Empty => write!(formatter, "skill route must not be empty"),
-            SkillRouteError::EmptySegment => write!(formatter, "skill route segments must not be empty"),
+            SkillRouteError::EmptySegment => {
+                write!(formatter, "skill route segments must not be empty")
+            }
             SkillRouteError::InvalidScheme => {
-                write!(formatter, "skill route must use agenticcrew://skills/ or skill://")
+                write!(
+                    formatter,
+                    "skill route must use agenticcrew://skills/ or skill://"
+                )
             }
             SkillRouteError::InvalidSegment => {
                 write!(
@@ -97,10 +102,17 @@ impl fmt::Display for SkillRouteError {
                     "skill route segments must use lowercase letters, numbers, '-' or '_'"
                 )
             }
-            SkillRouteError::MissingSkillPath => write!(formatter, "skill route must include a skill path"),
-            SkillRouteError::MissingSourceId => write!(formatter, "skill route must include a source id"),
+            SkillRouteError::MissingSkillPath => {
+                write!(formatter, "skill route must include a skill path")
+            }
+            SkillRouteError::MissingSourceId => {
+                write!(formatter, "skill route must include a source id")
+            }
             SkillRouteError::UnsupportedUriPart => {
-                write!(formatter, "skill route must not include query strings or fragments")
+                write!(
+                    formatter,
+                    "skill route must not include query strings or fragments"
+                )
             }
         }
     }
@@ -133,9 +145,8 @@ mod tests {
 
     #[test]
     fn parses_canonical_skill_route_with_namespace() {
-        let route =
-            SkillRoute::parse("agenticcrew://skills/superpowers/review/gh-fix-ci")
-                .expect("route should parse");
+        let route = SkillRoute::parse("agenticcrew://skills/superpowers/review/gh-fix-ci")
+            .expect("route should parse");
 
         assert_eq!(route.source_id(), "superpowers");
         assert_eq!(route.skill_path(), &["review", "gh-fix-ci"]);

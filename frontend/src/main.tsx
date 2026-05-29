@@ -18,58 +18,37 @@ import {
   previewSkillSourcesInvoke,
   previewWorkspaceInvoke
 } from "./shared/api/previewInvokes";
-import { tauriAgentStudioInvoke } from "./shared/api/tauriAgentStudioInvoke";
-import { tauriHarnessStudioInvoke } from "./shared/api/tauriHarnessStudioInvoke";
-import { tauriMissionControlInvoke } from "./shared/api/tauriMissionControlInvoke";
-import { tauriSettingsInvoke } from "./shared/api/tauriSettingsInvoke";
-import { tauriSkillSourcesInvoke } from "./shared/api/tauriSkillSourcesInvoke";
-import { tauriWorkspaceInvoke } from "./shared/api/tauriWorkspaceInvoke";
 
 const rootElement = document.getElementById("root");
 const isElectronRuntime = typeof window.agenticcrew?.invoke === "function";
-const isTauriRuntime = "__TAURI_INTERNALS__" in window;
 
-function selectDesktopInvoke<T>(electronInvoke: T, tauriInvoke: T, previewInvoke: T): T {
-  if (isElectronRuntime) {
-    return electronInvoke;
-  }
-
-  if (isTauriRuntime) {
-    return tauriInvoke;
-  }
-
-  return previewInvoke;
+function selectDesktopInvoke<T>(electronInvoke: T, previewInvoke: T): T {
+  return isElectronRuntime ? electronInvoke : previewInvoke;
 }
 
 if (rootElement !== null) {
   const agentStudioInvoke = selectDesktopInvoke(
     electronAgentStudioInvoke,
-    tauriAgentStudioInvoke,
     previewAgentStudioInvoke
   );
   const harnessStudioInvoke = selectDesktopInvoke(
     electronHarnessStudioInvoke,
-    tauriHarnessStudioInvoke,
     previewHarnessStudioInvoke
   );
   const missionControlInvoke = selectDesktopInvoke(
     electronMissionControlInvoke,
-    tauriMissionControlInvoke,
     previewMissionControlInvoke
   );
   const skillSourcesInvoke = selectDesktopInvoke(
     electronSkillSourcesInvoke,
-    tauriSkillSourcesInvoke,
     previewSkillSourcesInvoke
   );
   const workspaceInvoke = selectDesktopInvoke(
     electronWorkspaceInvoke,
-    tauriWorkspaceInvoke,
     previewWorkspaceInvoke
   );
   const settingsInvoke = selectDesktopInvoke(
     electronSettingsInvoke,
-    tauriSettingsInvoke,
     previewSettingsInvoke
   );
 

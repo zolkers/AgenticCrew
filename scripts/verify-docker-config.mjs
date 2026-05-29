@@ -21,7 +21,7 @@ for (const requiredFragment of [
   ".:/workspace",
   "/workspace/node_modules",
   "/workspace/frontend/node_modules",
-  "/workspace/src-tauri/target",
+  "/workspace/target",
   "desktop-test:",
   "find node_modules frontend/node_modules",
   "npm ci",

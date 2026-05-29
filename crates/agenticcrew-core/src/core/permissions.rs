@@ -42,4 +42,3 @@ pub struct NetworkPermissionScope {
 pub struct CommandPermissionScope {
     pub command: String,
 }
-

@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "crates/agenticcrew-core",
+    "crates/agenticcrew-sidecar"
+]
+resolver = "2"

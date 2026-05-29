@@ -219,8 +219,7 @@ impl HarnessProfile {
         request: UpdateHarnessProfileRequest,
     ) -> Result<(), HarnessProfileError> {
         self.name = validate_required("harness profile name", request.name)?;
-        self.description =
-            validate_required("harness profile description", request.description)?;
+        self.description = validate_required("harness profile description", request.description)?;
         let base_policy = validate_required("base policy", request.base_policy)?;
         self.skill_routes = normalize_skill_routes(request.skill_routes);
 
@@ -257,7 +256,10 @@ impl std::fmt::Display for HarnessProfileError {
         match self {
             HarnessProfileError::EmptyField { field } => write!(formatter, "{field} is required"),
             HarnessProfileError::InvalidIdentifier { field, value } => {
-                write!(formatter, "{field} '{value}' must use lowercase letters, numbers, '-' or '_'")
+                write!(
+                    formatter,
+                    "{field} '{value}' must use lowercase letters, numbers, '-' or '_'"
+                )
             }
         }
     }
@@ -265,10 +267,7 @@ impl std::fmt::Display for HarnessProfileError {
 
 impl std::error::Error for HarnessProfileError {}
 
-fn validate_required(
-    field: &'static str,
-    value: String,
-) -> Result<String, HarnessProfileError> {
+fn validate_required(field: &'static str, value: String) -> Result<String, HarnessProfileError> {
     let value = value.trim();
 
     if value.is_empty() {
@@ -278,14 +277,14 @@ fn validate_required(
     Ok(value.to_owned())
 }
 
-fn validate_identifier(
-    field: &'static str,
-    value: String,
-) -> Result<String, HarnessProfileError> {
+fn validate_identifier(field: &'static str, value: String) -> Result<String, HarnessProfileError> {
     let value = validate_required(field, value)?;
-    let is_valid = value
-        .chars()
-        .all(|character| character.is_ascii_lowercase() || character.is_ascii_digit() || character == '-' || character == '_');
+    let is_valid = value.chars().all(|character| {
+        character.is_ascii_lowercase()
+            || character.is_ascii_digit()
+            || character == '-'
+            || character == '_'
+    });
 
     if !is_valid {
         return Err(HarnessProfileError::InvalidIdentifier { field, value });
@@ -386,7 +385,10 @@ mod tests {
         assert_eq!(profile.name, "Review Harness");
         assert_eq!(profile.description, "Updated profile");
         assert_eq!(profile.skill_routes, vec!["agenticcrew://skills/planning"]);
-        assert_eq!(profile.modules[0].content, "Review tests before final response.");
+        assert_eq!(
+            profile.modules[0].content,
+            "Review tests before final response."
+        );
         assert_eq!(profile.version, "2");
     }
 }

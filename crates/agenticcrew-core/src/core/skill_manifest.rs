@@ -49,11 +49,12 @@ pub fn inspect_skill_manifests(
 
     for manifest_path in manifest_paths {
         let relative_path = relative_path_string(cache_path, &manifest_path);
-        let content =
-            fs::read_to_string(&manifest_path).map_err(|source| SkillManifestInspectionError::Io {
+        let content = fs::read_to_string(&manifest_path).map_err(|source| {
+            SkillManifestInspectionError::Io {
                 path: manifest_path.clone(),
                 source,
-            })?;
+            }
+        })?;
 
         match parse_skill_manifest(source_id, &relative_path, &content) {
             Ok(manifest) => discovered_skills.push(manifest),
@@ -108,12 +109,11 @@ fn parse_skill_manifest(
         relative_path: relative_path.to_owned(),
         message: "missing required frontmatter block".to_owned(),
     })?;
-    let name = frontmatter_field(&frontmatter, "name").ok_or_else(|| {
-        SkillManifestValidationError {
+    let name =
+        frontmatter_field(&frontmatter, "name").ok_or_else(|| SkillManifestValidationError {
             relative_path: relative_path.to_owned(),
             message: "missing required frontmatter field 'name'".to_owned(),
-        }
-    })?;
+        })?;
     let description = frontmatter_field(&frontmatter, "description").ok_or_else(|| {
         SkillManifestValidationError {
             relative_path: relative_path.to_owned(),

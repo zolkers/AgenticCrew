@@ -13,7 +13,7 @@ typed, testable, and available without a worker runtime.
 
 ## Decision
 
-Rust owns the AgenticCrew core state under `src-tauri/src/core`.
+Rust owns the AgenticCrew core state under `crates/agenticcrew-core`.
 
 This includes sessions, checkpoints, evidence, audit records, costs, permissions,
 policy gates, and compiled library state. Other runtimes may request snapshots or

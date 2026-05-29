@@ -351,10 +351,11 @@ mod tests {
     #[test]
     fn manifest_validation_errors_reject_source_without_activating() {
         let mut source = github_skill_source();
-        source
-            .approve_permissions(sample_permission_policy());
+        source.approve_permissions(sample_permission_policy());
         source.mark_validated();
-        source.activate().expect("source should activate before rejection");
+        source
+            .activate()
+            .expect("source should activate before rejection");
 
         source.record_manifest_validation(
             Vec::new(),

@@ -1,11 +1,17 @@
 {
   "name": "agenticcrew",
+  "version": "0.1.0",
+  "description": "Local-first desktop cockpit for agentic feature sessions.",
+  "author": "AgenticCrew",
+  "main": "electron/main.cjs",
   "private": true,
   "workspaces": [
     "frontend"
   ],
   "scripts": {
+    "sidecar:build": "node scripts/build-sidecar.mjs",
     "desktop:test": "node scripts/desktop-test.mjs && npm run electron:test",
+    "electron:package": "npm run build -w frontend && npm run sidecar:build && electron-builder",
     "electron:dev": "concurrently -k -n vite,electron \"npm run dev -w frontend\" \"wait-on http://127.0.0.1:5173 && cross-env AGENTICCREW_DEV_SERVER_URL=http://127.0.0.1:5173 electron electron/main.cjs\"",
     "electron:start": "npm run build -w frontend && electron electron/main.cjs",
     "electron:test": "node --test electron/**/*.test.cjs",
@@ -31,5 +37,23 @@
     "electron": "^39.2.7",
     "electron-builder": "^26.0.12",
     "wait-on": "^9.0.3"
+  },
+  "build": {
+    "appId": "fr.agenticcrew.desktop",
+    "productName": "AgenticCrew",
+    "files": [
+      "electron/**/*",
+      "frontend/dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "target/release/",
+        "to": ".",
+        "filter": [
+          "agenticcrew-sidecar*"
+        ]
+      }
+    ]
   }
 }

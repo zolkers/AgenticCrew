@@ -8,7 +8,7 @@ Superseded by [ADR 0005: Electron Desktop Shell With Rust Core](0005-electron-de
 
 ## Context
 
-AgenticCrew was initially planned as a desktop app built with Tauri, Rust, React, and optional Python workers.
+AgenticCrew is a desktop app built with Electron, Rust, React, and optional Python workers.
 The project should stay viable on common developer machines without adding platform
 specific shortcuts that break another operating system.
 

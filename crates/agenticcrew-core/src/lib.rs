@@ -428,341 +428,6 @@ fn mutate_state_at_path(
     Ok(state)
 }
 
-#[cfg(feature = "desktop-shell")]
-mod commands {
-    use std::path::PathBuf;
-
-    use tauri::Manager;
-
-    use crate::{
-        activate_skill_source_at_path, add_checkpoint_at_path, agent_studio_snapshot_at_path,
-        approve_skill_source_permissions_at_path, close_feature_session_at_path,
-        core::agents::{
-            CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest,
-            SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
-        },
-        core::harnesses::{
-            CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
-        },
-        core::permissions::ApprovedPermissionPolicy,
-        core::settings::{SettingsSnapshot, SyncProviderModelsRequest, UpdateAiProviderSettingsRequest},
-        core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
-        core::state::AgentOsState,
-        core::workspaces::{
-            CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest,
-            UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest, WorkspaceSnapshot,
-        },
-        core::{agents::AgentStudioSnapshot, harnesses::HarnessStudioSnapshot},
-        create_agent_template_at_path, create_feature_session_at_path,
-        create_harness_profile_at_path, create_workspace_at_path, durable_state_snapshot_at_path,
-        harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
-        mission_control_snapshot_at_path, promote_agent_training_run_at_path,
-        record_command_evidence_at_path,
-        refresh_workspace_git_status_at_path, register_github_skill_source_at_path,
-        skill_sources_snapshot_at_path, state_file_path, set_agent_template_active_at_path,
-        set_harness_profile_active_at_path, settings_snapshot_at_path, sync_github_skill_source_at_path,
-        sync_provider_models_at_path, update_agent_template_at_path,
-        update_ai_provider_settings_at_path, update_harness_profile_at_path,
-        update_workspace_git_context_at_path, update_workspace_loadout_at_path,
-        validate_skill_source_at_path,
-        workspace_snapshot_at_path,
-        CreateCheckpointRequest, CreateFeatureSessionRequest, DesktopCommandError,
-        MissionControlSnapshot, RecordCommandEvidenceRequest,
-    };
-
-    #[tauri::command]
-    pub fn mission_control_snapshot(
-        app: tauri::AppHandle,
-    ) -> Result<MissionControlSnapshot, DesktopCommandError> {
-        mission_control_snapshot_at_path(app_state_path(&app)?)
-    }
-
-    #[tauri::command]
-    pub fn durable_state_snapshot(
-        app: tauri::AppHandle,
-    ) -> Result<AgentOsState, DesktopCommandError> {
-        durable_state_snapshot_at_path(app_state_path(&app)?)
-    }
-
-    #[tauri::command]
-    pub fn workspace_snapshot(
-        app: tauri::AppHandle,
-    ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
-        workspace_snapshot_at_path(app_state_path(&app)?)
-    }
-
-    #[tauri::command]
-    pub fn create_workspace(
-        app: tauri::AppHandle,
-        request: CreateWorkspaceRequest,
-    ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
-        create_workspace_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn update_workspace_git_context(
-        app: tauri::AppHandle,
-        request: UpdateWorkspaceGitContextRequest,
-    ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
-        update_workspace_git_context_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn refresh_workspace_git_status(
-        app: tauri::AppHandle,
-        request: RefreshWorkspaceGitStatusRequest,
-    ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
-        refresh_workspace_git_status_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn update_workspace_loadout(
-        app: tauri::AppHandle,
-        request: UpdateWorkspaceLoadoutRequest,
-    ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
-        update_workspace_loadout_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn skill_sources_snapshot(
-        app: tauri::AppHandle,
-    ) -> Result<SkillSourcesSnapshot, DesktopCommandError> {
-        skill_sources_snapshot_at_path(app_state_path(&app)?)
-    }
-
-    #[tauri::command]
-    pub fn harness_studio_snapshot(
-        app: tauri::AppHandle,
-    ) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
-        harness_studio_snapshot_at_path(app_state_path(&app)?)
-    }
-
-    #[tauri::command]
-    pub fn create_harness_profile(
-        app: tauri::AppHandle,
-        request: CreateHarnessProfileRequest,
-    ) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
-        create_harness_profile_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn set_harness_profile_active(
-        app: tauri::AppHandle,
-        request: SetHarnessProfileActiveRequest,
-    ) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
-        set_harness_profile_active_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn update_harness_profile(
-        app: tauri::AppHandle,
-        request: UpdateHarnessProfileRequest,
-    ) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
-        update_harness_profile_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn agent_studio_snapshot(
-        app: tauri::AppHandle,
-    ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
-        agent_studio_snapshot_at_path(app_state_path(&app)?)
-    }
-
-    #[tauri::command]
-    pub fn create_agent_template(
-        app: tauri::AppHandle,
-        request: CreateAgentTemplateRequest,
-    ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
-        create_agent_template_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn set_agent_template_active(
-        app: tauri::AppHandle,
-        request: SetAgentTemplateActiveRequest,
-    ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
-        set_agent_template_active_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn update_agent_template(
-        app: tauri::AppHandle,
-        request: UpdateAgentTemplateRequest,
-    ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
-        update_agent_template_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn promote_agent_training_run(
-        app: tauri::AppHandle,
-        request: PromoteAgentTrainingRunRequest,
-    ) -> Result<AgentStudioSnapshot, DesktopCommandError> {
-        promote_agent_training_run_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn settings_snapshot(
-        app: tauri::AppHandle,
-    ) -> Result<SettingsSnapshot, DesktopCommandError> {
-        settings_snapshot_at_path(app_state_path(&app)?)
-    }
-
-    #[tauri::command]
-    pub fn create_feature_session(
-        app: tauri::AppHandle,
-        request: CreateFeatureSessionRequest,
-    ) -> Result<AgentOsState, DesktopCommandError> {
-        create_feature_session_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn add_checkpoint(
-        app: tauri::AppHandle,
-        session_id: String,
-        request: CreateCheckpointRequest,
-    ) -> Result<AgentOsState, DesktopCommandError> {
-        add_checkpoint_at_path(app_state_path(&app)?, &session_id, request)
-    }
-
-    #[tauri::command]
-    pub fn record_command_evidence(
-        app: tauri::AppHandle,
-        request: RecordCommandEvidenceRequest,
-    ) -> Result<AgentOsState, DesktopCommandError> {
-        record_command_evidence_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn close_feature_session(
-        app: tauri::AppHandle,
-        session_id: String,
-    ) -> Result<AgentOsState, DesktopCommandError> {
-        close_feature_session_at_path(app_state_path(&app)?, &session_id)
-    }
-
-    #[tauri::command]
-    pub fn register_github_skill_source(
-        app: tauri::AppHandle,
-        request: RegisterGitHubSkillSourceRequest,
-    ) -> Result<AgentOsState, DesktopCommandError> {
-        register_github_skill_source_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn validate_skill_source(
-        app: tauri::AppHandle,
-        source_id: String,
-    ) -> Result<AgentOsState, DesktopCommandError> {
-        validate_skill_source_at_path(app_state_path(&app)?, &source_id)
-    }
-
-    #[tauri::command]
-    pub fn sync_github_skill_source(
-        app: tauri::AppHandle,
-        source_id: String,
-    ) -> Result<AgentOsState, DesktopCommandError> {
-        let cache_root = app
-            .path()
-            .app_cache_dir()
-            .map_err(|error| DesktopCommandError::new(error.to_string()))?
-            .join("skill-sources");
-
-        sync_github_skill_source_at_path(app_state_path(&app)?, cache_root, &source_id)
-    }
-
-    #[tauri::command]
-    pub fn inspect_cached_skill_source(
-        app: tauri::AppHandle,
-        source_id: String,
-    ) -> Result<AgentOsState, DesktopCommandError> {
-        inspect_cached_skill_source_at_path(app_state_path(&app)?, &source_id)
-    }
-
-    #[tauri::command]
-    pub fn activate_skill_source(
-        app: tauri::AppHandle,
-        source_id: String,
-    ) -> Result<AgentOsState, DesktopCommandError> {
-        activate_skill_source_at_path(app_state_path(&app)?, &source_id)
-    }
-
-    #[tauri::command]
-    pub fn approve_skill_source_permissions(
-        app: tauri::AppHandle,
-        source_id: String,
-        policy: ApprovedPermissionPolicy,
-    ) -> Result<AgentOsState, DesktopCommandError> {
-        approve_skill_source_permissions_at_path(app_state_path(&app)?, &source_id, policy)
-    }
-
-    #[tauri::command]
-    pub fn update_ai_provider_settings(
-        app: tauri::AppHandle,
-        request: UpdateAiProviderSettingsRequest,
-    ) -> Result<SettingsSnapshot, DesktopCommandError> {
-        update_ai_provider_settings_at_path(app_state_path(&app)?, request)
-    }
-
-    #[tauri::command]
-    pub fn sync_provider_models(
-        app: tauri::AppHandle,
-        request: SyncProviderModelsRequest,
-    ) -> Result<SettingsSnapshot, DesktopCommandError> {
-        sync_provider_models_at_path(app_state_path(&app)?, request)
-    }
-
-    fn app_state_path(app: &tauri::AppHandle) -> Result<PathBuf, DesktopCommandError> {
-        app.path()
-            .app_data_dir()
-            .map(state_file_path)
-            .map_err(|error| DesktopCommandError::new(error.to_string()))
-    }
-}
-
-#[cfg(feature = "desktop-shell")]
-pub fn run() {
-    tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![
-            commands::mission_control_snapshot,
-            commands::durable_state_snapshot,
-            commands::workspace_snapshot,
-            commands::create_workspace,
-            commands::update_workspace_git_context,
-            commands::refresh_workspace_git_status,
-            commands::update_workspace_loadout,
-            commands::skill_sources_snapshot,
-            commands::harness_studio_snapshot,
-            commands::create_harness_profile,
-            commands::set_harness_profile_active,
-            commands::update_harness_profile,
-            commands::agent_studio_snapshot,
-            commands::create_agent_template,
-            commands::set_agent_template_active,
-            commands::update_agent_template,
-            commands::promote_agent_training_run,
-            commands::settings_snapshot,
-            commands::create_feature_session,
-            commands::add_checkpoint,
-            commands::record_command_evidence,
-            commands::close_feature_session,
-            commands::register_github_skill_source,
-            commands::validate_skill_source,
-            commands::sync_github_skill_source,
-            commands::inspect_cached_skill_source,
-            commands::approve_skill_source_permissions,
-            commands::activate_skill_source,
-            commands::update_ai_provider_settings,
-            commands::sync_provider_models
-        ])
-        .run(tauri::generate_context!())
-        .expect("failed to run AgenticCrew desktop shell");
-}
-
-#[cfg(not(feature = "desktop-shell"))]
-pub fn run() {
-    panic!("AgenticCrew desktop shell requires the desktop-shell Cargo feature");
-}
-
 #[cfg(test)]
 mod tests {
     use std::{
@@ -776,22 +441,25 @@ mod tests {
         app_name, approve_skill_source_permissions_at_path, close_feature_session_at_path,
         create_agent_template_at_path, create_feature_session_at_path,
         create_harness_profile_at_path, create_workspace_at_path, durable_state_snapshot_at_path,
-        harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
-        promote_agent_training_run_at_path, record_command_evidence_at_path,
-        record_skill_source_sync_success_at_path, refresh_workspace_git_status_at_path,
-        register_github_skill_source_at_path, set_agent_template_active_at_path,
-        set_harness_profile_active_at_path, skill_sources_snapshot_at_path, state_file_path,
-        update_agent_template_at_path, update_harness_profile_at_path,
-        update_workspace_git_context_at_path, update_workspace_loadout_at_path,
-        validate_skill_source_at_path, workspace_snapshot_at_path, STATE_FILE_NAME,
+        harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
+        mission_control_snapshot_at_path, promote_agent_training_run_at_path,
+        record_command_evidence_at_path, record_skill_source_sync_success_at_path,
+        refresh_workspace_git_status_at_path, register_github_skill_source_at_path,
+        set_agent_template_active_at_path, set_harness_profile_active_at_path,
+        skill_sources_snapshot_at_path, state_file_path, update_agent_template_at_path,
+        update_harness_profile_at_path, update_workspace_git_context_at_path,
+        update_workspace_loadout_at_path, validate_skill_source_at_path,
+        workspace_snapshot_at_path, STATE_FILE_NAME,
     };
     use crate::core::{
         agents::{
             AgentTrainingRun, AgentTrainingStatus, CreateAgentTemplateRequest,
-            PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
+            PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest,
+            UpdateAgentTemplateRequest,
         },
         harnesses::{
-            CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
+            CreateHarnessProfileRequest, SetHarnessProfileActiveRequest,
+            UpdateHarnessProfileRequest,
         },
         permissions::{
             ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
@@ -1057,7 +725,10 @@ mod tests {
 
     #[test]
     fn harness_profile_commands_persist_local_profiles() {
-        let path = test_path("harness_profile_commands_persist_local_profiles", "state.json");
+        let path = test_path(
+            "harness_profile_commands_persist_local_profiles",
+            "state.json",
+        );
 
         let snapshot = create_harness_profile_at_path(
             &path,
@@ -1276,7 +947,10 @@ mod tests {
         .expect("training run should promote");
 
         assert_eq!(snapshot.templates[0].version, 2);
-        assert_eq!(snapshot.training_runs[0].status, AgentTrainingStatus::Promoted);
+        assert_eq!(
+            snapshot.training_runs[0].status,
+            AgentTrainingStatus::Promoted
+        );
         assert_eq!(snapshot.training_runs[0].promoted_version, Some(2));
         assert_eq!(
             snapshot,
@@ -1462,7 +1136,7 @@ mod tests {
             .as_nanos();
         env::temp_dir()
             .join(format!(
-                "agenticcrew_desktop_command_tests_{}_{}_{}",
+                "agenticcrew_core_command_tests_{}_{}_{}",
                 std::process::id(),
                 test_name,
                 unique

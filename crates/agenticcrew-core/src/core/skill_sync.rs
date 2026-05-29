@@ -31,7 +31,10 @@ impl fmt::Display for SkillSourceSyncError {
                 )
             }
             SkillSourceSyncError::UnsupportedSourceKind { source_id } => {
-                write!(formatter, "skill source '{source_id}' is not a GitHub source")
+                write!(
+                    formatter,
+                    "skill source '{source_id}' is not a GitHub source"
+                )
             }
             SkillSourceSyncError::Git { command, stderr } => {
                 write!(
@@ -71,7 +74,10 @@ pub fn sync_github_skill_source_to_cache(
     })?;
 
     run_git(&["init"], &temp_path)?;
-    run_git(&["remote", "add", "origin", &source.repository_url], &temp_path)?;
+    run_git(
+        &["remote", "add", "origin", &source.repository_url],
+        &temp_path,
+    )?;
     run_git(
         &["fetch", "--depth", "1", "origin", &source.selected_ref],
         &temp_path,

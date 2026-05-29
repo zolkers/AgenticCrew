@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
-const desktopRoot = fileURLToPath(new URL("../src-tauri", import.meta.url));
+const desktopRoot = repoRoot;
 
 function commandOutput(command, args, options = {}) {
   return spawnSync(command, args, {
@@ -98,8 +98,8 @@ function runWindowsCargoTest() {
     "self-contained"
   );
   const clionMingwBin = findClionMingwBin();
-  const webviewLoaderBin = fileURLToPath(new URL("../src-tauri/target/debug", import.meta.url));
-  const toolPaths = existingPaths([clionMingwBin, selfContainedBin, webviewLoaderBin]);
+  const cargoTargetBin = fileURLToPath(new URL("../target/debug", import.meta.url));
+  const toolPaths = existingPaths([clionMingwBin, selfContainedBin, cargoTargetBin]);
 
   if (!existsSync(gnuToolchain) || toolPaths.length === 0) {
     console.error(
@@ -114,7 +114,7 @@ function runWindowsCargoTest() {
     return 1;
   }
 
-  return run("cargo", ["+stable-x86_64-pc-windows-gnu", "test", "--no-default-features"], {
+  return run("cargo", ["+stable-x86_64-pc-windows-gnu", "test"], {
     ...process.env,
     PATH: `${toolPaths.join(delimiter)}${delimiter}${process.env.PATH ?? ""}`
   });

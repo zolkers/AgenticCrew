@@ -163,10 +163,7 @@ impl std::error::Error for SettingsValidationError {}
 
 fn last_four(value: &str) -> String {
     let chars = value.chars().collect::<Vec<_>>();
-    chars
-        .iter()
-        .skip(chars.len().saturating_sub(4))
-        .collect()
+    chars.iter().skip(chars.len().saturating_sub(4)).collect()
 }
 
 fn default_model_sync_status() -> ProviderModelSyncStatus {

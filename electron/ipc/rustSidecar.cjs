@@ -14,8 +14,7 @@ function invokeRust(command, args) {
   return new Promise((resolveValue, reject) => {
     const sidecarCommand = resolveSidecarCommand();
     const child = spawn(sidecarCommand, resolveSidecarArgs(sidecarCommand, command, args), {
-      cwd: repoRoot,
-      shell: process.platform === "win32"
+      cwd: repoRoot
     });
     let stdout = "";
     let stderr = "";
@@ -73,10 +72,7 @@ function resolveSidecarArgs(sidecarCommand, command, args) {
   return [
     "run",
     "--manifest-path",
-    "src-tauri/Cargo.toml",
-    "--no-default-features",
-    "--bin",
-    "agenticcrew-sidecar",
+    "crates/agenticcrew-sidecar/Cargo.toml",
     "--",
     ...sidecarArgs
   ];

@@ -11,7 +11,7 @@ Accepted
 AgenticCrew needs a large, route-heavy desktop UI with multi-workspace selection,
 multi-agent supervision, skill marketplace management, Git review surfaces, settings,
 and browser-preview friendly development. The product truth must stay deterministic
-and local-first, but the shell should be easier to evolve than the current Tauri path.
+and local-first, while the shell stays easy to evolve with the Electron ecosystem.
 
 ## Decision
 
@@ -37,9 +37,9 @@ a measured bottleneck.
 
 ## Consequences
 
-- Move reusable Rust modules from `src-tauri/src/core` to `crates/agenticcrew-core`.
+- Keep reusable Rust modules in `crates/agenticcrew-core`.
 - Add `crates/agenticcrew-sidecar` for JSON command transport.
 - Expose only `window.agenticcrew.invoke(command, args)` to the renderer.
-- Remove `@tauri-apps/api` from frontend runtime code.
+- Keep framework-specific desktop APIs out of frontend runtime code.
 - Package the sidecar binary with Electron Builder per platform.
 - Update Docker, CI, and desktop tests around Electron plus Rust core/sidecar gates.

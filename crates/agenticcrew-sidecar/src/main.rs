@@ -1,6 +1,6 @@
 use std::{env, path::PathBuf, process};
 
-use agenticcrew_desktop::{
+use agenticcrew_core::{
     agent_studio_snapshot_at_path, approve_skill_source_permissions_at_path,
     core::agents::{
         CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest,
@@ -13,15 +13,17 @@ use agenticcrew_desktop::{
     core::settings::{SyncProviderModelsRequest, UpdateAiProviderSettingsRequest},
     core::workspaces::{
         CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest, UpdateWorkspaceGitContextRequest,
+        UpdateWorkspaceLoadoutRequest,
     },
-    create_agent_template_at_path, create_harness_profile_at_path, harness_studio_snapshot_at_path,
-    inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
-    promote_agent_training_run_at_path,
-    set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
-    skill_sources_snapshot_at_path, sync_github_skill_source_at_path, sync_provider_models_at_path,
-    update_agent_template_at_path, update_ai_provider_settings_at_path, update_harness_profile_at_path,
-    create_workspace_at_path, refresh_workspace_git_status_at_path,
-    update_workspace_git_context_at_path, workspace_snapshot_at_path, DesktopCommandError,
+    create_agent_template_at_path, create_harness_profile_at_path, create_workspace_at_path,
+    harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
+    mission_control_snapshot_at_path, promote_agent_training_run_at_path,
+    refresh_workspace_git_status_at_path, set_agent_template_active_at_path,
+    set_harness_profile_active_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
+    sync_github_skill_source_at_path, sync_provider_models_at_path, update_agent_template_at_path,
+    update_ai_provider_settings_at_path, update_harness_profile_at_path,
+    update_workspace_git_context_at_path, update_workspace_loadout_at_path,
+    workspace_snapshot_at_path, DesktopCommandError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -116,6 +118,12 @@ struct RefreshWorkspaceGitStatusArgs {
     request: RefreshWorkspaceGitStatusRequest,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateWorkspaceLoadoutArgs {
+    request: UpdateWorkspaceLoadoutRequest,
+}
+
 fn main() {
     if let Err(error) = run() {
         print_error(error);
@@ -146,10 +154,9 @@ fn run() -> Result<(), DesktopCommandError> {
                     .ok_or_else(|| DesktopCommandError::public("missing --args-json value"))?;
             }
             "--cache-root" => {
-                cache_root = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| DesktopCommandError::public("missing --cache-root value"))?,
-                ));
+                cache_root = Some(PathBuf::from(args.next().ok_or_else(|| {
+                    DesktopCommandError::public("missing --cache-root value")
+                })?));
             }
             _ => {
                 return Err(DesktopCommandError::public(format!(
@@ -183,6 +190,11 @@ fn run() -> Result<(), DesktopCommandError> {
                 args.request,
             )?)
         }
+        "update_workspace_loadout" => {
+            let args = parse_args::<UpdateWorkspaceLoadoutArgs>(&args_json)?;
+
+            print_json(&update_workspace_loadout_at_path(state_path, args.request)?)
+        }
         "skill_sources_snapshot" => print_json(&skill_sources_snapshot_at_path(state_path)?),
         "harness_studio_snapshot" => print_json(&harness_studio_snapshot_at_path(state_path)?),
         "create_harness_profile" => {
@@ -212,7 +224,10 @@ fn run() -> Result<(), DesktopCommandError> {
         "set_agent_template_active" => {
             let args = parse_args::<SetAgentTemplateActiveArgs>(&args_json)?;
 
-            print_json(&set_agent_template_active_at_path(state_path, args.request)?)
+            print_json(&set_agent_template_active_at_path(
+                state_path,
+                args.request,
+            )?)
         }
         "update_agent_template" => {
             let args = parse_args::<UpdateAgentTemplateArgs>(&args_json)?;
@@ -222,7 +237,10 @@ fn run() -> Result<(), DesktopCommandError> {
         "promote_agent_training_run" => {
             let args = parse_args::<PromoteAgentTrainingRunArgs>(&args_json)?;
 
-            print_json(&promote_agent_training_run_at_path(state_path, args.request)?)
+            print_json(&promote_agent_training_run_at_path(
+                state_path,
+                args.request,
+            )?)
         }
         "settings_snapshot" => print_json(&settings_snapshot_at_path(state_path)?),
         "sync_github_skill_source" => {
@@ -256,7 +274,10 @@ fn run() -> Result<(), DesktopCommandError> {
         "update_ai_provider_settings" => {
             let args = parse_args::<UpdateSettingsArgs>(&args_json)?;
 
-            print_json(&update_ai_provider_settings_at_path(state_path, args.request)?)
+            print_json(&update_ai_provider_settings_at_path(
+                state_path,
+                args.request,
+            )?)
         }
         "sync_provider_models" => {
             let args = parse_args::<SyncProviderModelsArgs>(&args_json)?;

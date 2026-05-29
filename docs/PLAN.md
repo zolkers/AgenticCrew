@@ -22,7 +22,7 @@
 
 | Couche | Technologie | Pourquoi |
 |--------|-------------|----------|
-| Desktop shell | **Tauri v2** (Rust) | Plus léger qu'Electron (−80% RAM), sécurité Rust, webview native, prêt pour distribuer |
+| Desktop shell | **Electron** | Écosystème desktop mature, packaging flexible, preload IPC sécurisé |
 | Frontend | **React 19 + TypeScript** | Écosystème mature, composants réutilisables, prêt pour web si cloud |
 | UI Framework | **Tailwind CSS + shadcn/ui** | Design system propre, pas d'overhead |
 | State management | **Zustand + Immer** | Simple, performant, pas de boilerplate Redux |
@@ -33,13 +33,13 @@
 | Base de données | **SQLite (local) → PostgreSQL (cloud)** | SQLAlchemy comme ORM = migration sans réécriture |
 | Mémoire vectorielle | **ChromaDB (local) → Qdrant (cloud)** | API identique, swap transparent |
 | Queue de tâches | **Celery + Redis (local via docker)** | Prêt pour scale horizontal en cloud |
-| Packaging | **Tauri Updater + GitHub Releases** | Auto-update de l'app desktop |
+| Packaging | **Electron Builder + sidecar Rust** | Distribution desktop avec binaire Rust embarqué |
 
 ### Architecture de communication
 
 ```
 ┌─────────────────────────────────────┐
-│  Tauri Shell (Rust)                 │
+│  Electron Shell                     │
 │  ┌───────────────────────────────┐  │
 │  │  React Frontend (TypeScript)  │  │
 │  │  - UI/UX                      │  │
@@ -286,7 +286,7 @@ L'app locale est conçue pour que la migration cloud soit un **swap de providers
 | ChromaDB | Qdrant Cloud (même API) |
 | Redis local (docker) | Redis Cloud / Upstash |
 | FastAPI local | FastAPI sur Railway / Fly.io / AWS |
-| Tauri desktop | Next.js (même React frontend) |
+| Electron desktop | Next.js (même React frontend) |
 | Fichiers locaux | S3 / R2 |
 
 La seule chose à changer : les variables d'environnement et les adaptateurs de storage.
@@ -298,9 +298,11 @@ La seule chose à changer : les variables d'environnement et les adaptateurs de 
 ```
 agentos/
 ├── apps/
-│   ├── desktop/                 # Tauri app
-│   │   ├── src-tauri/          # Rust shell
-│   │   └── src/                # React frontend
+│   ├── electron/                # Shell Electron + preload IPC
+│   ├── crates/
+│   │   ├── agenticcrew-core/    # Core Rust
+│   │   └── agenticcrew-sidecar/ # Bridge Rust sidecar
+│   └── frontend/                # React frontend
 │   │       ├── components/
 │   │       │   ├── AgentTerminal/
 │   │       │   ├── TeamConfig/
@@ -360,7 +362,7 @@ agentos/
 ## 10. Roadmap de Développement
 
 ### Phase 1 — Foundation (semaines 1-4)
-- [ ] Setup monorepo Tauri + React + FastAPI
+- [ ] Setup monorepo Electron + React + Rust sidecar + FastAPI
 - [ ] Agent engine de base (un seul agent fonctionnel)
 - [ ] Provider router (OpenAI + Anthropic)
 - [ ] Terminal xterm.js dans l'UI
@@ -387,7 +389,7 @@ agentos/
 - [ ] Plugin system pour tools custom
 - [ ] Bibliothèque de presets
 - [ ] Onboarding guidé
-- [ ] Packaging Tauri (installateur)
+- [ ] Packaging Electron (installateur)
 
 ### Phase 5 — Cloud (futur)
 - [ ] Migration SQLite → PostgreSQL
@@ -409,10 +411,10 @@ agentos/
 - [x] Skill Sources avec registre, routes de skills et statut de source.
 - [x] Git Panel avec contexte workspace, branche/path editables et refresh de statut.
 - [x] Run profile dans le cockpit pour exposer la selection courante workspace + agent + harness + branche avant execution.
-- [x] Bridge de commandes Electron/Tauri/preview et harness Docker pour tester l'app sans prerequis Rust/MSVC sur Windows.
+- [x] Bridge de commandes Electron/preview et harness Docker pour tester l'app sans prerequis Rust/MSVC sur Windows.
 
 ### Manque avant une app vraiment utilisable
-- [ ] Finaliser la migration Electron : packaging, preload durci, menus natifs, auto-update et retrait ou isolement propre des contrats Tauri encore presents.
+- [ ] Finaliser Electron : preload durci, menus natifs, auto-update et packaging installateur.
 - [ ] Brancher un backend reel FastAPI/LangGraph/WebSocket : le cockpit affiche encore beaucoup de donnees preview, pas des runs vivants.
 - [ ] Implementer le moteur d'execution : start, pause, resume, kill, retry, redirect, checkpoint, replay et streaming terminal xterm.js par agent.
 - [ ] Connecter le bouton Run profile a une vraie commande de lancement avec binding workspace + agent + harness + branche + provider.
@@ -437,7 +439,7 @@ Ces choix sont structurants — les changer en cours de route coûte cher :
 1. **LangGraph comme engine** (pas LangChain simple) — le checkpoint natif est essentiel
 2. **SQLAlchemy comme ORM** — permet le swap SQLite → PostgreSQL sans réécriture
 3. **WebSocket pour le streaming** — le polling REST ne peut pas streamer token par token
-4. **Un process FastAPI séparé** (pas embedded dans Tauri) — permet de le déployer en cloud sans modifier le code
+4. **Un process FastAPI séparé** (pas embedded dans Electron) — permet de le déployer en cloud sans modifier le code
 5. **YAML comme format de config** — lisible humainement, versionnable en git, importable/exportable
 6. **Plugin system Python** pour les tools — extensible sans toucher au core
 
@@ -618,7 +620,7 @@ workspace:
 | Pas de workspace execution layer | Executor abstrait (local/SSH/docker/cloud) |
 | Pas de plugin system universel | Plugin = agent/tool/provider, même API |
 | Pas de graceful degradation | Provider router avec fallback auto |
-| Pas d'UI pro | App desktop Tauri, pas une WebUI bricolée |
+| Pas d'UI pro | App desktop Electron, pas une WebUI bricolée |
 | Rôles ambigus entre agents | System prompt structuré + validation Critic |
 
 ---
@@ -1665,7 +1667,7 @@ Export :
 
 ### 31.1 Philosophie
 
-L'esthétique cible est **terminal-first, pas terminal-émulé**. Pas un terminal déguisé en app, pas une app déguisée en terminal. Un vrai hybride : la densité d'information et la lisibilité d'un TUI professionnel (Claude Code, lazygit, k9s), rendu dans une WebView Tauri avec xterm.js comme moteur de rendu pour les zones de streaming.
+L'esthétique cible est **terminal-first, pas terminal-émulé**. Pas un terminal déguisé en app, pas une app déguisée en terminal. Un vrai hybride : la densité d'information et la lisibilité d'un TUI professionnel (Claude Code, lazygit, k9s), rendu dans Electron avec xterm.js comme moteur de rendu pour les zones de streaming.
 
 Référence principale : Claude Code. Références secondaires : lazygit, k9s, Warp terminal.
 

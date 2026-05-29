@@ -16,7 +16,7 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - AgenticCrew technical naming across npm, Rust, Python worker, and Sonar project metadata.
 
 **Next focus:**
-- Electron shell migration: move Rust product truth from `src-tauri/src/core` into `crates/agenticcrew-core`, add a sidecar bridge, expose `window.agenticcrew.invoke`, and remove renderer Tauri imports.
+- Electron shell migration: continue hardening the `crates/agenticcrew-core` plus `crates/agenticcrew-sidecar` bridge behind `window.agenticcrew.invoke`.
 - Product UI foundation: adopt Mantine, TanStack Router, TanStack Query, Tabler icons, and the graphite/ink/copper visual system before expanding screens.
 - External skill marketplace and route workflow: register, sync, inspect, approve, search, route, and attach skills without activating untrusted code prematurely.
 - Harness Studio and PI extensions: compose multiple harness profiles, import user PI extensions, preview effective harnesses, and bind them to workspaces, agents, skills, and runs.
@@ -149,7 +149,7 @@ This section is the current product roadmap for the AgenticCrew app experience. 
 - Electron exposes a narrow `window.agenticcrew.invoke` bridge.
 - Provider adapters are isolated behind command contracts.
 - Python workers remain tool/provider adapters and never own product truth.
-- Later extract `src-tauri/src/core` into `crates/agenticcrew-core`.
+- Keep reusable Rust product logic in `crates/agenticcrew-core` and route desktop calls through `crates/agenticcrew-sidecar`.
 
 **Acceptance:**
 - New providers or tools can be added without rewriting UI screens.

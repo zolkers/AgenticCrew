@@ -166,7 +166,11 @@ impl WorkspaceRecord {
                 name: "director".to_owned(),
                 role: "Workspace director".to_owned(),
                 status: WorkspaceAgentStatus::Active,
-                tools: vec!["planning".to_owned(), "git".to_owned(), "workspace".to_owned()],
+                tools: vec![
+                    "planning".to_owned(),
+                    "git".to_owned(),
+                    "workspace".to_owned(),
+                ],
             }],
             branch: branch.clone(),
             budget_limit_usd: 10,
@@ -214,7 +218,8 @@ impl WorkspaceRecord {
         self.branch = validate_required("workspace branch", request.branch)?;
         self.git_status.branch = self.branch.clone();
         self.git_status.last_error = None;
-        self.logs.push(format!("git context updated: {}", self.branch));
+        self.logs
+            .push(format!("git context updated: {}", self.branch));
 
         Ok(())
     }
@@ -243,8 +248,12 @@ impl WorkspaceRecord {
             normalize_optional_identifier("harness profile id", request.harness_profile_id)?;
         self.logs.push(format!(
             "loadout updated: agent={} harness={}",
-            self.selected_agent_template_id.as_deref().unwrap_or("default"),
-            self.selected_harness_profile_id.as_deref().unwrap_or("default")
+            self.selected_agent_template_id
+                .as_deref()
+                .unwrap_or("default"),
+            self.selected_harness_profile_id
+                .as_deref()
+                .unwrap_or("default")
         ));
 
         Ok(())
@@ -262,7 +271,11 @@ impl WorkspaceRecord {
                     name: "Maya".to_owned(),
                     role: "UI architect".to_owned(),
                     status: WorkspaceAgentStatus::Active,
-                    tools: vec!["file_write".to_owned(), "browser".to_owned(), "git".to_owned()],
+                    tools: vec![
+                        "file_write".to_owned(),
+                        "browser".to_owned(),
+                        "git".to_owned(),
+                    ],
                 },
                 WorkspaceAgent {
                     id: "reviewer".to_owned(),
@@ -329,7 +342,11 @@ impl WorkspaceRecord {
                 name: "QA Agent".to_owned(),
                 role: "device automation".to_owned(),
                 status: WorkspaceAgentStatus::Active,
-                tools: vec!["browser".to_owned(), "playwright".to_owned(), "reports".to_owned()],
+                tools: vec![
+                    "browser".to_owned(),
+                    "playwright".to_owned(),
+                    "reports".to_owned(),
+                ],
             }],
             branch: "qa/device-smoke".to_owned(),
             budget_limit_usd: 3,

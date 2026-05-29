@@ -17,12 +17,6 @@ import {
   previewSkillSourcesInvoke,
   previewWorkspaceInvoke
 } from "./shared/api/previewInvokes";
-import { tauriAgentStudioInvoke } from "./shared/api/tauriAgentStudioInvoke";
-import { tauriHarnessStudioInvoke } from "./shared/api/tauriHarnessStudioInvoke";
-import { tauriMissionControlInvoke } from "./shared/api/tauriMissionControlInvoke";
-import { tauriSettingsInvoke } from "./shared/api/tauriSettingsInvoke";
-import { tauriSkillSourcesInvoke } from "./shared/api/tauriSkillSourcesInvoke";
-import { tauriWorkspaceInvoke } from "./shared/api/tauriWorkspaceInvoke";
 
 const mocks = vi.hoisted(() => ({
   app: vi.fn(() => null),
@@ -39,13 +33,7 @@ const mocks = vi.hoisted(() => ({
   previewSettingsInvoke: vi.fn(),
   previewSkillSourcesInvoke: vi.fn(),
   previewWorkspaceInvoke: vi.fn(),
-  render: vi.fn(),
-  tauriAgentStudioInvoke: vi.fn(),
-  tauriHarnessStudioInvoke: vi.fn(),
-  tauriMissionControlInvoke: vi.fn(),
-  tauriSettingsInvoke: vi.fn(),
-  tauriSkillSourcesInvoke: vi.fn(),
-  tauriWorkspaceInvoke: vi.fn()
+  render: vi.fn()
 }));
 
 vi.mock("react-dom/client", () => ({
@@ -65,30 +53,6 @@ vi.mock("./shared/api/electronInvokes", () => ({
   electronWorkspaceInvoke: mocks.electronWorkspaceInvoke
 }));
 
-vi.mock("./shared/api/tauriMissionControlInvoke", () => ({
-  tauriMissionControlInvoke: mocks.tauriMissionControlInvoke
-}));
-
-vi.mock("./shared/api/tauriSettingsInvoke", () => ({
-  tauriSettingsInvoke: mocks.tauriSettingsInvoke
-}));
-
-vi.mock("./shared/api/tauriSkillSourcesInvoke", () => ({
-  tauriSkillSourcesInvoke: mocks.tauriSkillSourcesInvoke
-}));
-
-vi.mock("./shared/api/tauriWorkspaceInvoke", () => ({
-  tauriWorkspaceInvoke: mocks.tauriWorkspaceInvoke
-}));
-
-vi.mock("./shared/api/tauriAgentStudioInvoke", () => ({
-  tauriAgentStudioInvoke: mocks.tauriAgentStudioInvoke
-}));
-
-vi.mock("./shared/api/tauriHarnessStudioInvoke", () => ({
-  tauriHarnessStudioInvoke: mocks.tauriHarnessStudioInvoke
-}));
-
 vi.mock("./shared/api/previewInvokes", () => ({
   previewAgentStudioInvoke: mocks.previewAgentStudioInvoke,
   previewHarnessStudioInvoke: mocks.previewHarnessStudioInvoke,
@@ -103,7 +67,6 @@ describe("main", () => {
     vi.resetModules();
     mocks.createRoot.mockReturnValue({ render: mocks.render });
     Reflect.deleteProperty(window, "agenticcrew");
-    Reflect.deleteProperty(window, "__TAURI_INTERNALS__");
   });
 
   afterEach(() => {
@@ -112,7 +75,7 @@ describe("main", () => {
     vi.clearAllMocks();
   });
 
-  it("renders App with preview commands outside the Tauri runtime", async () => {
+  it("renders App with preview commands outside the Electron runtime", async () => {
     document.body.innerHTML = '<div id="root"></div>';
 
     await import("./main");
@@ -140,43 +103,11 @@ describe("main", () => {
     expect(renderedElement.props.children.props.workspaceInvoke).toBe(previewWorkspaceInvoke);
   });
 
-  it("renders App with the Tauri commands inside the Tauri runtime", async () => {
-    document.body.innerHTML = '<div id="root"></div>';
-    Object.defineProperty(window, "__TAURI_INTERNALS__", {
-      configurable: true,
-      value: {}
-    });
-
-    await import("./main");
-
-    const renderedElement = mocks.render.mock.calls[0]?.[0] as ReactElement<{
-      children: ReactElement<{
-        agentStudioInvoke: unknown;
-        harnessStudioInvoke: unknown;
-        missionControlInvoke: unknown;
-        settingsInvoke: unknown;
-        skillSourcesInvoke: unknown;
-        workspaceInvoke: unknown;
-      }>;
-    }>;
-
-    expect(renderedElement.props.children.props.agentStudioInvoke).toBe(tauriAgentStudioInvoke);
-    expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(tauriHarnessStudioInvoke);
-    expect(renderedElement.props.children.props.missionControlInvoke).toBe(tauriMissionControlInvoke);
-    expect(renderedElement.props.children.props.settingsInvoke).toBe(tauriSettingsInvoke);
-    expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(tauriSkillSourcesInvoke);
-    expect(renderedElement.props.children.props.workspaceInvoke).toBe(tauriWorkspaceInvoke);
-  });
-
-  it("prefers Electron commands when the Electron bridge is present", async () => {
+  it("renders App with Electron commands when the Electron bridge is present", async () => {
     document.body.innerHTML = '<div id="root"></div>';
     Object.defineProperty(window, "agenticcrew", {
       configurable: true,
       value: { invoke: vi.fn() }
-    });
-    Object.defineProperty(window, "__TAURI_INTERNALS__", {
-      configurable: true,
-      value: {}
     });
 
     await import("./main");

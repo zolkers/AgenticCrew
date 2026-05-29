@@ -344,8 +344,9 @@ impl AgentOsState {
             });
         }
 
-        self.harness_profiles
-            .push(HarnessProfile::local(request).map_err(StateMutationError::InvalidHarnessProfile)?);
+        self.harness_profiles.push(
+            HarnessProfile::local(request).map_err(StateMutationError::InvalidHarnessProfile)?,
+        );
 
         Ok(())
     }
@@ -776,7 +777,10 @@ impl fmt::Display for StateMutationError {
                 write!(formatter, "agent template '{template_id}' does not exist")
             }
             StateMutationError::MissingAgentTrainingRun { training_run_id } => {
-                write!(formatter, "agent training run '{training_run_id}' does not exist")
+                write!(
+                    formatter,
+                    "agent training run '{training_run_id}' does not exist"
+                )
             }
             StateMutationError::InvalidAgentTrainingRun {
                 training_run_id,
@@ -972,7 +976,8 @@ mod tests {
     use crate::core::{
         agents::{
             AgentTemplate, AgentTrainingRun, AgentTrainingStatus, CreateAgentTemplateRequest,
-            PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
+            PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest,
+            UpdateAgentTemplateRequest,
         },
         costs::ModelCallEstimate,
         evidence::{CommandExitCodeEvidence, Evidence},
@@ -1096,7 +1101,10 @@ mod tests {
             })
             .expect("settings should update");
 
-        assert_eq!(state.desktop_settings.ai_provider.selected_model_id, "gpt-5.1");
+        assert_eq!(
+            state.desktop_settings.ai_provider.selected_model_id,
+            "gpt-5.1"
+        );
         assert!(state.desktop_settings.ai_provider.api_key_configured);
         assert_eq!(
             state.desktop_settings.ai_provider.api_key_last_four,
@@ -1220,7 +1228,10 @@ mod tests {
             .iter()
             .find(|template| template.id == "review-agent")
             .expect("agent should exist");
-        assert_eq!(template.harness_profile_id.as_deref(), Some("pi-execution-discipline"));
+        assert_eq!(
+            template.harness_profile_id.as_deref(),
+            Some("pi-execution-discipline")
+        );
         assert_eq!(template.budget_cents, 450);
     }
 
@@ -1339,7 +1350,10 @@ mod tests {
             .expect("training run should promote");
 
         assert_eq!(state.agent_templates[0].version, 2);
-        assert_eq!(state.agent_training_runs[0].status, AgentTrainingStatus::Promoted);
+        assert_eq!(
+            state.agent_training_runs[0].status,
+            AgentTrainingStatus::Promoted
+        );
         assert_eq!(state.agent_training_runs[0].promoted_version, Some(2));
     }
 
@@ -1473,7 +1487,10 @@ mod tests {
             })
             .expect("settings should update");
 
-        assert_eq!(state.desktop_settings.ai_provider.selected_model_id, "gpt-5.2");
+        assert_eq!(
+            state.desktop_settings.ai_provider.selected_model_id,
+            "gpt-5.2"
+        );
         assert!(state.desktop_settings.ai_provider.api_key_configured);
         assert_eq!(
             state.desktop_settings.ai_provider.api_key_last_four,

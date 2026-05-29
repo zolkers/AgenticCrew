@@ -8,10 +8,6 @@ RUN apt-get update \
     ca-certificates \
     curl \
     git \
-    libayatana-appindicator3-dev \
-    libgtk-3-dev \
-    librsvg2-dev \
-    libwebkit2gtk-4.1-dev \
     pkg-config \
     python-is-python3 \
     python3-pip \

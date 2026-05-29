@@ -120,7 +120,10 @@ pub fn agent_studio_snapshot_from_state(state: &AgentOsState) -> AgentStudioSnap
             .count() as u64,
         templates: state.agent_templates.clone(),
         training_runs: state.agent_training_runs.clone(),
-        version_summaries: agent_version_summaries(&state.agent_templates, &state.agent_training_runs),
+        version_summaries: agent_version_summaries(
+            &state.agent_templates,
+            &state.agent_training_runs,
+        ),
     }
 }
 
@@ -191,12 +194,10 @@ impl AgentTemplate {
             description,
             provider_id,
             model_id,
-            harness_profile_id: request
-                .harness_profile_id
-                .and_then(|profile_id| {
-                    let trimmed = profile_id.trim().to_owned();
-                    (!trimmed.is_empty()).then_some(trimmed)
-                }),
+            harness_profile_id: request.harness_profile_id.and_then(|profile_id| {
+                let trimmed = profile_id.trim().to_owned();
+                (!trimmed.is_empty()).then_some(trimmed)
+            }),
             skill_routes,
             budget_cents: request.budget_cents,
             version: 1,
@@ -240,7 +241,10 @@ impl std::fmt::Display for AgentTemplateError {
         match self {
             AgentTemplateError::EmptyField { field } => write!(formatter, "{field} is required"),
             AgentTemplateError::InvalidIdentifier { field, value } => {
-                write!(formatter, "{field} '{value}' must use lowercase letters, numbers, '-' or '_'")
+                write!(
+                    formatter,
+                    "{field} '{value}' must use lowercase letters, numbers, '-' or '_'"
+                )
             }
         }
     }
