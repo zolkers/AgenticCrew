@@ -7,20 +7,23 @@ import {
   electronHarnessStudioInvoke,
   electronMissionControlInvoke,
   electronSettingsInvoke,
-  electronSkillSourcesInvoke
+  electronSkillSourcesInvoke,
+  electronWorkspaceInvoke
 } from "./shared/api/electronInvokes";
 import {
   previewAgentStudioInvoke,
   previewHarnessStudioInvoke,
   previewMissionControlInvoke,
   previewSettingsInvoke,
-  previewSkillSourcesInvoke
+  previewSkillSourcesInvoke,
+  previewWorkspaceInvoke
 } from "./shared/api/previewInvokes";
 import { tauriAgentStudioInvoke } from "./shared/api/tauriAgentStudioInvoke";
 import { tauriHarnessStudioInvoke } from "./shared/api/tauriHarnessStudioInvoke";
 import { tauriMissionControlInvoke } from "./shared/api/tauriMissionControlInvoke";
 import { tauriSettingsInvoke } from "./shared/api/tauriSettingsInvoke";
 import { tauriSkillSourcesInvoke } from "./shared/api/tauriSkillSourcesInvoke";
+import { tauriWorkspaceInvoke } from "./shared/api/tauriWorkspaceInvoke";
 
 const rootElement = document.getElementById("root");
 const isElectronRuntime = typeof window.agenticcrew?.invoke === "function";
@@ -59,6 +62,11 @@ if (rootElement !== null) {
     tauriSkillSourcesInvoke,
     previewSkillSourcesInvoke
   );
+  const workspaceInvoke = selectDesktopInvoke(
+    electronWorkspaceInvoke,
+    tauriWorkspaceInvoke,
+    previewWorkspaceInvoke
+  );
   const settingsInvoke = selectDesktopInvoke(
     electronSettingsInvoke,
     tauriSettingsInvoke,
@@ -73,6 +81,7 @@ if (rootElement !== null) {
         missionControlInvoke={missionControlInvoke}
         settingsInvoke={settingsInvoke}
         skillSourcesInvoke={skillSourcesInvoke}
+        workspaceInvoke={workspaceInvoke}
       />
     </StrictMode>
   );

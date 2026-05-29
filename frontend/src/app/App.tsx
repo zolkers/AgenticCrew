@@ -24,17 +24,26 @@ import { SkillSources } from "../features/skill-sources/SkillSources";
 import { loadAgentStudioSnapshot, type InvokeAgentStudio } from "../shared/api/agentStudioApi";
 import { loadHarnessStudioSnapshot, type InvokeHarnessStudio } from "../shared/api/harnessStudioApi";
 import { loadMissionControlSnapshot, type InvokeMissionControl } from "../shared/api/missionControlApi";
+import { previewWorkspaceInvoke } from "../shared/api/previewInvokes";
 import { loadSettingsSnapshot, type InvokeSettings } from "../shared/api/settingsApi";
 import { loadSkillSourcesSnapshot, type InvokeSkillSources } from "../shared/api/skillSourcesApi";
-import { cockpitWorkspaces, type CockpitWorkspace } from "../shared/preview/cockpitData";
+import {
+  createWorkspace as createWorkspaceRecord,
+  loadWorkspaceSnapshot,
+  updateWorkspaceGitContext,
+  type InvokeWorkspace
+} from "../shared/api/workspaceApi";
+import type { CockpitWorkspace } from "../shared/preview/cockpitData";
 import type {
   AgentStudioSnapshot,
   AgentTemplate,
+  CreateWorkspaceRequest,
   HarnessStudioSnapshot,
   HarnessProfile,
   MissionControlSnapshot,
   SettingsSnapshot,
-  SkillSourcesSnapshot
+  SkillSourcesSnapshot,
+  WorkspaceSnapshot
 } from "../shared/types/core";
 import "../i18n";
 import "./App.css";
@@ -45,6 +54,7 @@ type AppProps = Readonly<{
   missionControlInvoke: InvokeMissionControl;
   settingsInvoke: InvokeSettings;
   skillSourcesInvoke: InvokeSkillSources;
+  workspaceInvoke?: InvokeWorkspace;
 }>;
 
 type AppLoadState =
@@ -56,6 +66,7 @@ type AppLoadState =
       skillSourcesSnapshot: SkillSourcesSnapshot;
       settingsSnapshot: SettingsSnapshot;
       status: "ready";
+      workspaceSnapshot: WorkspaceSnapshot;
     }>
   | Readonly<{ status: "loading" }>;
 
@@ -98,11 +109,11 @@ export function App({
   harnessStudioInvoke,
   missionControlInvoke,
   settingsInvoke,
-  skillSourcesInvoke
+  skillSourcesInvoke,
+  workspaceInvoke = previewWorkspaceInvoke
 }: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
   const [routeState, setRouteState] = useState<AppRouteState>(() => resolveInitialRoute());
-  const [workspaces, setWorkspaces] = useState<CockpitWorkspace[]>(() => [...cockpitWorkspaces]);
   const [workspaceLoadouts, setWorkspaceLoadouts] = useState<Record<string, WorkspaceLoadout>>({});
   const { t } = useTranslation();
   const activeView = routeState.view;
@@ -116,7 +127,8 @@ export function App({
       loadSkillSourcesSnapshot(skillSourcesInvoke),
       loadHarnessStudioSnapshot(harnessStudioInvoke),
       loadAgentStudioSnapshot(agentStudioInvoke),
-      loadSettingsSnapshot(settingsInvoke)
+      loadSettingsSnapshot(settingsInvoke),
+      loadWorkspaceSnapshot(workspaceInvoke)
     ])
       .then(
         ([
@@ -124,7 +136,8 @@ export function App({
           skillSourcesSnapshot,
           harnessStudioSnapshot,
           agentStudioSnapshot,
-          settingsSnapshot
+          settingsSnapshot,
+          workspaceSnapshot
         ]) => {
         if (isCurrent) {
           setLoadState({
@@ -133,6 +146,7 @@ export function App({
             missionControlSnapshot,
             settingsSnapshot,
             skillSourcesSnapshot,
+            workspaceSnapshot,
             status: "ready"
           });
         }
@@ -146,7 +160,14 @@ export function App({
     return () => {
       isCurrent = false;
     };
-  }, [agentStudioInvoke, harnessStudioInvoke, missionControlInvoke, settingsInvoke, skillSourcesInvoke]);
+  }, [
+    agentStudioInvoke,
+    harnessStudioInvoke,
+    missionControlInvoke,
+    settingsInvoke,
+    skillSourcesInvoke,
+    workspaceInvoke
+  ]);
 
   if (loadState.status === "error") {
     return <p role="alert">{t("missionControl.loadError", { defaultValue: "Mission Control unavailable" })}</p>;
@@ -160,10 +181,11 @@ export function App({
   const skillSourcesLabel = t("skillSources.title", { defaultValue: "Skill Sources" });
   const harnessStudioLabel = "Harness Studio";
   const agentStudioLabel = "Agent Studio";
+  const workspaces = loadState.workspaceSnapshot.workspaces;
   const workspacesById = Object.fromEntries(
     workspaces.map((workspace) => [workspace.id, workspace])
   ) as Record<string, CockpitWorkspace>;
-  const activeWorkspace = activeWorkspaceId === null ? null : workspacesById[activeWorkspaceId];
+  const activeWorkspace = activeWorkspaceId === null ? null : (workspacesById[activeWorkspaceId] ?? null);
   const openWorkspace = (workspaceId: string, view: AppView = "cockpit") => {
     setRouteState({ view, workspaceId });
     window.history.pushState(null, "", `/workspace/${workspaceId}/${routeSegmentByView[view]}`);
@@ -172,17 +194,25 @@ export function App({
     setRouteState({ view: "cockpit", workspaceId: null });
     window.history.pushState(null, "", "/workspaces");
   };
-  const createWorkspace = (request: CreateWorkspaceRequest) => {
-    const workspace = createLocalWorkspace(request);
-    setWorkspaces((current) => [...current, workspace]);
-    openWorkspace(workspace.id);
+  const replaceWorkspaceSnapshot = (workspaceSnapshot: WorkspaceSnapshot) => {
+    setLoadState({
+      ...loadState,
+      workspaceSnapshot
+    });
+  };
+  const createWorkspace = async (request: CreateWorkspaceRequest) => {
+    const workspaceSnapshot = await createWorkspaceRecord(workspaceInvoke, request);
+    replaceWorkspaceSnapshot(workspaceSnapshot);
+    openWorkspace(request.id);
   };
 
   if (activeWorkspace === null) {
     return (
       <MantineProvider defaultColorScheme="dark">
         <WorkspaceLaunchpad
-          onWorkspaceCreate={createWorkspace}
+          onWorkspaceCreate={(request) => {
+            void createWorkspace(request);
+          }}
           onWorkspaceSelect={(workspaceId) => {
             openWorkspace(workspaceId);
           }}
@@ -196,10 +226,12 @@ export function App({
   const openView = (view: AppView) => {
     openWorkspace(activeWorkspace.id, view);
   };
-  const updateActiveWorkspace = (changes: Partial<Pick<CockpitWorkspace, "branch" | "path">>) => {
-    setWorkspaces((current) =>
-      current.map((workspace) => (workspace.id === activeWorkspace.id ? { ...workspace, ...changes } : workspace))
-    );
+  const updateActiveWorkspace = async (changes: Pick<CockpitWorkspace, "branch" | "path">) => {
+    const workspaceSnapshot = await updateWorkspaceGitContext(workspaceInvoke, {
+      ...changes,
+      workspaceId: activeWorkspace.id
+    });
+    replaceWorkspaceSnapshot(workspaceSnapshot);
   };
 
   return (
@@ -344,7 +376,12 @@ export function App({
           />
         ) : null}
         {activeView === "gitPanel" ? (
-          <GitPanel onWorkspaceChange={updateActiveWorkspace} workspace={activeWorkspace} />
+          <GitPanel
+            onWorkspaceChange={(changes) => {
+              void updateActiveWorkspace(changes);
+            }}
+            workspace={activeWorkspace}
+          />
         ) : null}
         {activeView === "settings" ? (
           <SettingsPanel
@@ -373,12 +410,6 @@ function resolveInitialRoute(): AppRouteState {
   }
 
   const [, workspaceId, routeSegment = "cockpit"] = match;
-  const workspaceExists = cockpitWorkspaces.some((workspace) => workspace.id === workspaceId);
-
-  if (!workspaceExists) {
-    return { view: "cockpit", workspaceId: null };
-  }
-
   return {
     view: viewByRouteSegment[routeSegment] ?? "cockpit",
     workspaceId
@@ -409,13 +440,6 @@ type WorkspaceLaunchpadProps = Readonly<{
   workspaces: readonly CockpitWorkspace[];
 }>;
 
-type CreateWorkspaceRequest = Readonly<{
-  branch: string;
-  mission: string;
-  name: string;
-  path: string;
-}>;
-
 function WorkspaceLaunchpad({ onWorkspaceCreate, onWorkspaceSelect, workspaces }: WorkspaceLaunchpadProps) {
   const [branch, setBranch] = useState("main");
   const [mission, setMission] = useState("Start a new agent mission");
@@ -440,7 +464,7 @@ function WorkspaceLaunchpad({ onWorkspaceCreate, onWorkspaceSelect, workspaces }
         className="workspace-create-form"
         onSubmit={(event) => {
           event.preventDefault();
-          onWorkspaceCreate({ branch, mission, name, path });
+          onWorkspaceCreate({ branch, id: slugify(name), mission, name, path });
         }}
       >
         <label>
@@ -529,43 +553,6 @@ function WorkspaceLaunchpad({ onWorkspaceCreate, onWorkspaceSelect, workspaces }
       </section>
     </main>
   );
-}
-
-function createLocalWorkspace(request: CreateWorkspaceRequest): CockpitWorkspace {
-  const id = slugify(request.name);
-
-  return {
-    activeAgentId: "director",
-    agents: [
-      {
-        id: "director",
-        model: "gpt-5",
-        name: "director",
-        role: "Workspace director",
-        status: "active",
-        tools: ["planning", "git", "workspace"]
-      }
-    ],
-    branch: request.branch,
-    budgetLimitUsd: 10,
-    budgetUsedUsd: 0,
-    checkpoints: [
-      { label: "Workspace created", state: "done" },
-      { label: request.mission, state: "running" },
-      { label: "First run validation", state: "queued" }
-    ],
-    id,
-    logs: [
-      `$ agenticcrew attach ${id} --workspace ${request.path}`,
-      `workspace resolved: ${id} / branch ${request.branch}`,
-      `mission: ${request.mission}`
-    ],
-    mission: request.mission,
-    name: request.name,
-    path: request.path,
-    skills: ["superpowers:tdd", "git:workspace-context"],
-    status: "configured"
-  };
 }
 
 type CockpitProps = Readonly<{

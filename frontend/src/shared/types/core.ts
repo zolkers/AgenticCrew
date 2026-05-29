@@ -10,6 +10,54 @@ export type MissionControlSnapshot = {
   provider: string;
 };
 
+export type WorkspaceAgent = {
+  id: string;
+  model: string;
+  name: string;
+  role: string;
+  status: "active" | "queued" | "reviewing";
+  tools: string[];
+};
+
+export type WorkspaceCheckpoint = {
+  label: string;
+  state: "done" | "queued" | "running";
+};
+
+export type WorkspaceRecord = {
+  activeAgentId: string;
+  agents: WorkspaceAgent[];
+  branch: string;
+  budgetLimitUsd: number;
+  budgetUsedUsd: number;
+  checkpoints: WorkspaceCheckpoint[];
+  id: string;
+  logs: string[];
+  mission: string;
+  name: string;
+  path: string;
+  skills: string[];
+  status: "configured" | "observing" | "running";
+};
+
+export type WorkspaceSnapshot = {
+  workspaces: WorkspaceRecord[];
+};
+
+export type CreateWorkspaceRequest = {
+  branch: string;
+  id: string;
+  mission: string;
+  name: string;
+  path: string;
+};
+
+export type UpdateWorkspaceGitContextRequest = {
+  branch: string;
+  path: string;
+  workspaceId: string;
+};
+
 export type SkillSourceKind = "bundled" | "local" | "git_hub";
 export type SkillSourceTrustLevel = "built_in" | "local" | "external";
 export type SkillSourceActivationStatus = "pending_validation" | "validated" | "rejected" | "sync_failed";
@@ -231,6 +279,7 @@ export type ElectronCommandMap = {
   agent_studio_snapshot: AgentStudioSnapshot;
   create_agent_template: AgentStudioSnapshot;
   create_harness_profile: HarnessStudioSnapshot;
+  create_workspace: WorkspaceSnapshot;
   harness_studio_snapshot: HarnessStudioSnapshot;
   inspect_cached_skill_source: unknown;
   mission_control_snapshot: MissionControlSnapshot;
@@ -242,4 +291,6 @@ export type ElectronCommandMap = {
   update_agent_template: AgentStudioSnapshot;
   update_ai_provider_settings: SettingsSnapshot;
   update_harness_profile: HarnessStudioSnapshot;
+  update_workspace_git_context: WorkspaceSnapshot;
+  workspace_snapshot: WorkspaceSnapshot;
 };

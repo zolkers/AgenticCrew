@@ -3,13 +3,16 @@ import type {
   HarnessStudioSnapshot,
   MissionControlSnapshot,
   SettingsSnapshot,
-  SkillSourcesSnapshot
+  SkillSourcesSnapshot,
+  WorkspaceSnapshot
 } from "../types/core";
+import { cockpitWorkspaces } from "../preview/cockpitData";
 import type { InvokeAgentStudio } from "./agentStudioApi";
 import type { InvokeHarnessStudio } from "./harnessStudioApi";
 import type { InvokeMissionControl } from "./missionControlApi";
 import type { InvokeSettings } from "./settingsApi";
 import type { InvokeSkillSources } from "./skillSourcesApi";
+import type { InvokeWorkspace } from "./workspaceApi";
 
 const previewMissionControlSnapshot: MissionControlSnapshot = {
   activeAgentCount: 0,
@@ -19,6 +22,10 @@ const previewMissionControlSnapshot: MissionControlSnapshot = {
   humanGateStatus: "open",
   model: "local-preview",
   provider: "browser"
+};
+
+const previewWorkspaceSnapshot: WorkspaceSnapshot = {
+  workspaces: [...cockpitWorkspaces]
 };
 
 const previewSkillSourcesSnapshot: SkillSourcesSnapshot = {
@@ -118,6 +125,71 @@ const previewSettingsSnapshot: SettingsSnapshot = {
 
 export const previewMissionControlInvoke: InvokeMissionControl = () =>
   Promise.resolve(previewMissionControlSnapshot);
+
+export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
+  if (command === "create_workspace") {
+    const request = args?.request as
+      | { branch?: string; id?: string; mission?: string; name?: string; path?: string }
+      | undefined;
+    const id = request?.id ?? "preview-workspace";
+
+    return Promise.resolve({
+      workspaces: [
+        ...previewWorkspaceSnapshot.workspaces,
+        {
+          activeAgentId: "director",
+          agents: [
+            {
+              id: "director",
+              model: "gpt-5",
+              name: "director",
+              role: "Workspace director",
+              status: "active",
+              tools: ["planning", "git", "workspace"]
+            }
+          ],
+          branch: request?.branch ?? "main",
+          budgetLimitUsd: 10,
+          budgetUsedUsd: 0,
+          checkpoints: [
+            { label: "Workspace created", state: "done" },
+            { label: request?.mission ?? "Start a new agent mission", state: "running" },
+            { label: "First run validation", state: "queued" }
+          ],
+          id,
+          logs: [
+            `$ agenticcrew attach ${id} --workspace ${request?.path ?? "local"}`,
+            `workspace resolved: ${id} / branch ${request?.branch ?? "main"}`,
+            `mission: ${request?.mission ?? "Start a new agent mission"}`
+          ],
+          mission: request?.mission ?? "Start a new agent mission",
+          name: request?.name ?? "Preview Workspace",
+          path: request?.path ?? "local",
+          skills: ["superpowers:tdd", "git:workspace-context"],
+          status: "configured"
+        }
+      ]
+    });
+  }
+
+  if (command === "update_workspace_git_context") {
+    const request = args?.request as { branch?: string; path?: string; workspaceId?: string } | undefined;
+
+    return Promise.resolve({
+      workspaces: previewWorkspaceSnapshot.workspaces.map((workspace) =>
+        workspace.id === request?.workspaceId
+          ? {
+              ...workspace,
+              branch: request.branch ?? workspace.branch,
+              path: request.path ?? workspace.path
+            }
+          : workspace
+      )
+    });
+  }
+
+  return Promise.resolve(previewWorkspaceSnapshot);
+};
 
 export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) => {
   if (command === "create_harness_profile") {

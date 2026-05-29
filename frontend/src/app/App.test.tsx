@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { App } from "./App";
 import type {
@@ -578,7 +578,9 @@ describe("App", () => {
     expect(screen.getByText("PR workflow ready")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "feature/manual-branch" } });
     fireEvent.click(screen.getByRole("button", { name: "Save Git context" }));
-    expect(screen.getAllByText("feature/manual-branch").length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getAllByText("feature/manual-branch").length).toBeGreaterThan(0);
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();

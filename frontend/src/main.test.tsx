@@ -6,20 +6,23 @@ import {
   electronHarnessStudioInvoke,
   electronMissionControlInvoke,
   electronSettingsInvoke,
-  electronSkillSourcesInvoke
+  electronSkillSourcesInvoke,
+  electronWorkspaceInvoke
 } from "./shared/api/electronInvokes";
 import {
   previewAgentStudioInvoke,
   previewHarnessStudioInvoke,
   previewMissionControlInvoke,
   previewSettingsInvoke,
-  previewSkillSourcesInvoke
+  previewSkillSourcesInvoke,
+  previewWorkspaceInvoke
 } from "./shared/api/previewInvokes";
 import { tauriAgentStudioInvoke } from "./shared/api/tauriAgentStudioInvoke";
 import { tauriHarnessStudioInvoke } from "./shared/api/tauriHarnessStudioInvoke";
 import { tauriMissionControlInvoke } from "./shared/api/tauriMissionControlInvoke";
 import { tauriSettingsInvoke } from "./shared/api/tauriSettingsInvoke";
 import { tauriSkillSourcesInvoke } from "./shared/api/tauriSkillSourcesInvoke";
+import { tauriWorkspaceInvoke } from "./shared/api/tauriWorkspaceInvoke";
 
 const mocks = vi.hoisted(() => ({
   app: vi.fn(() => null),
@@ -29,17 +32,20 @@ const mocks = vi.hoisted(() => ({
   electronMissionControlInvoke: vi.fn(),
   electronSettingsInvoke: vi.fn(),
   electronSkillSourcesInvoke: vi.fn(),
+  electronWorkspaceInvoke: vi.fn(),
   previewAgentStudioInvoke: vi.fn(),
   previewHarnessStudioInvoke: vi.fn(),
   previewMissionControlInvoke: vi.fn(),
   previewSettingsInvoke: vi.fn(),
   previewSkillSourcesInvoke: vi.fn(),
+  previewWorkspaceInvoke: vi.fn(),
   render: vi.fn(),
   tauriAgentStudioInvoke: vi.fn(),
   tauriHarnessStudioInvoke: vi.fn(),
   tauriMissionControlInvoke: vi.fn(),
   tauriSettingsInvoke: vi.fn(),
-  tauriSkillSourcesInvoke: vi.fn()
+  tauriSkillSourcesInvoke: vi.fn(),
+  tauriWorkspaceInvoke: vi.fn()
 }));
 
 vi.mock("react-dom/client", () => ({
@@ -55,7 +61,8 @@ vi.mock("./shared/api/electronInvokes", () => ({
   electronHarnessStudioInvoke: mocks.electronHarnessStudioInvoke,
   electronMissionControlInvoke: mocks.electronMissionControlInvoke,
   electronSettingsInvoke: mocks.electronSettingsInvoke,
-  electronSkillSourcesInvoke: mocks.electronSkillSourcesInvoke
+  electronSkillSourcesInvoke: mocks.electronSkillSourcesInvoke,
+  electronWorkspaceInvoke: mocks.electronWorkspaceInvoke
 }));
 
 vi.mock("./shared/api/tauriMissionControlInvoke", () => ({
@@ -68,6 +75,10 @@ vi.mock("./shared/api/tauriSettingsInvoke", () => ({
 
 vi.mock("./shared/api/tauriSkillSourcesInvoke", () => ({
   tauriSkillSourcesInvoke: mocks.tauriSkillSourcesInvoke
+}));
+
+vi.mock("./shared/api/tauriWorkspaceInvoke", () => ({
+  tauriWorkspaceInvoke: mocks.tauriWorkspaceInvoke
 }));
 
 vi.mock("./shared/api/tauriAgentStudioInvoke", () => ({
@@ -83,7 +94,8 @@ vi.mock("./shared/api/previewInvokes", () => ({
   previewHarnessStudioInvoke: mocks.previewHarnessStudioInvoke,
   previewMissionControlInvoke: mocks.previewMissionControlInvoke,
   previewSettingsInvoke: mocks.previewSettingsInvoke,
-  previewSkillSourcesInvoke: mocks.previewSkillSourcesInvoke
+  previewSkillSourcesInvoke: mocks.previewSkillSourcesInvoke,
+  previewWorkspaceInvoke: mocks.previewWorkspaceInvoke
 }));
 
 describe("main", () => {
@@ -115,6 +127,7 @@ describe("main", () => {
         missionControlInvoke: unknown;
         settingsInvoke: unknown;
         skillSourcesInvoke: unknown;
+        workspaceInvoke: unknown;
       }>;
     }>;
     expect(renderedElement.type).toBe(StrictMode);
@@ -124,6 +137,7 @@ describe("main", () => {
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(previewMissionControlInvoke);
     expect(renderedElement.props.children.props.settingsInvoke).toBe(previewSettingsInvoke);
     expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(previewSkillSourcesInvoke);
+    expect(renderedElement.props.children.props.workspaceInvoke).toBe(previewWorkspaceInvoke);
   });
 
   it("renders App with the Tauri commands inside the Tauri runtime", async () => {
@@ -142,6 +156,7 @@ describe("main", () => {
         missionControlInvoke: unknown;
         settingsInvoke: unknown;
         skillSourcesInvoke: unknown;
+        workspaceInvoke: unknown;
       }>;
     }>;
 
@@ -150,6 +165,7 @@ describe("main", () => {
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(tauriMissionControlInvoke);
     expect(renderedElement.props.children.props.settingsInvoke).toBe(tauriSettingsInvoke);
     expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(tauriSkillSourcesInvoke);
+    expect(renderedElement.props.children.props.workspaceInvoke).toBe(tauriWorkspaceInvoke);
   });
 
   it("prefers Electron commands when the Electron bridge is present", async () => {
@@ -172,6 +188,7 @@ describe("main", () => {
         missionControlInvoke: unknown;
         settingsInvoke: unknown;
         skillSourcesInvoke: unknown;
+        workspaceInvoke: unknown;
       }>;
     }>;
 
@@ -180,6 +197,7 @@ describe("main", () => {
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(electronMissionControlInvoke);
     expect(renderedElement.props.children.props.settingsInvoke).toBe(electronSettingsInvoke);
     expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(electronSkillSourcesInvoke);
+    expect(renderedElement.props.children.props.workspaceInvoke).toBe(electronWorkspaceInvoke);
   });
 
   it("does not render when the root is absent", async () => {

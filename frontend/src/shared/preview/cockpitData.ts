@@ -1,34 +1,8 @@
-export type CockpitAgent = Readonly<{
-  id: string;
-  name: string;
-  role: string;
-  model: string;
-  status: "active" | "queued" | "reviewing";
-  tools: readonly string[];
-}>;
+import type { WorkspaceRecord } from "../types/core";
 
-export type CockpitCheckpoint = Readonly<{
-  label: string;
-  state: "done" | "running" | "queued";
-}>;
+export type CockpitWorkspace = WorkspaceRecord;
 
-export type CockpitWorkspace = Readonly<{
-  id: string;
-  name: string;
-  mission: string;
-  branch: string;
-  path: string;
-  status: string;
-  budgetUsedUsd: number;
-  budgetLimitUsd: number;
-  activeAgentId: string;
-  agents: readonly CockpitAgent[];
-  checkpoints: readonly CockpitCheckpoint[];
-  skills: readonly string[];
-  logs: readonly string[];
-}>;
-
-export const cockpitWorkspaces: readonly CockpitWorkspace[] = [
+export const cockpitWorkspaces: readonly WorkspaceRecord[] = [
   {
     activeAgentId: "ui-architect",
     agents: [

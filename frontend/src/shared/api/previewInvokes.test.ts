@@ -4,7 +4,8 @@ import {
   previewHarnessStudioInvoke,
   previewMissionControlInvoke,
   previewSettingsInvoke,
-  previewSkillSourcesInvoke
+  previewSkillSourcesInvoke,
+  previewWorkspaceInvoke
 } from "./previewInvokes";
 
 describe("previewInvokes", () => {
@@ -14,6 +15,66 @@ describe("previewInvokes", () => {
       humanGateStatus: "open",
       model: "local-preview",
       provider: "browser"
+    });
+  });
+
+  it("returns and mutates workspace preview data for browser previews", async () => {
+    await expect(previewWorkspaceInvoke("workspace_snapshot")).resolves.toMatchObject({
+      workspaces: [{ id: "fullstack-app" }, { id: "mobile-qa" }]
+    });
+
+    await expect(
+      previewWorkspaceInvoke("create_workspace", {
+        request: {
+          branch: "feature/api",
+          id: "api-platform",
+          mission: "Build API",
+          name: "API Platform",
+          path: "D:\\api"
+        }
+      })
+    ).resolves.toMatchObject({
+      workspaces: [
+        { id: "fullstack-app" },
+        { id: "mobile-qa" },
+        { branch: "feature/api", id: "api-platform", path: "D:\\api" }
+      ]
+    });
+
+    const updated = await previewWorkspaceInvoke("update_workspace_git_context", {
+      request: { branch: "feature/manual", path: "D:\\manual", workspaceId: "fullstack-app" }
+    });
+
+    expect(updated.workspaces[0]).toMatchObject({
+      branch: "feature/manual",
+      id: "fullstack-app",
+      path: "D:\\manual"
+    });
+  });
+
+  it("uses preview workspace fallbacks when action args are absent", async () => {
+    await expect(previewWorkspaceInvoke("create_workspace")).resolves.toMatchObject({
+      workspaces: [
+        { id: "fullstack-app" },
+        { id: "mobile-qa" },
+        {
+          branch: "main",
+          id: "preview-workspace",
+          mission: "Start a new agent mission",
+          name: "Preview Workspace",
+          path: "local"
+        }
+      ]
+    });
+
+    const updated = await previewWorkspaceInvoke("update_workspace_git_context", {
+      request: { workspaceId: "fullstack-app" }
+    });
+
+    expect(updated.workspaces[0]).toMatchObject({
+      branch: "codex/cockpit-prototype",
+      id: "fullstack-app",
+      path: "C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew"
     });
   });
 

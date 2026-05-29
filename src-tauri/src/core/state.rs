@@ -25,6 +25,9 @@ use super::{
         DiscoveredSkillManifest, RegisterGitHubSkillSourceRequest, SkillManifestValidationError,
         SkillSource, SkillSourceError,
     },
+    workspaces::{
+        CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest, WorkspaceError, WorkspaceRecord,
+    },
 };
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
@@ -49,6 +52,8 @@ pub struct AgentOsState {
     pub agent_training_runs: Vec<AgentTrainingRun>,
     #[serde(default)]
     pub desktop_settings: DesktopSettings,
+    #[serde(default = "WorkspaceRecord::built_in_workspaces")]
+    pub workspaces: Vec<WorkspaceRecord>,
 }
 
 impl AgentOsState {
@@ -66,6 +71,7 @@ impl AgentOsState {
             agent_templates: vec![AgentTemplate::developer_with_pi()],
             agent_training_runs: Vec::new(),
             desktop_settings: DesktopSettings::default(),
+            workspaces: WorkspaceRecord::built_in_workspaces(),
         }
     }
 
@@ -470,6 +476,45 @@ impl AgentOsState {
 
         Ok(())
     }
+
+    pub fn create_workspace(
+        &mut self,
+        request: CreateWorkspaceRequest,
+    ) -> Result<(), StateMutationError> {
+        if self
+            .workspaces
+            .iter()
+            .any(|workspace| workspace.id == request.id)
+        {
+            return Err(StateMutationError::DuplicateWorkspace {
+                workspace_id: request.id,
+            });
+        }
+
+        self.workspaces
+            .push(WorkspaceRecord::local(request).map_err(StateMutationError::InvalidWorkspace)?);
+
+        Ok(())
+    }
+
+    pub fn update_workspace_git_context(
+        &mut self,
+        request: UpdateWorkspaceGitContextRequest,
+    ) -> Result<(), StateMutationError> {
+        let workspace = self
+            .workspaces
+            .iter_mut()
+            .find(|workspace| workspace.id == request.workspace_id)
+            .ok_or_else(|| StateMutationError::MissingWorkspace {
+                workspace_id: request.workspace_id.clone(),
+            })?;
+
+        workspace
+            .update_git_context(request)
+            .map_err(StateMutationError::InvalidWorkspace)?;
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -547,10 +592,17 @@ pub enum StateMutationError {
     MissingAgentTemplate {
         template_id: String,
     },
+    DuplicateWorkspace {
+        workspace_id: String,
+    },
+    MissingWorkspace {
+        workspace_id: String,
+    },
     InvalidSkillSource(SkillSourceError),
     InvalidHarnessProfile(HarnessProfileError),
     InvalidAgentTemplate(AgentTemplateError),
     InvalidDesktopSettings(SettingsValidationError),
+    InvalidWorkspace(WorkspaceError),
     CheckpointNotPassed(SessionTransitionError),
 }
 
@@ -599,6 +651,12 @@ impl fmt::Display for StateMutationError {
             StateMutationError::MissingAgentTemplate { template_id } => {
                 write!(formatter, "agent template '{template_id}' does not exist")
             }
+            StateMutationError::DuplicateWorkspace { workspace_id } => {
+                write!(formatter, "workspace '{workspace_id}' already exists")
+            }
+            StateMutationError::MissingWorkspace { workspace_id } => {
+                write!(formatter, "workspace '{workspace_id}' does not exist")
+            }
             StateMutationError::InvalidSkillSource(error) => {
                 write!(formatter, "invalid skill source: {error}")
             }
@@ -610,6 +668,9 @@ impl fmt::Display for StateMutationError {
             }
             StateMutationError::InvalidDesktopSettings(error) => {
                 write!(formatter, "invalid desktop settings: {error}")
+            }
+            StateMutationError::InvalidWorkspace(error) => {
+                write!(formatter, "invalid workspace: {error}")
             }
             StateMutationError::CheckpointNotPassed(error) => {
                 write!(formatter, "feature session cannot close: {error:?}")
@@ -793,6 +854,7 @@ mod tests {
         },
         settings::{DesktopSettings, UpdateAiProviderSettingsRequest},
         skills::RegisterGitHubSkillSourceRequest,
+        workspaces::WorkspaceRecord,
     };
 
     #[test]
@@ -1737,6 +1799,7 @@ mod tests {
             agent_templates: vec![AgentTemplate::developer_with_pi()],
             agent_training_runs: Vec::new(),
             desktop_settings: DesktopSettings::default(),
+            workspaces: WorkspaceRecord::built_in_workspaces(),
         }
     }
 

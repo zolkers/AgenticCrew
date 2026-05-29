@@ -4,6 +4,7 @@ import type { InvokeHarnessStudio } from "./harnessStudioApi";
 import type { InvokeMissionControl } from "./missionControlApi";
 import type { InvokeSettings } from "./settingsApi";
 import type { InvokeSkillSources } from "./skillSourcesApi";
+import type { InvokeWorkspace } from "./workspaceApi";
 
 function invokeElectron<Command extends keyof ElectronCommandMap>(
   command: Command,
@@ -24,6 +25,9 @@ export const electronHarnessStudioInvoke: InvokeHarnessStudio = (command, args) 
 
 export const electronMissionControlInvoke: InvokeMissionControl = (command) =>
   invokeElectron(command);
+
+export const electronWorkspaceInvoke: InvokeWorkspace = (command, args) =>
+  invokeElectron(command, args);
 
 export const electronSkillSourcesInvoke: InvokeSkillSources = (command, args) =>
   invokeElectron(command, args);

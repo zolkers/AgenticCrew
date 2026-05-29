@@ -1,5 +1,8 @@
 const COMMANDS = new Set([
   "mission_control_snapshot",
+  "workspace_snapshot",
+  "create_workspace",
+  "update_workspace_git_context",
   "skill_sources_snapshot",
   "harness_studio_snapshot",
   "create_harness_profile",

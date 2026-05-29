@@ -12,3 +12,4 @@ pub mod skill_routes;
 pub mod skill_sync;
 pub mod skills;
 pub mod state;
+pub mod workspaces;

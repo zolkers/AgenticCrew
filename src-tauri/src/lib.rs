@@ -30,6 +30,10 @@ use core::{
         AgentOsState, CreateCheckpointRequest, CreateFeatureSessionRequest, JsonStateStore,
         RecordCommandEvidenceRequest, StateMutationError, StateStoreError,
     },
+    workspaces::{
+        workspace_snapshot_from_state, CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest,
+        WorkspaceSnapshot,
+    },
 };
 
 pub const STATE_FILE_NAME: &str = "agenticcrew-state.json";
@@ -127,6 +131,32 @@ pub fn agent_studio_snapshot_at_path(
     let state = durable_state_snapshot_at_path(path)?;
 
     Ok(agent_studio_snapshot_from_state(&state))
+}
+
+pub fn workspace_snapshot_at_path(
+    path: impl Into<PathBuf>,
+) -> Result<WorkspaceSnapshot, DesktopCommandError> {
+    let state = durable_state_snapshot_at_path(path)?;
+
+    Ok(workspace_snapshot_from_state(&state))
+}
+
+pub fn create_workspace_at_path(
+    path: impl AsRef<Path>,
+    request: CreateWorkspaceRequest,
+) -> Result<WorkspaceSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.create_workspace(request))?;
+
+    Ok(workspace_snapshot_from_state(&state))
+}
+
+pub fn update_workspace_git_context_at_path(
+    path: impl AsRef<Path>,
+    request: UpdateWorkspaceGitContextRequest,
+) -> Result<WorkspaceSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.update_workspace_git_context(request))?;
+
+    Ok(workspace_snapshot_from_state(&state))
 }
 
 pub fn create_agent_template_at_path(
@@ -368,15 +398,20 @@ mod commands {
         core::settings::{SettingsSnapshot, UpdateAiProviderSettingsRequest},
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
+        core::workspaces::{
+            CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest, WorkspaceSnapshot,
+        },
         core::{agents::AgentStudioSnapshot, harnesses::HarnessStudioSnapshot},
         create_agent_template_at_path, create_feature_session_at_path,
-        create_harness_profile_at_path, durable_state_snapshot_at_path,
+        create_harness_profile_at_path, create_workspace_at_path, durable_state_snapshot_at_path,
         harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
         mission_control_snapshot_at_path, record_command_evidence_at_path,
         register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
         set_agent_template_active_at_path, set_harness_profile_active_at_path, settings_snapshot_at_path,
         sync_github_skill_source_at_path, update_agent_template_at_path,
-        update_ai_provider_settings_at_path, update_harness_profile_at_path, validate_skill_source_at_path,
+        update_ai_provider_settings_at_path, update_harness_profile_at_path,
+        update_workspace_git_context_at_path, validate_skill_source_at_path,
+        workspace_snapshot_at_path,
         CreateCheckpointRequest, CreateFeatureSessionRequest, DesktopCommandError,
         MissionControlSnapshot, RecordCommandEvidenceRequest,
     };
@@ -393,6 +428,29 @@ mod commands {
         app: tauri::AppHandle,
     ) -> Result<AgentOsState, DesktopCommandError> {
         durable_state_snapshot_at_path(app_state_path(&app)?)
+    }
+
+    #[tauri::command]
+    pub fn workspace_snapshot(
+        app: tauri::AppHandle,
+    ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
+        workspace_snapshot_at_path(app_state_path(&app)?)
+    }
+
+    #[tauri::command]
+    pub fn create_workspace(
+        app: tauri::AppHandle,
+        request: CreateWorkspaceRequest,
+    ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
+        create_workspace_at_path(app_state_path(&app)?, request)
+    }
+
+    #[tauri::command]
+    pub fn update_workspace_git_context(
+        app: tauri::AppHandle,
+        request: UpdateWorkspaceGitContextRequest,
+    ) -> Result<WorkspaceSnapshot, DesktopCommandError> {
+        update_workspace_git_context_at_path(app_state_path(&app)?, request)
     }
 
     #[tauri::command]
@@ -581,6 +639,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::mission_control_snapshot,
             commands::durable_state_snapshot,
+            commands::workspace_snapshot,
+            commands::create_workspace,
+            commands::update_workspace_git_context,
             commands::skill_sources_snapshot,
             commands::harness_studio_snapshot,
             commands::create_harness_profile,
@@ -624,12 +685,13 @@ mod tests {
         activate_skill_source_at_path, add_checkpoint_at_path, agent_studio_snapshot_at_path,
         app_name, approve_skill_source_permissions_at_path, close_feature_session_at_path,
         create_agent_template_at_path, create_feature_session_at_path,
-        create_harness_profile_at_path, durable_state_snapshot_at_path, harness_studio_snapshot_at_path,
-        inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
+        create_harness_profile_at_path, create_workspace_at_path, durable_state_snapshot_at_path,
+        harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
         record_command_evidence_at_path, record_skill_source_sync_success_at_path,
         register_github_skill_source_at_path, set_agent_template_active_at_path,
         set_harness_profile_active_at_path, skill_sources_snapshot_at_path, state_file_path,
-        update_agent_template_at_path, update_harness_profile_at_path, validate_skill_source_at_path,
+        update_agent_template_at_path, update_harness_profile_at_path,
+        update_workspace_git_context_at_path, validate_skill_source_at_path, workspace_snapshot_at_path,
         STATE_FILE_NAME,
     };
     use crate::core::{
@@ -648,6 +710,7 @@ mod tests {
         state::{
             CreateCheckpointRequest, CreateFeatureSessionRequest, RecordCommandEvidenceRequest,
         },
+        workspaces::{CreateWorkspaceRequest, UpdateWorkspaceGitContextRequest},
     };
 
     #[test]
@@ -742,6 +805,68 @@ mod tests {
 
         assert_eq!(snapshot.active_session_count, 1);
         assert_eq!(snapshot.current_checkpoint, "State tests");
+    }
+
+    #[test]
+    fn workspace_snapshot_command_reads_seeded_workspaces() {
+        let path = test_path(
+            "workspace_snapshot_command_reads_seeded_workspaces",
+            "state.json",
+        );
+
+        let snapshot = workspace_snapshot_at_path(&path).expect("workspaces should load");
+
+        assert_eq!(snapshot.workspaces.len(), 2);
+        assert_eq!(snapshot.workspaces[0].id, "fullstack-app");
+        assert_eq!(snapshot.workspaces[1].id, "mobile-qa");
+    }
+
+    #[test]
+    fn workspace_commands_persist_local_workspace_and_git_context() {
+        let path = test_path(
+            "workspace_commands_persist_local_workspace_and_git_context",
+            "state.json",
+        );
+
+        let snapshot = create_workspace_at_path(
+            &path,
+            CreateWorkspaceRequest {
+                branch: "feature/api".to_owned(),
+                id: "api-platform".to_owned(),
+                mission: "Build API agents".to_owned(),
+                name: "API Platform".to_owned(),
+                path: "D:\\work\\api-platform".to_owned(),
+            },
+        )
+        .expect("workspace should persist");
+
+        assert_eq!(snapshot.workspaces.len(), 3);
+        assert!(snapshot
+            .workspaces
+            .iter()
+            .any(|workspace| workspace.id == "api-platform"));
+
+        let snapshot = update_workspace_git_context_at_path(
+            &path,
+            UpdateWorkspaceGitContextRequest {
+                branch: "feature/manual".to_owned(),
+                path: "D:\\manual".to_owned(),
+                workspace_id: "api-platform".to_owned(),
+            },
+        )
+        .expect("workspace git context should persist");
+
+        let workspace = snapshot
+            .workspaces
+            .iter()
+            .find(|workspace| workspace.id == "api-platform")
+            .expect("workspace should exist");
+        assert_eq!(workspace.branch, "feature/manual");
+        assert_eq!(workspace.path, "D:\\manual");
+        assert_eq!(
+            snapshot,
+            workspace_snapshot_at_path(&path).expect("snapshot should load")
+        );
     }
 
     #[test]
