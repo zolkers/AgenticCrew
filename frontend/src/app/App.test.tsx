@@ -236,12 +236,11 @@ describe("App", () => {
     await openDefaultWorkspace();
     expect(screen.getByLabelText("Token usage")).toHaveTextContent("42.5K / 1M");
 
-    fireEvent.change(screen.getByLabelText("Active branch"), {
-      target: { value: "codex/mobile-smoke" }
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Active branch" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "codex/mobile-smoke" }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Active branch")).toHaveValue("codex/mobile-smoke");
+      expect(screen.getByRole("button", { name: "Active branch" })).toHaveTextContent("codex/mobile-smoke");
     });
   });
 

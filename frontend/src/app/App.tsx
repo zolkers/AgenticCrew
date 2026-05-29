@@ -3,16 +3,21 @@ import { MantineProvider, Tooltip } from "@mantine/core";
 import {
   Bot,
   Brain,
+  Check,
+  ChevronDown,
   ChevronRight,
   FolderKanban,
   GitBranch,
+  GitCommitHorizontal,
   KeyRound,
   LayoutDashboard,
   Store,
   Route,
   Settings2,
   SlidersHorizontal,
-  Plus
+  Plus,
+  RefreshCw,
+  Upload
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AgentStudio } from "../features/agents/AgentStudio";
@@ -127,6 +132,7 @@ export function App({
   workspaceInvoke = previewWorkspaceInvoke
 }: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
+  const [branchMenuOpen, setBranchMenuOpen] = useState(false);
   const [routeState, setRouteState] = useState<AppRouteState>(() => resolveInitialRoute());
   const { t } = useTranslation();
   const activeView = routeState.view;
@@ -293,26 +299,82 @@ export function App({
         </button>
         <div className="topbar-workspace" aria-label="Active workspace">
           <span>{activeWorkspace.id}</span>
-          <label>
-            <GitBranch aria-hidden="true" size={14} />
-            <select
+          <div className="topbar-vcs-widget">
+            <button
+              aria-expanded={branchMenuOpen}
+              aria-haspopup="menu"
               aria-label="Active branch"
-              className="topbar-branch-select"
-              onChange={(event) => {
-                void updateActiveWorkspace({
-                  branch: event.target.value,
-                  path: activeWorkspace.path
-                });
+              className="topbar-branch-button"
+              onClick={() => {
+                setBranchMenuOpen((isOpen) => !isOpen);
               }}
-              value={activeWorkspace.branch}
+              type="button"
             >
-              {branchOptions.map((branch) => (
-                <option key={branch} value={branch}>
-                  {branch}
-                </option>
-              ))}
-            </select>
-          </label>
+              <GitBranch aria-hidden="true" size={14} />
+              <strong>{activeWorkspace.branch}</strong>
+              <ChevronDown aria-hidden="true" size={14} />
+            </button>
+            {branchMenuOpen ? (
+              <div className="topbar-branch-menu" role="menu">
+                <header>
+                  <span>Git Branches</span>
+                  <strong>{activeWorkspace.branch}</strong>
+                </header>
+                <div className="topbar-branch-actions" aria-label="VCS actions">
+                  <button
+                    onClick={() => {
+                      setBranchMenuOpen(false);
+                      void refreshActiveGitStatus();
+                    }}
+                    type="button"
+                  >
+                    <RefreshCw aria-hidden="true" size={14} />
+                    <span>Update</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBranchMenuOpen(false);
+                      openView("gitPanel");
+                    }}
+                    type="button"
+                  >
+                    <GitCommitHorizontal aria-hidden="true" size={14} />
+                    <span>Commit</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBranchMenuOpen(false);
+                      openView("gitPanel");
+                    }}
+                    type="button"
+                  >
+                    <Upload aria-hidden="true" size={14} />
+                    <span>Push</span>
+                  </button>
+                </div>
+                <div className="topbar-branch-list" role="group" aria-label="Branches">
+                  {branchOptions.map((branch) => (
+                    <button
+                      aria-current={branch === activeWorkspace.branch ? "true" : undefined}
+                      key={branch}
+                      onClick={() => {
+                        setBranchMenuOpen(false);
+                        void updateActiveWorkspace({
+                          branch,
+                          path: activeWorkspace.path
+                        });
+                      }}
+                      role="menuitem"
+                      type="button"
+                    >
+                      {branch === activeWorkspace.branch ? <Check aria-hidden="true" size={14} /> : <span aria-hidden="true" />}
+                      <span>{branch}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="topbar-tokens" aria-label="Token usage">
           <span>Tokens</span>
