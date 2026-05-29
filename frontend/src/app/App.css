@@ -1089,7 +1089,8 @@ button {
 }
 
 .training-lane,
-.version-ledger {
+.version-ledger,
+.agent-studio-drawer {
   display: grid;
   gap: 0.75rem;
   margin-top: 1rem;
@@ -1136,8 +1137,169 @@ button {
 }
 
 .training-lane svg,
-.version-ledger svg {
+.version-ledger svg,
+.agent-studio-drawer svg {
   color: var(--color-teal);
+}
+
+.agent-studio-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.agent-roster-panel {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  min-width: 0;
+  padding: 0.45rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-terminal);
+}
+
+.agent-roster-panel button {
+  display: grid;
+  grid-template-columns: 0.75rem minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  min-width: 0;
+  min-height: 3.2rem;
+  padding: 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--color-text);
+  text-align: left;
+  background: transparent;
+}
+
+.agent-roster-panel button:hover,
+.agent-roster-panel button[aria-pressed="true"] {
+  border-color: rgba(106, 169, 255, 0.42);
+  background: #303746;
+}
+
+.agent-roster-panel button > span:nth-child(2) {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.agent-roster-panel strong,
+.agent-roster-panel small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-roster-panel small {
+  color: var(--color-muted);
+}
+
+.agent-roster-panel code {
+  max-width: 8rem;
+  color: var(--color-codex);
+  font-size: 0.76rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-detail-panel {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--color-border);
+  background:
+    linear-gradient(90deg, rgba(106, 169, 255, 0.08), transparent 42%),
+    var(--color-terminal);
+}
+
+.agent-detail-panel > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.agent-detail-panel h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.agent-detail-panel header span,
+.agent-detail-panel p {
+  color: var(--color-muted);
+}
+
+.agent-detail-panel dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.agent-detail-panel dl div {
+  min-width: 0;
+  padding: 0.55rem;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-panel);
+}
+
+.agent-detail-panel dt {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.agent-detail-panel dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+.agent-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
+.compact-pills {
+  margin: 0;
+}
+
+.agent-studio-drawer {
+  padding: 0.65rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-terminal);
+}
+
+.agent-studio-drawer summary {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+}
+
+.agent-studio-drawer summary::-webkit-details-marker {
+  display: none;
+}
+
+.agent-studio-drawer h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.agent-studio-drawer .surface-list {
+  margin-top: 0.7rem;
 }
 
 .settings-form label {
@@ -1703,6 +1865,7 @@ section[aria-label="Settings"] {
   .cockpit-hero,
   .agent-header,
   .command-bar,
+  .agent-studio-layout,
   .git-context-form,
   .mission-grid {
     grid-template-columns: 1fr;

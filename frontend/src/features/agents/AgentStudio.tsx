@@ -37,6 +37,7 @@ export function AgentStudio({
   const [editingTemplateId, setEditingTemplateId] = useState<null | string>(null);
   const [error, setError] = useState<null | string>(null);
   const [harnessProfileId, setHarnessProfileId] = useState(harnessSnapshot.profiles[0]?.id ?? "");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(snapshot.templates[0]?.id ?? "");
   const defaultModelId = firstAvailableModelId(modelOptions, snapshot);
   const [modelId, setModelId] = useState(defaultModelId);
   const [name, setName] = useState("Review Agent");
@@ -52,6 +53,7 @@ export function AgentStudio({
   const evaluationRuns = snapshot.evaluationRuns ?? [];
   const versionSummaries = snapshot.versionSummaries ?? agentVersionSummaries(snapshot);
   const generatedId = useMemo(() => slugify(name), [name]);
+  const selectedTemplate = snapshot.templates.find((template) => template.id === selectedTemplateId) ?? snapshot.templates[0];
   const submitLabel = saving ? "Saving" : getAgentSubmitLabel(editingTemplateId);
 
   async function submitAgentTemplate() {
@@ -187,70 +189,24 @@ export function AgentStudio({
             <span>{evaluationRuns.length} evaluations</span>
           </article>
         </div>
-        <ul className="surface-list">
-          {snapshot.templates.map((template) => (
-            <li key={template.id}>
-              <div>
-                <strong>{template.name}</strong>
-                <span>
-                  {template.role} / v{template.version}
-                </span>
-              </div>
-              <dl>
-                <div>
-                  <dt>Model</dt>
-                  <dd>
-                    {template.providerId} / {template.modelId}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Harness</dt>
-                  <dd>{template.harnessProfileId ?? "None"}</dd>
-                </div>
-                <div>
-                  <dt>Budget</dt>
-                  <dd>${(template.budgetCents / 100).toFixed(2)}</dd>
-                </div>
-              </dl>
-              <p>{template.description}</p>
-              <ul className="pill-list">
-                {template.skillRoutes.map((route) => (
-                  <li key={route}>{route}</li>
-                ))}
-              </ul>
-              <button
-                className="inline-action"
-                disabled={saving}
-                onClick={() => {
-                  void toggleAgentTemplate(template.id, !template.active);
-                }}
-                type="button"
-              >
-                <Power aria-hidden="true" size={16} />
-                <span>{template.active ? "Deactivate" : "Activate"}</span>
-              </button>
-              <button
-                className="inline-action"
-                disabled={saving}
-                onClick={() => {
-                  beginEdit(template);
-                }}
-                type="button"
-              >
-                <Edit3 aria-hidden="true" size={16} />
-                <span>Edit</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <AgentTemplateBrowser
+          onEdit={beginEdit}
+          onSelect={setSelectedTemplateId}
+          onToggleActive={(template) => {
+            void toggleAgentTemplate(template.id, !template.active);
+          }}
+          saving={saving}
+          selectedTemplate={selectedTemplate}
+          templates={snapshot.templates}
+        />
         </>
       )}
       {versionSummaries.length > 0 ? (
-        <section aria-labelledby="version-ledger-title" className="version-ledger">
-          <header>
+        <details className="agent-studio-drawer">
+          <summary>
             <Trophy aria-hidden="true" size={18} />
             <h3 id="version-ledger-title">Version ledger</h3>
-          </header>
+          </summary>
           <ul className="surface-list">
             {versionSummaries.map((summary) => (
               <li key={summary.templateId}>
@@ -273,14 +229,14 @@ export function AgentStudio({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ) : null}
       {snapshot.trainingRuns.length > 0 ? (
-        <section aria-labelledby="training-lane-title" className="training-lane">
-          <header>
+        <details className="agent-studio-drawer">
+          <summary>
             <FlaskConical aria-hidden="true" size={18} />
             <h3 id="training-lane-title">Training lane</h3>
-          </header>
+          </summary>
           <ul className="surface-list">
             {snapshot.trainingRuns.map((run) => (
               <li key={run.id}>
@@ -322,14 +278,14 @@ export function AgentStudio({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ) : null}
       {evaluationRuns.length > 0 ? (
-        <section aria-labelledby="evaluation-lane-title" className="training-lane">
-          <header>
+        <details className="agent-studio-drawer">
+          <summary>
             <FlaskConical aria-hidden="true" size={18} />
             <h3 id="evaluation-lane-title">Evaluation lane</h3>
-          </header>
+          </summary>
           <ul className="surface-list">
             {evaluationRuns.map((run) => (
               <li key={run.id}>
@@ -361,7 +317,7 @@ export function AgentStudio({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ) : null}
       <form
         className="agent-form"
@@ -505,6 +461,108 @@ export function AgentStudio({
         </div>
       </form>
     </section>
+  );
+}
+
+type AgentTemplateBrowserProps = Readonly<{
+  onEdit: (template: AgentTemplate) => void;
+  onSelect: (templateId: string) => void;
+  onToggleActive: (template: AgentTemplate) => void;
+  saving: boolean;
+  selectedTemplate: AgentTemplate;
+  templates: readonly AgentTemplate[];
+}>;
+
+function AgentTemplateBrowser({
+  onEdit,
+  onSelect,
+  onToggleActive,
+  saving,
+  selectedTemplate,
+  templates
+}: AgentTemplateBrowserProps) {
+  return (
+    <div className="agent-studio-layout">
+      <nav className="agent-roster-panel" aria-label="Agent templates">
+        {templates.map((template) => (
+          <button
+            aria-pressed={selectedTemplate.id === template.id}
+            key={template.id}
+            onClick={() => {
+              onSelect(template.id);
+            }}
+            type="button"
+          >
+            <span className={`status-dot status-dot-${template.active ? "active" : "queued"}`} aria-hidden="true" />
+            <span>
+              <strong>{template.name}</strong>
+              <small>
+                {template.role} / v{template.version}
+              </small>
+            </span>
+            <code>{template.modelId}</code>
+          </button>
+        ))}
+      </nav>
+      <article className="agent-detail-panel" aria-label="Selected agent details">
+        <header>
+          <div>
+            <p className="eyebrow">Selected agent</p>
+            <h3>{selectedTemplate.name}</h3>
+            <span>
+              {selectedTemplate.role} / {selectedTemplate.active ? "active" : "inactive"}
+            </span>
+          </div>
+          <div className="agent-detail-actions">
+            <button
+              className="inline-action"
+              disabled={saving}
+              onClick={() => {
+                onToggleActive(selectedTemplate);
+              }}
+              type="button"
+            >
+              <Power aria-hidden="true" size={16} />
+              <span>{selectedTemplate.active ? "Deactivate" : "Activate"}</span>
+            </button>
+            <button
+              className="inline-action"
+              disabled={saving}
+              onClick={() => {
+                onEdit(selectedTemplate);
+              }}
+              type="button"
+            >
+              <Edit3 aria-hidden="true" size={16} />
+              <span>Edit</span>
+            </button>
+          </div>
+        </header>
+        <dl>
+          <div>
+            <dt>Model</dt>
+            <dd>
+              {selectedTemplate.providerId} / {selectedTemplate.modelId}
+            </dd>
+          </div>
+          <div>
+            <dt>Harness</dt>
+            <dd>{selectedTemplate.harnessProfileId ?? "None"}</dd>
+          </div>
+          <div>
+            <dt>Budget</dt>
+            <dd>${(selectedTemplate.budgetCents / 100).toFixed(2)}</dd>
+          </div>
+        </dl>
+        <p>{selectedTemplate.description}</p>
+        <ul className="pill-list compact-pills" aria-label={`${selectedTemplate.name} skill routes`}>
+          {selectedTemplate.skillRoutes.length === 0 ? <li>No skill route</li> : null}
+          {selectedTemplate.skillRoutes.map((route) => (
+            <li key={route}>{route}</li>
+          ))}
+        </ul>
+      </article>
+    </div>
   );
 }
 
