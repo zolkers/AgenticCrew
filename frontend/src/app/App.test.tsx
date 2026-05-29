@@ -5,6 +5,7 @@ import type {
   AgentStudioSnapshot,
   HarnessStudioSnapshot,
   MissionControlSnapshot,
+  RunsSnapshot,
   SettingsSnapshot,
   SkillSourcesSnapshot
 } from "../shared/types/core";
@@ -167,6 +168,12 @@ const settingsSnapshot: SettingsSnapshot = {
 
 const settingsInvoke = () => Promise.resolve(settingsSnapshot);
 
+const runsSnapshot: RunsSnapshot = {
+  activeRunId: null,
+  events: [],
+  runs: []
+};
+
 function createDeferredSnapshot<T>() {
   let resolveSnapshot = (snapshot: T): void => {
     throw new Error(`Deferred snapshot resolve was used before assignment: ${JSON.stringify(snapshot)}`);
@@ -195,7 +202,7 @@ describe("App", () => {
     cleanup();
   });
 
-  it("renders the AgenticCrew cockpit as the default screen", async () => {
+  it("renders the AgenticCrew Workbench as the default screen", async () => {
     render(
       <App
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
@@ -209,16 +216,16 @@ describe("App", () => {
     expect(screen.getByText("Loading Mission Control")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Choose a workspace" })).toBeInTheDocument();
     await openDefaultWorkspace();
-    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Workbench" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workspace/fullstack-app/cockpit");
     expect(screen.getByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
     expect(screen.getAllByText("fullstack-app").length).toBeGreaterThan(0);
-    expect(screen.getByText("Active terminal stream")).toBeInTheDocument();
-    expect(screen.getByText("UI architect / active")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Agent overview" })).toBeInTheDocument();
-    expect(screen.getByLabelText("frontend-lead tools")).toHaveTextContent("react");
-    expect(screen.getByRole("button", { name: "Queue agent instruction" })).toBeDisabled();
-    expect(screen.getByLabelText("Run status")).toHaveTextContent("engine: langgraph");
+    expect(screen.getByText("Run event log")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Developer Agent" })).toBeInTheDocument();
+    expect(screen.getByRole("form", { name: "Start run" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start run" })).toBeEnabled();
+    expect(screen.getByLabelText("Run status")).not.toHaveTextContent("engine: langgraph");
+    expect(screen.getByLabelText("Run status")).not.toHaveTextContent("cache: 74% hit");
     expect(screen.queryByRole("heading", { name: "Skill Sources" })).not.toBeInTheDocument();
   });
 
@@ -244,27 +251,66 @@ describe("App", () => {
     });
   });
 
-  it("opens an agent overview from the cockpit team list", async () => {
+  it("starts a durable run from the workbench composer", async () => {
+    const runsInvoke = (command: "runs_snapshot" | "start_run", args?: Record<string, unknown>) => {
+      if (command === "start_run") {
+        const request = args?.request as { id: string; task: string; workspaceId: string };
+
+        return Promise.resolve({
+          activeRunId: request.id,
+          events: [
+            {
+              createdAt: "preview",
+              id: `${request.id}-event-1`,
+              level: "info" as const,
+              message: `Run queued for workspace '${request.workspaceId}'`,
+              runId: request.id
+            }
+          ],
+          runs: [
+            {
+              agentTemplateId: "developer-pi",
+              baseBranch: "dev",
+              createdAt: "preview",
+              harnessProfileId: "pi-execution-discipline",
+              id: request.id,
+              modelId: "gpt-5",
+              providerId: "openai",
+              runBranch: `codex/run-${request.id}`,
+              startedAt: null,
+              status: "queued" as const,
+              stoppedAt: null,
+              task: request.task,
+              updatedAt: "preview",
+              workspaceId: request.workspaceId,
+              worktreePath: `C:\\repo\\.agenticcrew\\runs\\${request.id}`
+            }
+          ]
+        });
+      }
+
+      return Promise.resolve(runsSnapshot);
+    };
+
     render(
       <App
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
         harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        runsInvoke={runsInvoke}
         settingsInvoke={settingsInvoke}
         skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
       />
     );
 
     await openDefaultWorkspace();
-    fireEvent.click(await screen.findByRole("button", { name: /accessibility-review/ }));
-
-    expect(screen.getByRole("heading", { name: "Agent overview" })).toBeInTheDocument();
-    expect(screen.getByText("Semantic QA")).toBeInTheDocument();
-    expect(screen.getByLabelText("accessibility-review tools")).toHaveTextContent("axe-notes");
-    fireEvent.change(screen.getByLabelText("Instruction"), {
+    fireEvent.change(screen.getByLabelText("Task"), {
       target: { value: "Prioritize layout regressions before handoff." }
     });
-    expect(screen.getByRole("button", { name: "Queue agent instruction" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Start run" }));
+
+    expect(await screen.findByText("Prioritize layout regressions before handoff.")).toBeInTheDocument();
+    expect(screen.getByText(/Run queued for workspace/u)).toBeInTheDocument();
   });
 
   it("switches workspace and updates visible agent context", async () => {
@@ -285,7 +331,7 @@ describe("App", () => {
 
     expect(screen.getByRole("heading", { name: "Stabilize device smoke" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workspace/mobile-qa/cockpit");
-    expect(screen.getAllByText("playwright-runner").length).toBeGreaterThan(0);
+    expect(screen.getByText("Policy: Pi Execution Discipline")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Build UI shell" })).not.toBeInTheDocument();
   });
 
@@ -301,9 +347,9 @@ describe("App", () => {
     );
 
     await openDefaultWorkspace();
-    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Plugins" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open plugin bay" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Workbench" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Profiles & Policies" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Runs" })).toBeInTheDocument();
   });
 
   it("creates a workspace from the launchpad and opens it", async () => {
@@ -324,7 +370,7 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("Mission"), { target: { value: "Build API agents" } });
     fireEvent.click(screen.getByRole("button", { name: "Create workspace" }));
 
-    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Workbench" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workspace/api_-2-platform/cockpit");
     expect(screen.getByRole("heading", { name: "Build API agents" })).toBeInTheDocument();
     expect(screen.getAllByText("dev").length).toBeGreaterThan(0);
@@ -396,7 +442,7 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Release Agent" })).toBeInTheDocument();
       expect(screen.getByText("release / gpt-5.1")).toBeInTheDocument();
-      expect(screen.getByText("Harness: Release Harness")).toBeInTheDocument();
+      expect(screen.getByText("Policy: Release Harness")).toBeInTheDocument();
     });
   });
 
@@ -414,9 +460,9 @@ describe("App", () => {
     await openDefaultWorkspace();
 
     expect(await screen.findByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
-    expect(screen.getByText("UI architect / gpt-5")).toBeInTheDocument();
-    expect(screen.getByText("Harness: None")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Agent overview" })).toBeInTheDocument();
+    expect(screen.getByText("developer / model pending")).toBeInTheDocument();
+    expect(screen.getByText("Policy: None")).toBeInTheDocument();
+    expect(screen.getByRole("form", { name: "Start run" })).toBeInTheDocument();
   });
 
   it("offers inactive saved templates when none are active", async () => {
@@ -460,13 +506,13 @@ describe("App", () => {
     );
 
     await openDefaultWorkspace();
-    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Workbench" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
     expect(await screen.findByText("Injected from invoke")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /AgenticCrew/ }));
 
-    expect(screen.getByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "AgenticCrew Workbench" })).toBeInTheDocument();
     expect(screen.queryByText("Injected from invoke")).not.toBeInTheDocument();
   });
 
@@ -482,7 +528,7 @@ describe("App", () => {
     );
 
     await openDefaultWorkspace();
-    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Workbench" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
 
     expect(await screen.findByText("Injected from invoke")).toBeInTheDocument();
@@ -503,7 +549,7 @@ describe("App", () => {
     );
 
     await openDefaultWorkspace();
-    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Workbench" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
 
@@ -565,11 +611,11 @@ describe("App", () => {
     );
 
     await openDefaultWorkspace();
-    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Workbench" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Harness Studio" }));
+    fireEvent.click(screen.getByRole("button", { name: "Execution Policies" }));
 
-    expect(await screen.findByRole("heading", { name: "Harness Studio" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Execution Policies" })).toBeInTheDocument();
     expect(screen.getAllByText("Pi Execution Discipline").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Effective harness" })).toBeInTheDocument();
     expect(screen.getAllByText("Execution Discipline").length).toBeGreaterThan(0);
@@ -620,7 +666,7 @@ describe("App", () => {
     );
 
     await openDefaultWorkspace();
-    fireEvent.click(screen.getByRole("button", { name: "Harness Studio" }));
+    fireEvent.click(screen.getByRole("button", { name: "Execution Policies" }));
     fireEvent.click(await screen.findByRole("button", { name: "New harness" }));
     fireEvent.change(await screen.findByLabelText("Name"), { target: { value: "Review Harness" } });
     fireEvent.change(screen.getByLabelText("Base policy"), {
@@ -646,11 +692,11 @@ describe("App", () => {
     );
 
     await openDefaultWorkspace();
-    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Workbench" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Agent Studio" }));
+    fireEvent.click(screen.getByRole("button", { name: "Agent Profiles" }));
 
-    expect(await screen.findByRole("heading", { name: "Agent Studio" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Agent Profiles" })).toBeInTheDocument();
     expect(screen.getAllByText("Developer Agent").length).toBeGreaterThan(0);
     expect(screen.getByText("pi-execution-discipline")).toBeInTheDocument();
   });
@@ -690,7 +736,7 @@ describe("App", () => {
     );
 
     await openDefaultWorkspace();
-    fireEvent.click(screen.getByRole("button", { name: "Agent Studio" }));
+    fireEvent.click(screen.getByRole("button", { name: "Agent Profiles" }));
     fireEvent.click(await screen.findByRole("button", { name: "New agent" }));
     fireEvent.change(await screen.findByLabelText("Prompt"), {
       target: { value: "Reviews changes before merge." }
@@ -821,7 +867,7 @@ describe("App", () => {
       />
     );
 
-    expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Workbench" })).toBeInTheDocument();
   });
 
   it("falls back to launchpad for unknown workspace ids", async () => {
@@ -930,4 +976,5 @@ describe("App", () => {
   });
 
 });
+
 

@@ -150,11 +150,11 @@ export function AgentStudio({
   }
 
   return (
-    <section aria-label="Agent Studio">
+    <section aria-label="Agent Profiles">
       <header className="surface-header">
         <div>
           <p className="eyebrow">Custom agents</p>
-          <h2>Agent Studio</h2>
+          <h2>Agent Profiles</h2>
         </div>
         <div className="studio-header-actions">
           <strong>{snapshot.activeTemplateCount} active</strong>

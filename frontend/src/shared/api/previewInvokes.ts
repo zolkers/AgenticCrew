@@ -2,6 +2,7 @@ import type {
   AgentStudioSnapshot,
   HarnessStudioSnapshot,
   MissionControlSnapshot,
+  RunsSnapshot,
   SettingsSnapshot,
   SkillSource,
   SkillSourcesSnapshot,
@@ -11,6 +12,7 @@ import { cockpitWorkspaces } from "../preview/cockpitData";
 import type { InvokeAgentStudio } from "./agentStudioApi";
 import type { InvokeHarnessStudio } from "./harnessStudioApi";
 import type { InvokeMissionControl } from "./missionControlApi";
+import type { InvokeRuns } from "./runsApi";
 import type { InvokeSettings } from "./settingsApi";
 import type { InvokeSkillSources, SkillSourcesCommand } from "./skillSourcesApi";
 import type { InvokeWorkspace } from "./workspaceApi";
@@ -59,6 +61,12 @@ const previewMissionControlSnapshot: MissionControlSnapshot = {
 
 const previewWorkspaceSnapshot: WorkspaceSnapshot = {
   workspaces: [...cockpitWorkspaces]
+};
+
+const previewRunsSnapshot: RunsSnapshot = {
+  activeRunId: null,
+  events: [],
+  runs: []
 };
 
 const previewSkillSourcesSnapshot: SkillSourcesSnapshot = {
@@ -129,8 +137,11 @@ let currentPreviewSkillSourcesSnapshot = previewSkillSourcesSnapshot;
 
 let currentPreviewHarnessStudioSnapshot = previewHarnessStudioSnapshot;
 
+let currentPreviewRunsSnapshot = previewRunsSnapshot;
+
 export function resetPreviewInvokesForTests() {
   currentPreviewHarnessStudioSnapshot = previewHarnessStudioSnapshot;
+  currentPreviewRunsSnapshot = previewRunsSnapshot;
   currentPreviewSkillSourcesSnapshot = previewSkillSourcesSnapshot;
 }
 
@@ -421,6 +432,61 @@ export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
   }
 
   return Promise.resolve(previewWorkspaceSnapshot);
+};
+
+export const previewRunsInvoke: InvokeRuns = (command, args) => {
+  if (command === "start_run") {
+    const request = args?.request as
+      | {
+          agentTemplateId?: null | string;
+          harnessProfileId?: null | string;
+          id?: string;
+          modelId?: null | string;
+          providerId?: null | string;
+          task?: string;
+          workspaceId?: string;
+        }
+      | undefined;
+    const workspace = previewWorkspaceSnapshot.workspaces.find(
+      (candidate) => candidate.id === request?.workspaceId
+    );
+    const runId = request?.id ?? `preview-run-${String(currentPreviewRunsSnapshot.runs.length + 1)}`;
+    const createdAt = "preview";
+    const run = {
+      agentTemplateId: request?.agentTemplateId ?? null,
+      baseBranch: workspace?.branch ?? "main",
+      createdAt,
+      harnessProfileId: request?.harnessProfileId ?? null,
+      id: runId,
+      modelId: request?.modelId ?? null,
+      providerId: request?.providerId ?? null,
+      runBranch: `codex/run-${runId}`,
+      startedAt: null,
+      status: "queued" as const,
+      stoppedAt: null,
+      task: request?.task?.trim() ?? "Preview run",
+      updatedAt: createdAt,
+      workspaceId: request?.workspaceId ?? "fullstack-app",
+      worktreePath: `${workspace?.path ?? "local"}\\.agenticcrew\\runs\\${runId}`
+    };
+
+    currentPreviewRunsSnapshot = {
+      activeRunId: runId,
+      events: [
+        ...currentPreviewRunsSnapshot.events,
+        {
+          createdAt,
+          id: `${runId}-event-1`,
+          level: "info",
+          message: `Run queued for workspace '${run.workspaceId}'`,
+          runId
+        }
+      ],
+      runs: [...currentPreviewRunsSnapshot.runs, run]
+    };
+  }
+
+  return Promise.resolve(currentPreviewRunsSnapshot);
 };
 
 export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) => {

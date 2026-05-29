@@ -6,6 +6,8 @@ const COMMANDS = new Set([
   "update_workspace_git_context",
   "refresh_workspace_git_status",
   "update_workspace_loadout",
+  "runs_snapshot",
+  "start_run",
   "skill_sources_snapshot",
   "harness_studio_snapshot",
   "create_harness_profile",

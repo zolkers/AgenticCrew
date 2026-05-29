@@ -18,6 +18,7 @@ use agenticcrew_core::{
     },
     core::permissions::ApprovedPermissionPolicy,
     core::pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
+    core::runs::StartRunRequest,
     core::settings::{
         AiModelRecord, ProviderModelCatalog, ProviderModelCatalogError, SyncProviderModelsRequest,
         UpdateAiProviderSettingsRequest,
@@ -32,9 +33,9 @@ use agenticcrew_core::{
     inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
     promote_agent_training_run_at_path, record_model_call_estimate_at_path,
     refresh_workspace_git_status_at_path, register_github_skill_source_at_path,
-    set_agent_template_active_at_path, set_harness_profile_active_at_path,
+    runs_snapshot_at_path, set_agent_template_active_at_path, set_harness_profile_active_at_path,
     set_pi_extension_active_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
-    sync_github_skill_source_at_path, sync_provider_models_at_path_with_catalog,
+    start_run_at_path, sync_github_skill_source_at_path, sync_provider_models_at_path_with_catalog,
     update_agent_template_at_path, update_ai_provider_settings_at_path,
     update_harness_profile_at_path, update_workspace_git_context_at_path,
     update_workspace_loadout_at_path, workspace_snapshot_at_path, DesktopCommandError,
@@ -249,6 +250,12 @@ struct UpdateWorkspaceLoadoutArgs {
     request: UpdateWorkspaceLoadoutRequest,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StartRunArgs {
+    request: StartRunRequest,
+}
+
 fn main() {
     if let Err(error) = run() {
         print_error(error);
@@ -335,6 +342,12 @@ fn run() -> Result<(), DesktopCommandError> {
             let args = parse_args::<UpdateWorkspaceLoadoutArgs>(&args_json)?;
 
             print_json(&update_workspace_loadout_at_path(state_path, args.request)?)
+        }
+        "runs_snapshot" => print_json(&runs_snapshot_at_path(state_path)?),
+        "start_run" => {
+            let args = parse_args::<StartRunArgs>(&args_json)?;
+
+            print_json(&start_run_at_path(state_path, args.request)?)
         }
         "skill_sources_snapshot" => print_json(&skill_sources_snapshot_at_path(state_path)?),
         "harness_studio_snapshot" => print_json(&harness_studio_snapshot_at_path(state_path)?),

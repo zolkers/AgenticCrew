@@ -121,7 +121,7 @@ describe("AgentStudio", () => {
   it("renders the empty state", () => {
     render(<AgentStudio harnessSnapshot={harnessSnapshot} invoke={vi.fn()} snapshot={emptySnapshot} />);
 
-    expect(screen.getByRole("heading", { name: "Agent Studio" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Agent Profiles" })).toBeInTheDocument();
     expect(screen.getByText("No custom agent saved")).toBeInTheDocument();
   });
 

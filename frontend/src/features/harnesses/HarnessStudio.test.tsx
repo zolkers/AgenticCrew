@@ -26,7 +26,7 @@ describe("HarnessStudio", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Harness Studio" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Execution Policies" })).toBeInTheDocument();
     expect(screen.getByText("No harness profile registered")).toBeInTheDocument();
   });
 

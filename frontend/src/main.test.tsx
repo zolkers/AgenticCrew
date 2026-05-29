@@ -5,6 +5,7 @@ import {
   electronAgentStudioInvoke,
   electronHarnessStudioInvoke,
   electronMissionControlInvoke,
+  electronRunsInvoke,
   electronSettingsInvoke,
   electronSkillSourcesInvoke,
   electronWorkspaceInvoke
@@ -13,6 +14,7 @@ import {
   previewAgentStudioInvoke,
   previewHarnessStudioInvoke,
   previewMissionControlInvoke,
+  previewRunsInvoke,
   previewSettingsInvoke,
   previewSkillSourcesInvoke,
   previewWorkspaceInvoke
@@ -24,12 +26,14 @@ const mocks = vi.hoisted(() => ({
   electronAgentStudioInvoke: vi.fn(),
   electronHarnessStudioInvoke: vi.fn(),
   electronMissionControlInvoke: vi.fn(),
+  electronRunsInvoke: vi.fn(),
   electronSettingsInvoke: vi.fn(),
   electronSkillSourcesInvoke: vi.fn(),
   electronWorkspaceInvoke: vi.fn(),
   previewAgentStudioInvoke: vi.fn(),
   previewHarnessStudioInvoke: vi.fn(),
   previewMissionControlInvoke: vi.fn(),
+  previewRunsInvoke: vi.fn(),
   previewSettingsInvoke: vi.fn(),
   previewSkillSourcesInvoke: vi.fn(),
   previewWorkspaceInvoke: vi.fn(),
@@ -48,6 +52,7 @@ vi.mock("./shared/api/electronInvokes", () => ({
   electronAgentStudioInvoke: mocks.electronAgentStudioInvoke,
   electronHarnessStudioInvoke: mocks.electronHarnessStudioInvoke,
   electronMissionControlInvoke: mocks.electronMissionControlInvoke,
+  electronRunsInvoke: mocks.electronRunsInvoke,
   electronSettingsInvoke: mocks.electronSettingsInvoke,
   electronSkillSourcesInvoke: mocks.electronSkillSourcesInvoke,
   electronWorkspaceInvoke: mocks.electronWorkspaceInvoke
@@ -57,6 +62,7 @@ vi.mock("./shared/api/previewInvokes", () => ({
   previewAgentStudioInvoke: mocks.previewAgentStudioInvoke,
   previewHarnessStudioInvoke: mocks.previewHarnessStudioInvoke,
   previewMissionControlInvoke: mocks.previewMissionControlInvoke,
+  previewRunsInvoke: mocks.previewRunsInvoke,
   previewSettingsInvoke: mocks.previewSettingsInvoke,
   previewSkillSourcesInvoke: mocks.previewSkillSourcesInvoke,
   previewWorkspaceInvoke: mocks.previewWorkspaceInvoke
@@ -88,6 +94,7 @@ describe("main", () => {
         agentStudioInvoke: unknown;
         harnessStudioInvoke: unknown;
         missionControlInvoke: unknown;
+        runsInvoke: unknown;
         settingsInvoke: unknown;
         skillSourcesInvoke: unknown;
         workspaceInvoke: unknown;
@@ -98,6 +105,7 @@ describe("main", () => {
     expect(renderedElement.props.children.props.agentStudioInvoke).toBe(previewAgentStudioInvoke);
     expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(previewHarnessStudioInvoke);
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(previewMissionControlInvoke);
+    expect(renderedElement.props.children.props.runsInvoke).toBe(previewRunsInvoke);
     expect(renderedElement.props.children.props.settingsInvoke).toBe(previewSettingsInvoke);
     expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(previewSkillSourcesInvoke);
     expect(renderedElement.props.children.props.workspaceInvoke).toBe(previewWorkspaceInvoke);
@@ -117,6 +125,7 @@ describe("main", () => {
         agentStudioInvoke: unknown;
         harnessStudioInvoke: unknown;
         missionControlInvoke: unknown;
+        runsInvoke: unknown;
         settingsInvoke: unknown;
         skillSourcesInvoke: unknown;
         workspaceInvoke: unknown;
@@ -126,6 +135,7 @@ describe("main", () => {
     expect(renderedElement.props.children.props.agentStudioInvoke).toBe(electronAgentStudioInvoke);
     expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(electronHarnessStudioInvoke);
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(electronMissionControlInvoke);
+    expect(renderedElement.props.children.props.runsInvoke).toBe(electronRunsInvoke);
     expect(renderedElement.props.children.props.settingsInvoke).toBe(electronSettingsInvoke);
     expect(renderedElement.props.children.props.skillSourcesInvoke).toBe(electronSkillSourcesInvoke);
     expect(renderedElement.props.children.props.workspaceInvoke).toBe(electronWorkspaceInvoke);

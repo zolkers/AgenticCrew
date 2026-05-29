@@ -2,6 +2,7 @@ import type { ElectronCommandMap } from "../types/core";
 import type { InvokeAgentStudio } from "./agentStudioApi";
 import type { InvokeHarnessStudio } from "./harnessStudioApi";
 import type { InvokeMissionControl } from "./missionControlApi";
+import type { InvokeRuns } from "./runsApi";
 import type { InvokeSettings } from "./settingsApi";
 import type { InvokeSkillSources } from "./skillSourcesApi";
 import type { InvokeWorkspace } from "./workspaceApi";
@@ -27,6 +28,9 @@ export const electronMissionControlInvoke: InvokeMissionControl = (command, args
   invokeElectron(command, args);
 
 export const electronWorkspaceInvoke: InvokeWorkspace = (command, args) =>
+  invokeElectron(command, args);
+
+export const electronRunsInvoke: InvokeRuns = (command, args) =>
   invokeElectron(command, args);
 
 export const electronSkillSourcesInvoke: InvokeSkillSources = (command, args) =>

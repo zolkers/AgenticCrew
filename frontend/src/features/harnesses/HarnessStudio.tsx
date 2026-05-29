@@ -173,11 +173,11 @@ export function HarnessStudio({ availableSkillRoutes, invoke, onSnapshotChange, 
   }
 
   return (
-    <section aria-label="Harness Studio">
+    <section aria-label="Execution Policies">
       <header className="surface-header">
         <div>
           <p className="eyebrow">Runtime control</p>
-          <h2>Harness Studio</h2>
+          <h2>Execution Policies</h2>
         </div>
         <div className="studio-header-actions">
           <strong>{snapshot.activeProfileCount} active</strong>

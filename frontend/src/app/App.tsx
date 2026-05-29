@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { MantineProvider, Tooltip } from "@mantine/core";
 import {
   Bot,
@@ -11,6 +11,7 @@ import {
   GitCommitHorizontal,
   KeyRound,
   LayoutDashboard,
+  Play,
   Store,
   Route,
   Settings2,
@@ -29,7 +30,8 @@ import { SkillSources } from "../features/skill-sources/SkillSources";
 import { loadAgentStudioSnapshot, type InvokeAgentStudio } from "../shared/api/agentStudioApi";
 import { loadHarnessStudioSnapshot, type InvokeHarnessStudio } from "../shared/api/harnessStudioApi";
 import { loadMissionControlSnapshot, type InvokeMissionControl } from "../shared/api/missionControlApi";
-import { previewWorkspaceInvoke } from "../shared/api/previewInvokes";
+import { previewRunsInvoke, previewWorkspaceInvoke } from "../shared/api/previewInvokes";
+import { loadRunsSnapshot, startRun, type InvokeRuns } from "../shared/api/runsApi";
 import { loadSettingsSnapshot, type InvokeSettings } from "../shared/api/settingsApi";
 import { loadSkillSourcesSnapshot, type InvokeSkillSources } from "../shared/api/skillSourcesApi";
 import {
@@ -49,6 +51,8 @@ import type {
   HarnessProfile,
   MissionCostSummary,
   MissionControlSnapshot,
+  RunRecord,
+  RunsSnapshot,
   SettingsSnapshot,
   SkillSourcesSnapshot,
   WorkspaceSnapshot
@@ -61,6 +65,7 @@ type AppProps = Readonly<{
   agentStudioInvoke: InvokeAgentStudio;
   harnessStudioInvoke: InvokeHarnessStudio;
   missionControlInvoke: InvokeMissionControl;
+  runsInvoke?: InvokeRuns;
   settingsInvoke: InvokeSettings;
   skillSourcesInvoke: InvokeSkillSources;
   workspaceInvoke?: InvokeWorkspace;
@@ -75,6 +80,7 @@ type AppLoadState =
       skillSourcesSnapshot: SkillSourcesSnapshot;
       settingsSnapshot: SettingsSnapshot;
       status: "ready";
+      runsSnapshot: RunsSnapshot;
       workspaceSnapshot: WorkspaceSnapshot;
     }>
   | Readonly<{ status: "loading" }>;
@@ -127,12 +133,14 @@ export function App({
   agentStudioInvoke,
   harnessStudioInvoke,
   missionControlInvoke,
+  runsInvoke = previewRunsInvoke,
   settingsInvoke,
   skillSourcesInvoke,
   workspaceInvoke = previewWorkspaceInvoke
 }: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
+  const runSequenceRef = useRef(0);
   const [routeState, setRouteState] = useState<AppRouteState>(() => resolveInitialRoute());
   const { t } = useTranslation();
   const activeView = routeState.view;
@@ -147,6 +155,7 @@ export function App({
       loadHarnessStudioSnapshot(harnessStudioInvoke),
       loadAgentStudioSnapshot(agentStudioInvoke),
       loadSettingsSnapshot(settingsInvoke),
+      loadRunsSnapshot(runsInvoke),
       loadWorkspaceSnapshot(workspaceInvoke)
     ])
       .then(
@@ -156,6 +165,7 @@ export function App({
           harnessStudioSnapshot,
           agentStudioSnapshot,
           settingsSnapshot,
+          runsSnapshot,
           workspaceSnapshot
         ]) => {
         if (isCurrent) {
@@ -163,6 +173,7 @@ export function App({
             agentStudioSnapshot,
             harnessStudioSnapshot,
             missionControlSnapshot,
+            runsSnapshot,
             settingsSnapshot,
             skillSourcesSnapshot,
             workspaceSnapshot,
@@ -183,6 +194,7 @@ export function App({
     agentStudioInvoke,
     harnessStudioInvoke,
     missionControlInvoke,
+    runsInvoke,
     settingsInvoke,
     skillSourcesInvoke,
     workspaceInvoke
@@ -198,8 +210,6 @@ export function App({
 
   const missionControlLabel = t("missionControl.title", { defaultValue: "Mission Control" });
   const skillSourcesLabel = t("skillSources.title", { defaultValue: "Skill Sources" });
-  const harnessStudioLabel = "Harness Studio";
-  const agentStudioLabel = "Agent Studio";
   const workspaces = loadState.workspaceSnapshot.workspaces;
   const workspacesById = Object.fromEntries(
     workspaces.map((workspace) => [workspace.id, workspace])
@@ -233,6 +243,12 @@ export function App({
     const workspaceSnapshot = await createWorkspaceRecord(workspaceInvoke, request);
     replaceWorkspaceSnapshot(workspaceSnapshot);
     openWorkspace(request.id);
+  };
+  const replaceRunsSnapshot = (runsSnapshot: RunsSnapshot) => {
+    setLoadState({
+      ...loadState,
+      runsSnapshot
+    });
   };
 
   if (activeWorkspace === null) {
@@ -276,6 +292,20 @@ export function App({
     });
     replaceWorkspaceSnapshot(workspaceSnapshot);
   };
+  const startWorkspaceRun = async (task: string) => {
+    runSequenceRef.current += 1;
+    const runId = slugify(`run-${activeWorkspace.id}-${runSequenceRef.current.toString()}`);
+    const runsSnapshot = await startRun(runsInvoke, {
+      agentTemplateId: activeWorkspace.selectedAgentTemplateId ?? null,
+      harnessProfileId: activeWorkspace.selectedHarnessProfileId ?? null,
+      id: runId,
+      modelId: loadState.settingsSnapshot.aiProvider.selectedModelId,
+      providerId: loadState.settingsSnapshot.aiProvider.providerId,
+      task,
+      workspaceId: activeWorkspace.id
+    });
+    replaceRunsSnapshot(runsSnapshot);
+  };
 
   return (
     <MantineProvider defaultColorScheme="dark">
@@ -294,7 +324,7 @@ export function App({
           </span>
           <span>
             <strong>AgenticCrew</strong>
-            <small>Cockpit</small>
+            <small>Workbench</small>
           </span>
         </button>
         <div className="topbar-workspace" aria-label="Active workspace">
@@ -415,7 +445,7 @@ export function App({
           <NavButton
             active={activeView === "harnessStudio"}
             icon={<Route aria-hidden="true" size={18} />}
-            label={harnessStudioLabel}
+            label="Execution Policies"
             onClick={() => {
               openView("harnessStudio");
             }}
@@ -423,7 +453,7 @@ export function App({
           <NavButton
             active={activeView === "agentStudio"}
             icon={<Bot aria-hidden="true" size={18} />}
-            label={agentStudioLabel}
+            label="Agent Profiles"
             onClick={() => {
               openView("agentStudio");
             }}
@@ -454,6 +484,10 @@ export function App({
             onLoadoutChange={(loadout) => {
               void updateActiveLoadout(loadout);
             }}
+            onRunStart={(task) => {
+              void startWorkspaceRun(task);
+            }}
+            runsSnapshot={loadState.runsSnapshot}
             tokenSummary={tokenSummary}
             onWorkspaceChange={openWorkspace}
             workspaces={workspaces}
@@ -698,7 +732,9 @@ type CockpitProps = Readonly<{
   agentStudioSnapshot: AgentStudioSnapshot;
   harnessStudioSnapshot: HarnessStudioSnapshot;
   onLoadoutChange: (loadout: WorkspaceLoadout) => void;
+  onRunStart: (task: string) => void;
   onWorkspaceChange: (workspaceId: string) => void;
+  runsSnapshot: RunsSnapshot;
   tokenSummary: MissionCostSummary;
   workspaces: readonly CockpitWorkspace[];
 }>;
@@ -713,18 +749,13 @@ function Cockpit({
   agentStudioSnapshot,
   harnessStudioSnapshot,
   onLoadoutChange,
+  onRunStart,
   onWorkspaceChange,
+  runsSnapshot,
   tokenSummary,
   workspaces
 }: CockpitProps) {
-  const agentsById = Object.fromEntries(activeWorkspace.agents.map((agent) => [agent.id, agent])) as Record<
-    string,
-    CockpitWorkspace["agents"][number]
-  >;
-  const activeAgent = agentsById[activeWorkspace.activeAgentId];
-  const [selectedAgentId, setSelectedAgentId] = useState(activeAgent.id);
-  const [agentInstruction, setAgentInstruction] = useState("");
-  const selectedAgent = agentsById[selectedAgentId] ?? activeAgent;
+  const [runTask, setRunTask] = useState(activeWorkspace.mission);
   const agentTemplates = preferredActiveItems(agentStudioSnapshot.templates);
   const harnessProfiles = preferredActiveItems(harnessStudioSnapshot.profiles);
   const selectedAgentTemplateId =
@@ -733,6 +764,11 @@ function Cockpit({
     activeWorkspace.selectedHarnessProfileId ?? (harnessProfiles.at(0)?.id ?? "");
   const selectedAgentTemplate = agentTemplates.find((template) => template.id === selectedAgentTemplateId);
   const selectedHarnessProfile = harnessProfiles.find((profile) => profile.id === selectedHarnessProfileId);
+  const workspaceRuns = runsSnapshot.runs.filter((run) => run.workspaceId === activeWorkspace.id);
+  const activeRun = workspaceRuns.find((run) => run.id === runsSnapshot.activeRunId) ?? workspaceRuns.at(-1);
+  const activeRunEvents = activeRun === undefined
+    ? []
+    : runsSnapshot.events.filter((event) => event.runId === activeRun.id);
   const updateLoadout = (next: Partial<WorkspaceLoadout>) => {
     onLoadoutChange({
       agentTemplateId: selectedAgentTemplateId,
@@ -743,7 +779,7 @@ function Cockpit({
 
   return (
     <div className="cockpit-grid">
-      <aside className="cockpit-sidebar" aria-label="Cockpit controls">
+      <aside className="cockpit-sidebar" aria-label="Workbench controls">
         <section aria-labelledby="workspace-selector-title">
           <h2 id="workspace-selector-title">Workspaces</h2>
           <div className="workspace-list">
@@ -764,79 +800,13 @@ function Cockpit({
           </div>
         </section>
 
-        <section aria-labelledby="team-title">
-          <h2 id="team-title">Team Agents</h2>
-          <ul className="agent-list">
-            {activeWorkspace.agents.map((agent) => (
-              <li key={agent.id}>
-                <span className={`status-dot status-dot-${agent.status}`} aria-hidden="true" />
-                <button
-                  aria-pressed={agent.id === selectedAgent.id}
-                  className="agent-list-button"
-                  onClick={() => {
-                    setSelectedAgentId(agent.id);
-                  }}
-                  type="button"
-                >
-                  <strong>{agent.name}</strong>
-                  <small>
-                    {agent.role} / {agent.status}
-                  </small>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section aria-labelledby="agent-overview-title" className="agent-overview-panel">
-          <h2 id="agent-overview-title">Agent overview</h2>
-          <div className="agent-overview-card">
-            <strong>{selectedAgent.name}</strong>
-            <span>{selectedAgent.role}</span>
-            <dl>
-              <div>
-                <dt>Status</dt>
-                <dd>{selectedAgent.status}</dd>
-              </div>
-              <div>
-                <dt>Model</dt>
-                <dd>{selectedAgent.model}</dd>
-              </div>
-            </dl>
-          </div>
-          <ul className="tool-list" aria-label={`${selectedAgent.name} tools`}>
-            {selectedAgent.tools.map((tool) => (
-              <li key={tool}>{tool}</li>
-            ))}
-          </ul>
-          <label>
-            <span>Instruction</span>
-            <textarea
-              onChange={(event) => {
-                setAgentInstruction(event.target.value);
-              }}
-              placeholder={`Give ${selectedAgent.name} a focused instruction...`}
-              value={agentInstruction}
-            />
-          </label>
-          <button
-            disabled={agentInstruction.trim().length === 0}
-            onClick={() => {
-              setAgentInstruction("");
-            }}
-            type="button"
-          >
-            Queue agent instruction
-          </button>
-        </section>
-
         <section aria-labelledby="loadout-title" className="loadout-panel">
           <h2 id="loadout-title">
             <SlidersHorizontal aria-hidden="true" size={16} />
-            Loadout
+            Profiles & Policies
           </h2>
           <label>
-            <span>Agent</span>
+            <span>Agent profile</span>
             <select
               aria-label="Agent template"
               onChange={(event) => {
@@ -852,7 +822,7 @@ function Cockpit({
             </select>
           </label>
           <label>
-            <span>Harness</span>
+            <span>Execution policy</span>
             <select
               aria-label="Harness profile"
               onChange={(event) => {
@@ -869,31 +839,24 @@ function Cockpit({
           </label>
         </section>
 
-        <section aria-labelledby="progress-title">
-          <h2 id="progress-title">Progress</h2>
-          <ol className="checkpoint-list">
-            {activeWorkspace.checkpoints.map((checkpoint) => (
-              <li className={`checkpoint-${checkpoint.state}`} key={checkpoint.label}>
-                <span>{checkpoint.label}</span>
-                <small>{checkpoint.state}</small>
-              </li>
-            ))}
+        <section aria-labelledby="runs-title">
+          <h2 id="runs-title">Runs</h2>
+          <ol className="run-list">
+            {workspaceRuns.length === 0 ? (
+              <li className="empty-run">No runs queued</li>
+            ) : (
+              workspaceRuns.map((run) => <RunListItem key={run.id} run={run} />)
+            )}
           </ol>
         </section>
 
         <section aria-labelledby="skills-title">
-          <h2 id="skills-title">Skills Active</h2>
+          <h2 id="skills-title">Skill Routes</h2>
           <ul className="pill-list">
             {activeWorkspace.skills.map((skill) => (
               <li key={skill}>{skill}</li>
             ))}
           </ul>
-        </section>
-
-        <section aria-labelledby="plugins-title" className="plugins-panel">
-          <h2 id="plugins-title">Plugins</h2>
-          <p>Browser, GitHub, Documents</p>
-          <button type="button">Open plugin bay</button>
         </section>
       </aside>
 
@@ -901,7 +864,7 @@ function Cockpit({
         <header className="cockpit-hero">
           <div>
             <p className="eyebrow">Active workspace / {activeWorkspace.branch}</p>
-            <h1 id="cockpit-title">AgenticCrew Cockpit</h1>
+            <h1 id="cockpit-title">AgenticCrew Workbench</h1>
             <h2>{activeWorkspace.mission}</h2>
           </div>
           <dl className="metric-strip" aria-label="Workspace token usage and status">
@@ -916,57 +879,104 @@ function Cockpit({
               </dd>
             </div>
             <div>
-              <dt>Agents</dt>
-              <dd>{activeWorkspace.agents.length}</dd>
+              <dt>Runs</dt>
+              <dd>{workspaceRuns.length}</dd>
             </div>
           </dl>
         </header>
 
-        <article className="agent-terminal" aria-labelledby="active-agent-title">
+        <article className="agent-terminal" aria-labelledby="run-composer-title">
           <header className="agent-header">
             <div>
-              <p className="eyebrow">Active agent</p>
-              <h3 id="active-agent-title">{selectedAgentTemplate?.name ?? activeAgent.name}</h3>
+              <p className="eyebrow">Run composer</p>
+              <h3 id="run-composer-title">{selectedAgentTemplate?.name ?? "Agent profile"}</h3>
               <p>
-                {(selectedAgentTemplate?.role ?? activeAgent.role)} / {(selectedAgentTemplate?.modelId ?? activeAgent.model)}
+                {(selectedAgentTemplate?.role ?? "developer")} / {(selectedAgentTemplate?.modelId ?? "model pending")}
               </p>
               <p>
-                Harness: {selectedHarnessProfile?.name ?? (selectedHarnessProfileId || "None")}
+                Policy: {selectedHarnessProfile?.name ?? (selectedHarnessProfileId || "None")}
               </p>
             </div>
-            <ul className="tool-list" aria-label="Active agent tools">
-              {activeAgent.tools.map((tool) => (
-                <li key={tool}>{tool}</li>
-              ))}
-            </ul>
+            <form
+              aria-label="Start run"
+              className="run-composer"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const task = runTask.trim();
+                if (task.length > 0) {
+                  onRunStart(task);
+                }
+              }}
+            >
+              <label htmlFor="run-task">Task</label>
+              <textarea
+                id="run-task"
+                onChange={(event) => {
+                  setRunTask(event.target.value);
+                }}
+                value={runTask}
+              />
+              <button disabled={runTask.trim().length === 0} type="submit">
+                <Play aria-hidden="true" size={15} />
+                <span>Start run</span>
+              </button>
+            </form>
           </header>
 
-          <div className="terminal-stream" aria-label="Active terminal stream">
-            <div className="terminal-caption">Active terminal stream</div>
-            {activeWorkspace.logs.map((line) => (
-              <p key={line}>
+          <div className="terminal-stream" aria-label="Run event log">
+            <div className="terminal-caption">
+              {activeRun === undefined ? "Run event log" : `${activeRun.id} / ${activeRun.status}`}
+            </div>
+            {activeRun === undefined ? (
+              <p>
                 <span aria-hidden="true">&gt;</span>
-                <code>{line}</code>
+                <code>Describe a task and start a run to create a durable queue entry.</code>
               </p>
-            ))}
+            ) : (
+              <>
+                <p>
+                  <span aria-hidden="true">&gt;</span>
+                  <code>{activeRun.task}</code>
+                </p>
+                <p>
+                  <span aria-hidden="true">&gt;</span>
+                  <code>
+                    {activeRun.baseBranch} {"->"} {activeRun.runBranch}
+                  </code>
+                </p>
+                <p>
+                  <span aria-hidden="true">&gt;</span>
+                  <code>{activeRun.worktreePath}</code>
+                </p>
+                {activeRunEvents.map((event) => (
+                  <p key={event.id}>
+                    <span aria-hidden="true">&gt;</span>
+                    <code>[{event.level}] {event.message}</code>
+                  </p>
+                ))}
+              </>
+            )}
           </div>
         </article>
-
-        <form className="command-bar" aria-label="Command composer">
-          <label htmlFor="agent-command">Message active agent</label>
-          <input id="agent-command" placeholder="Ask for next checkpoint, attach logs, or pause run..." type="text" />
-          <button type="button">Queue</button>
-        </form>
         <footer className="run-status-bar" aria-label="Run status">
           <span>AgenticCrew 0.1</span>
-          <span>{activeWorkspace.agents.length} agents</span>
+          <span>{activeRun?.status ?? "no active run"}</span>
           <span>{activeWorkspace.status}</span>
-          <span>engine: langgraph</span>
           <span>workspace: local/fs</span>
-          <span>cache: 74% hit</span>
+          <span>run queue: durable</span>
         </footer>
       </section>
     </div>
+  );
+}
+
+function RunListItem({ run }: Readonly<{ run: RunRecord }>) {
+  return (
+    <li className={`run-list-item run-list-item-${run.status}`}>
+      <strong>{run.id}</strong>
+      <span>{run.status}</span>
+      <small>{run.task}</small>
+    </li>
   );
 }
 

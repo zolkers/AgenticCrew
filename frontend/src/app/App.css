@@ -640,6 +640,7 @@ button {
 .workspace-list,
 .agent-list,
 .checkpoint-list,
+.run-list,
 .pill-list,
 .tool-list {
   display: grid;
@@ -762,6 +763,41 @@ button {
 
 .checkpoint-done::before {
   background: #75a7bd;
+}
+
+.run-list {
+  gap: 0.35rem;
+}
+
+.empty-run,
+.run-list-item {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
+  background: #202428;
+}
+
+.empty-run {
+  color: var(--color-muted);
+}
+
+.run-list-item strong,
+.run-list-item small {
+  overflow-wrap: anywhere;
+}
+
+.run-list-item span {
+  width: max-content;
+  padding: 0.1rem 0.38rem;
+  border: 1px solid rgba(125, 211, 199, 0.28);
+  border-radius: 999px;
+  color: var(--color-teal);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .pill-list,
@@ -1002,7 +1038,7 @@ button {
 
 .agent-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 440px);
+  grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1.2fr);
   gap: 0.6rem;
   padding: 0.45rem 0.75rem;
   border-bottom: 1px solid var(--color-border);
@@ -1020,9 +1056,53 @@ button {
   font-size: 0.95rem;
 }
 
-.agent-header .tool-list {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-self: center;
+.run-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: end;
+}
+
+.run-composer label {
+  grid-column: 1 / -1;
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.run-composer textarea {
+  min-height: 4.4rem;
+  resize: vertical;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  background: #1c2025;
+}
+
+.run-composer textarea:focus {
+  border-color: rgba(125, 211, 199, 0.72);
+  outline: 2px solid rgba(125, 211, 199, 0.24);
+}
+
+.run-composer button {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: 0 0.8rem;
+  border: 1px solid rgba(125, 211, 199, 0.48);
+  border-radius: 4px;
+  color: #06231f;
+  font-weight: 850;
+  background: var(--color-teal);
+}
+
+.run-composer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .terminal-stream {
@@ -2063,8 +2143,8 @@ button {
 
 section[aria-label="Mission Control"],
 section[aria-label="Skill Sources"],
-section[aria-label="Harness Studio"],
-section[aria-label="Agent Studio"],
+section[aria-label="Execution Policies"],
+section[aria-label="Agent Profiles"],
 section[aria-label="Git Panel"],
 section[aria-label="Settings"] {
   width: 100%;

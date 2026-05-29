@@ -20,6 +20,7 @@ use core::{
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
     permissions::ApprovedPermissionPolicy,
     pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
+    runs::{runs_snapshot_from_state, RunsSnapshot, StartRunRequest},
     settings::{
         settings_snapshot_from_state, sync_provider_models_with_catalog, ProviderModelCatalog,
         SettingsSnapshot, SyncProviderModelsRequest, UpdateAiProviderSettingsRequest,
@@ -144,6 +145,14 @@ pub fn workspace_snapshot_at_path(
     Ok(workspace_snapshot_from_state(&state))
 }
 
+pub fn runs_snapshot_at_path(
+    path: impl Into<PathBuf>,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    let state = durable_state_snapshot_at_path(path)?;
+
+    Ok(runs_snapshot_from_state(&state))
+}
+
 pub fn create_workspace_at_path(
     path: impl AsRef<Path>,
     request: CreateWorkspaceRequest,
@@ -181,6 +190,16 @@ pub fn update_workspace_loadout_at_path(
     let state = mutate_state_at_path(path, |state| state.update_workspace_loadout(request))?;
 
     Ok(workspace_snapshot_from_state(&state))
+}
+
+pub fn start_run_at_path(
+    path: impl AsRef<Path>,
+    request: StartRunRequest,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    let created_at = current_unix_timestamp_string()?;
+    let state = mutate_state_at_path(path, |state| state.start_run(request, created_at))?;
+
+    Ok(runs_snapshot_from_state(&state))
 }
 
 pub fn create_agent_template_at_path(
@@ -491,8 +510,9 @@ mod tests {
         mission_control_snapshot_at_path, promote_agent_training_run_at_path,
         record_command_evidence_at_path, record_model_call_estimate_at_path,
         record_skill_source_sync_success_at_path, refresh_workspace_git_status_at_path,
-        register_github_skill_source_at_path, set_agent_template_active_at_path,
-        set_harness_profile_active_at_path, skill_sources_snapshot_at_path, state_file_path,
+        register_github_skill_source_at_path, runs_snapshot_at_path,
+        set_agent_template_active_at_path, set_harness_profile_active_at_path,
+        skill_sources_snapshot_at_path, start_run_at_path, state_file_path,
         update_agent_template_at_path, update_harness_profile_at_path,
         update_workspace_git_context_at_path, update_workspace_loadout_at_path,
         validate_skill_source_at_path, workspace_snapshot_at_path, STATE_FILE_NAME,
@@ -512,6 +532,7 @@ mod tests {
             ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
             NetworkPermissionScope,
         },
+        runs::StartRunRequest,
         sessions::GoalObject,
         skills::RegisterGitHubSkillSourceRequest,
         state::{
@@ -741,6 +762,34 @@ mod tests {
         assert_eq!(
             snapshot,
             workspace_snapshot_at_path(&path).expect("snapshot should load")
+        );
+    }
+
+    #[test]
+    fn run_commands_persist_queued_run_and_events() {
+        let path = test_path("run_commands_persist_queued_run_and_events", "state.json");
+
+        let snapshot = start_run_at_path(
+            &path,
+            StartRunRequest {
+                agent_template_id: Some("developer-pi".to_owned()),
+                harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                id: "run-1".to_owned(),
+                model_id: None,
+                provider_id: None,
+                task: " Build Workbench run queue ".to_owned(),
+                workspace_id: "fullstack-app".to_owned(),
+            },
+        )
+        .expect("run should persist");
+
+        assert_eq!(snapshot.active_run_id, Some("run-1".to_owned()));
+        assert_eq!(snapshot.runs.len(), 1);
+        assert_eq!(snapshot.runs[0].task, "Build Workbench run queue");
+        assert_eq!(snapshot.events.len(), 1);
+        assert_eq!(
+            snapshot,
+            runs_snapshot_at_path(&path).expect("runs snapshot should load")
         );
     }
 

@@ -20,6 +20,7 @@ use super::{
     pi_extensions::{
         ImportPiExtensionRequest, PiExtension, PiExtensionError, SetPiExtensionActiveRequest,
     },
+    runs::{RunError, RunEvent, RunRecord, StartRunRequest},
     sessions::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
         SessionTransitionError,
@@ -66,6 +67,10 @@ pub struct AgentOsState {
     pub desktop_settings: DesktopSettings,
     #[serde(default = "WorkspaceRecord::built_in_workspaces")]
     pub workspaces: Vec<WorkspaceRecord>,
+    #[serde(default)]
+    pub runs: Vec<RunRecord>,
+    #[serde(default)]
+    pub run_events: Vec<RunEvent>,
 }
 
 impl AgentOsState {
@@ -86,6 +91,8 @@ impl AgentOsState {
             agent_evaluation_runs: Vec::new(),
             desktop_settings: DesktopSettings::default(),
             workspaces: WorkspaceRecord::built_in_workspaces(),
+            runs: Vec::new(),
+            run_events: Vec::new(),
         }
     }
 
@@ -692,6 +699,72 @@ impl AgentOsState {
 
         Ok(())
     }
+
+    pub fn start_run(
+        &mut self,
+        request: StartRunRequest,
+        created_at: String,
+    ) -> Result<(), StateMutationError> {
+        if self.runs.iter().any(|run| run.id == request.id) {
+            return Err(StateMutationError::DuplicateRun { run_id: request.id });
+        }
+
+        let workspace = self
+            .workspaces
+            .iter()
+            .find(|workspace| workspace.id == request.workspace_id)
+            .ok_or_else(|| StateMutationError::MissingWorkspace {
+                workspace_id: request.workspace_id.clone(),
+            })?;
+
+        let agent_template = request
+            .agent_template_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|agent_template_id| !agent_template_id.is_empty())
+            .map(|agent_template_id| {
+                self.agent_templates
+                    .iter()
+                    .find(|template| template.id == agent_template_id)
+                    .ok_or_else(|| StateMutationError::MissingAgentTemplate {
+                        template_id: agent_template_id.to_owned(),
+                    })
+            })
+            .transpose()?;
+
+        let harness_profile = request
+            .harness_profile_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|harness_profile_id| !harness_profile_id.is_empty())
+            .map(|harness_profile_id| {
+                self.harness_profiles
+                    .iter()
+                    .find(|profile| profile.id == harness_profile_id)
+                    .ok_or_else(|| StateMutationError::MissingHarnessProfile {
+                        profile_id: harness_profile_id.to_owned(),
+                    })
+            })
+            .transpose()?;
+
+        let run = RunRecord::queued(
+            request,
+            workspace,
+            agent_template,
+            harness_profile,
+            created_at.clone(),
+        )
+        .map_err(StateMutationError::InvalidRun)?;
+        let workspace_id = workspace.id.clone();
+        self.run_events.push(RunEvent::info(
+            &run.id,
+            format!("Run queued for workspace '{workspace_id}'"),
+            created_at,
+        ));
+        self.runs.push(run);
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -788,6 +861,9 @@ pub enum StateMutationError {
     MissingWorkspace {
         workspace_id: String,
     },
+    DuplicateRun {
+        run_id: String,
+    },
     InvalidSkillSource(SkillSourceError),
     InvalidHarnessProfile(HarnessProfileError),
     InvalidPiExtension(PiExtensionError),
@@ -795,6 +871,7 @@ pub enum StateMutationError {
     InvalidModelCallEstimate(ModelCallEstimateError),
     InvalidDesktopSettings(SettingsValidationError),
     InvalidWorkspace(WorkspaceError),
+    InvalidRun(RunError),
     CheckpointNotPassed(SessionTransitionError),
 }
 
@@ -870,6 +947,9 @@ impl fmt::Display for StateMutationError {
             StateMutationError::MissingWorkspace { workspace_id } => {
                 write!(formatter, "workspace '{workspace_id}' does not exist")
             }
+            StateMutationError::DuplicateRun { run_id } => {
+                write!(formatter, "run '{run_id}' already exists")
+            }
             StateMutationError::InvalidSkillSource(error) => {
                 write!(formatter, "invalid skill source: {error}")
             }
@@ -890,6 +970,9 @@ impl fmt::Display for StateMutationError {
             }
             StateMutationError::InvalidWorkspace(error) => {
                 write!(formatter, "invalid workspace: {error}")
+            }
+            StateMutationError::InvalidRun(error) => {
+                write!(formatter, "invalid run: {error}")
             }
             StateMutationError::CheckpointNotPassed(error) => {
                 write!(formatter, "feature session cannot close: {error:?}")

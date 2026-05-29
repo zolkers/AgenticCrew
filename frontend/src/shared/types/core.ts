@@ -168,6 +168,59 @@ export type RefreshWorkspaceGitStatusRequest = {
   workspaceId: string;
 };
 
+export type RunStatus =
+  | "completed"
+  | "failed"
+  | "preparing"
+  | "queued"
+  | "running"
+  | "stopped"
+  | "stopping";
+
+export type RunRecord = {
+  agentTemplateId?: string | null;
+  baseBranch: string;
+  createdAt: string;
+  harnessProfileId?: string | null;
+  id: string;
+  modelId?: string | null;
+  providerId?: string | null;
+  runBranch: string;
+  startedAt?: string | null;
+  status: RunStatus;
+  stoppedAt?: string | null;
+  task: string;
+  updatedAt: string;
+  workspaceId: string;
+  worktreePath: string;
+};
+
+export type RunEventLevel = "error" | "info" | "warning";
+
+export type RunEvent = {
+  createdAt: string;
+  id: string;
+  level: RunEventLevel;
+  message: string;
+  runId: string;
+};
+
+export type RunsSnapshot = {
+  activeRunId?: string | null;
+  events: RunEvent[];
+  runs: RunRecord[];
+};
+
+export type StartRunRequest = {
+  agentTemplateId?: string | null;
+  harnessProfileId?: string | null;
+  id: string;
+  modelId?: string | null;
+  providerId?: string | null;
+  task: string;
+  workspaceId: string;
+};
+
 export type SkillSourceKind = "bundled" | "local" | "git_hub";
 export type SkillSourceTrustLevel = "built_in" | "local" | "external";
 export type SkillSourceActivationStatus = "pending_validation" | "validated" | "rejected" | "sync_failed";
@@ -503,6 +556,7 @@ export type ElectronCommandMap = {
   record_model_call_estimate: MissionControlSnapshot;
   refresh_workspace_git_status: WorkspaceSnapshot;
   register_github_skill_source: unknown;
+  runs_snapshot: RunsSnapshot;
   settings_snapshot: SettingsSnapshot;
   set_agent_template_active: AgentStudioSnapshot;
   set_harness_profile_active: HarnessStudioSnapshot;
@@ -511,6 +565,7 @@ export type ElectronCommandMap = {
   activate_skill_source: unknown;
   sync_github_skill_source: unknown;
   sync_provider_models: SettingsSnapshot;
+  start_run: RunsSnapshot;
   update_agent_template: AgentStudioSnapshot;
   update_ai_provider_settings: SettingsSnapshot;
   update_harness_profile: HarnessStudioSnapshot;
