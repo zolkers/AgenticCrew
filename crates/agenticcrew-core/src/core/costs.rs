@@ -1,6 +1,39 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordModelCallEstimateRequest {
+    pub provider: String,
+    pub model: String,
+    pub agent_id: String,
+    pub input_tokens: u64,
+    pub cached_tokens: u64,
+    pub output_tokens: u64,
+    pub estimated_cost_usd: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ModelCallEstimateError {
+    EmptyField { field: &'static str },
+    InvalidCost,
+}
+
+impl std::fmt::Display for ModelCallEstimateError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ModelCallEstimateError::EmptyField { field } => {
+                write!(formatter, "{field} is required")
+            }
+            ModelCallEstimateError::InvalidCost => {
+                write!(formatter, "estimated cost must be finite and non-negative")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ModelCallEstimateError {}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct ModelCallEstimate {
     pub provider: String,
     pub model: String,
@@ -9,6 +42,29 @@ pub struct ModelCallEstimate {
     pub cached_tokens: u64,
     pub output_tokens: u64,
     pub estimated_cost_usd: f64,
+}
+
+impl TryFrom<RecordModelCallEstimateRequest> for ModelCallEstimate {
+    type Error = ModelCallEstimateError;
+
+    fn try_from(request: RecordModelCallEstimateRequest) -> Result<Self, Self::Error> {
+        let provider = validate_required("provider", request.provider)?;
+        let model = validate_required("model", request.model)?;
+        let agent_id = validate_required("agent id", request.agent_id)?;
+        if !request.estimated_cost_usd.is_finite() || request.estimated_cost_usd < 0.0 {
+            return Err(ModelCallEstimateError::InvalidCost);
+        }
+
+        Ok(Self {
+            provider,
+            model,
+            agent_id,
+            input_tokens: request.input_tokens,
+            cached_tokens: request.cached_tokens,
+            output_tokens: request.output_tokens,
+            estimated_cost_usd: request.estimated_cost_usd,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -73,6 +129,15 @@ fn validate_price(field: &'static str, value: f64) -> Result<(), PricingError> {
     }
 
     Ok(())
+}
+
+fn validate_required(field: &'static str, value: String) -> Result<String, ModelCallEstimateError> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(ModelCallEstimateError::EmptyField { field });
+    }
+
+    Ok(value.to_owned())
 }
 
 impl ModelCallEstimate {

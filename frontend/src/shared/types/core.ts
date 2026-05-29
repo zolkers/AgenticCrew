@@ -1,6 +1,9 @@
 export type HumanGateStatus = "open" | "pending" | "blocked";
 
 export type MissionControlSnapshot = {
+  activeModel: MissionActiveModel;
+  activeProvider: MissionActiveProvider;
+  activeWorkspace: MissionActiveWorkspace | null;
   activeAgentCount: number;
   activeSessionCount: number;
   checkpoints: MissionCheckpointSummary[];
@@ -9,11 +12,28 @@ export type MissionControlSnapshot = {
   currentCostUsd: number;
   gitSummary: MissionGitSummary;
   humanGateStatus: HumanGateStatus;
-  model: string;
-  provider: string;
   recentEvidence: MissionEvidenceSummary[];
   sessions: MissionSessionSummary[];
   skillSummary: MissionSkillSummary;
+};
+
+export type MissionActiveWorkspace = {
+  branch: string;
+  id: string;
+  mission: string;
+  name: string;
+  path: string;
+  status: "configured" | "running";
+};
+
+export type MissionActiveProvider = {
+  displayName: string;
+  providerId: string;
+};
+
+export type MissionActiveModel = {
+  modelId: string;
+  providerId: string;
 };
 
 export type MissionSessionSummary = {
@@ -201,6 +221,16 @@ export type SkillSource = {
 export type SkillSourcesSnapshot = {
   activeSourceCount: number;
   sources: SkillSource[];
+};
+
+export type RecordModelCallEstimateRequest = {
+  agentId: string;
+  cachedTokens: number;
+  estimatedCostUsd: number;
+  inputTokens: number;
+  model: string;
+  outputTokens: number;
+  provider: string;
 };
 
 export type RegisterGitHubSkillSourceRequest = {
@@ -459,6 +489,7 @@ export type ElectronCommandMap = {
   inspect_cached_skill_source: unknown;
   mission_control_snapshot: MissionControlSnapshot;
   promote_agent_training_run: AgentStudioSnapshot;
+  record_model_call_estimate: MissionControlSnapshot;
   refresh_workspace_git_status: WorkspaceSnapshot;
   register_github_skill_source: unknown;
   settings_snapshot: SettingsSnapshot;

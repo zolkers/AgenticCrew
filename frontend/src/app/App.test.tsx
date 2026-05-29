@@ -16,6 +16,15 @@ const openAiModels = [
 ] as const;
 
 const missionControlSnapshot: MissionControlSnapshot = {
+  activeModel: {
+    modelId: "gpt-5",
+    providerId: "openai"
+  },
+  activeProvider: {
+    displayName: "OpenAI",
+    providerId: "openai"
+  },
+  activeWorkspace: null,
   activeAgentCount: 9,
   activeSessionCount: 5,
   checkpoints: [
@@ -37,8 +46,6 @@ const missionControlSnapshot: MissionControlSnapshot = {
     workspaceCount: 2
   },
   humanGateStatus: "open",
-  model: "gpt-5",
-  provider: "openai",
   recentEvidence: [
     {
       checkpointId: "checkpoint-1",
@@ -477,6 +484,36 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Skill Sources" })).not.toBeInTheDocument();
   });
 
+  it("keeps Skill Sources in sync after registering a source", async () => {
+    let currentSkillSources: SkillSourcesSnapshot = { activeSourceCount: 0, sources: [] };
+    const skillSourcesInvoke = (command: string) => {
+      if (command === "register_github_skill_source") {
+        currentSkillSources = skillSourcesSnapshot;
+      }
+
+      return Promise.resolve(currentSkillSources);
+    };
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={skillSourcesInvoke}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Skill Sources" }));
+    expect(await screen.findByRole("heading", { name: "Skill Sources" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("superpowers")).toBeInTheDocument();
+    });
+  });
+
   it("opens Harness Studio with the PI execution profile", async () => {
     render(
       <App
@@ -788,6 +825,15 @@ describe("App", () => {
 
     unmount();
     pendingMissionControlSnapshot.resolveSnapshot({
+      activeModel: {
+        modelId: "gpt-5",
+        providerId: "openai"
+      },
+      activeProvider: {
+        displayName: "OpenAI",
+        providerId: "openai"
+      },
+      activeWorkspace: null,
       activeAgentCount: 1,
       activeSessionCount: 1,
       checkpoints: [],
@@ -802,8 +848,6 @@ describe("App", () => {
         workspaceCount: 0
       },
       humanGateStatus: "open",
-      model: "gpt-5",
-      provider: "openai",
       recentEvidence: [],
       sessions: [],
       skillSummary: {

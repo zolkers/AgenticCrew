@@ -5,6 +5,7 @@ const { assertCommand } = require("./contracts.cjs");
 test("accepts known snapshot commands", () => {
   assert.doesNotThrow(() => {
     assertCommand("mission_control_snapshot");
+    assertCommand("record_model_call_estimate");
     assertCommand("workspace_snapshot");
     assertCommand("create_workspace");
     assertCommand("update_workspace_git_context");

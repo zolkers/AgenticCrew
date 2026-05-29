@@ -23,8 +23,8 @@ export const electronAgentStudioInvoke: InvokeAgentStudio = (command, args) =>
 export const electronHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =>
   invokeElectron(command, args);
 
-export const electronMissionControlInvoke: InvokeMissionControl = (command) =>
-  invokeElectron(command);
+export const electronMissionControlInvoke: InvokeMissionControl = (command, args) =>
+  invokeElectron(command, args);
 
 export const electronWorkspaceInvoke: InvokeWorkspace = (command, args) =>
   invokeElectron(command, args);

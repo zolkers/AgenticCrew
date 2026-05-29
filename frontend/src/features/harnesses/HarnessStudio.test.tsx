@@ -452,6 +452,29 @@ describe("HarnessStudio", () => {
       });
     });
   });
+
+  it("reports PI extension import and activation failures", async () => {
+    const invoke = vi.fn().mockRejectedValue(new Error("failed"));
+
+    render(
+      <HarnessStudio
+        invoke={invoke}
+        snapshot={{
+          activePiExtensionCount: 0,
+          activeProfileCount: 1,
+          bindings: [],
+          piExtensions: [piExtensionFixture("release-pi", false)],
+          profiles: [profileFixture("profile-on", true)]
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Import PI extension" }));
+    expect(await screen.findByText("PI extension import failed")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Activate PI" }));
+    expect(await screen.findByText("PI extension status update failed")).toBeInTheDocument();
+  });
 });
 
 function profileFixture(id: string, active: boolean) {

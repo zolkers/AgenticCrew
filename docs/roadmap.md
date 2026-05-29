@@ -14,13 +14,12 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - Docker-backed desktop test workflow for Windows machines without local MSVC Build Tools or GNU MinGW prerequisites.
 - Restrained workspace navigation shell between Mission Control and Skill Sources.
 - AgenticCrew technical naming across npm, Rust, Python worker, and Sonar project metadata.
+- Workspace launcher, manual Git metadata editing, Rust-owned workspace records, OpenAI provider model sync, model pickers, Skill Sources workflow, Harness Studio PI extensions, Agent Studio evaluation runs, and live Mission Control metrics.
 
 **Next focus:**
-- Electron shell migration: continue hardening the `crates/agenticcrew-core` plus `crates/agenticcrew-sidecar` bridge behind `window.agenticcrew.invoke`.
-- Product UI foundation: adopt Mantine, TanStack Router, TanStack Query, Tabler icons, and the graphite/ink/copper visual system before expanding screens.
-- External skill marketplace and route workflow: register, sync, inspect, approve, search, route, and attach skills without activating untrusted code prematurely.
-- Harness Studio and PI extensions: compose multiple harness profiles, import user PI extensions, preview effective harnesses, and bind them to workspaces, agents, skills, and runs.
-- Agent Studio: create custom agents, bind approved skills and harnesses, evaluate candidate versions, and load published agent versions into workspaces and missions.
+- Product power features: command palette, artifacts, diff review, safety center, notifications, and run replay.
+- Packaging polish: native Electron menus, installer packaging, updater strategy, and first-run onboarding.
+- Runtime execution: live agent event streams and pause/resume/kill controls once execution starts streaming beyond durable snapshots.
 
 ## Product Roadmap From Current Discussions
 
@@ -171,6 +170,8 @@ This section is the current product roadmap for the AgenticCrew app experience. 
 
 ## Immediate Implementation Order
 
+Completed on `dev`:
+
 1. Reorganize the app shell and workspace launcher.
 2. Add workspace creation and manual Git metadata editing in the current React layer.
 3. Move workspace records into Rust durable state.
@@ -180,6 +181,8 @@ This section is the current product roadmap for the AgenticCrew app experience. 
 7. Expand Harness Studio modules and PI extension import.
 8. Add Agent Studio versioning/training/evaluation.
 9. Replace Mission Control preview values with live durable/runtime state.
+
+Next tranche: product power features, runtime streams, packaging polish, and onboarding.
 
 ## Task Roadmap
 

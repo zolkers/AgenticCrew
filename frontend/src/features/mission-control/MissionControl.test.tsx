@@ -7,6 +7,22 @@ import "../../i18n";
 describe("MissionControl", () => {
   it("renders the provided mission control snapshot", () => {
     const snapshot: MissionControlSnapshot = {
+      activeModel: {
+        modelId: "gpt-5",
+        providerId: "openai"
+      },
+      activeProvider: {
+        displayName: "OpenAI",
+        providerId: "openai"
+      },
+      activeWorkspace: {
+        branch: "feature/ui",
+        id: "ui-workspace",
+        mission: "Modernize Mission Control",
+        name: "UI Workspace",
+        path: "C:\\agentos",
+        status: "running"
+      },
       activeAgentCount: 4,
       activeSessionCount: 2,
       checkpoints: [
@@ -28,8 +44,6 @@ describe("MissionControl", () => {
         workspaceCount: 3
       },
       humanGateStatus: "blocked",
-      model: "gpt-5",
-      provider: "openai",
       recentEvidence: [
         {
           checkpointId: "state-tests",
@@ -65,6 +79,7 @@ describe("MissionControl", () => {
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("$1.25")).toBeInTheDocument();
     expect(screen.getByText("openai / gpt-5")).toBeInTheDocument();
+    expect(screen.getByText("UI Workspace")).toBeInTheDocument();
     expect(screen.getAllByText("Architecture boundary").length).toBeGreaterThan(1);
     expect(screen.getByText("Blocked")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Sessions" })).toBeInTheDocument();
@@ -79,6 +94,15 @@ describe("MissionControl", () => {
     render(
       <MissionControl
         snapshot={{
+          activeModel: {
+            modelId: "gpt-5",
+            providerId: "openai"
+          },
+          activeProvider: {
+            displayName: "OpenAI",
+            providerId: "openai"
+          },
+          activeWorkspace: null,
           activeAgentCount: 0,
           activeSessionCount: 0,
           checkpoints: [],
@@ -93,8 +117,6 @@ describe("MissionControl", () => {
             workspaceCount: 0
           },
           humanGateStatus: "open",
-          model: "gpt-5",
-          provider: "openai",
           recentEvidence: [],
           sessions: [],
           skillSummary: {

@@ -5,6 +5,7 @@ use super::{
     evidence::Evidence,
     sessions::{CheckpointStatus, FeatureSessionStatus},
     state::AgentOsState,
+    workspaces::{WorkspaceRecord, WorkspaceStatus},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -18,11 +19,12 @@ pub enum HumanGateStatus {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MissionControlSnapshot {
+    pub active_workspace: Option<MissionActiveWorkspace>,
+    pub active_provider: MissionActiveProvider,
+    pub active_model: MissionActiveModel,
     pub active_session_count: u64,
     pub active_agent_count: u64,
     pub current_cost_usd: f64,
-    pub provider: String,
-    pub model: String,
     pub current_checkpoint: String,
     pub human_gate_status: HumanGateStatus,
     pub sessions: Vec<MissionSessionSummary>,
@@ -31,6 +33,31 @@ pub struct MissionControlSnapshot {
     pub git_summary: MissionGitSummary,
     pub skill_summary: MissionSkillSummary,
     pub recent_evidence: Vec<MissionEvidenceSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissionActiveWorkspace {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub branch: String,
+    pub mission: String,
+    pub status: WorkspaceStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissionActiveProvider {
+    pub provider_id: String,
+    pub display_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissionActiveModel {
+    pub provider_id: String,
+    pub model_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -110,6 +137,26 @@ pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionContr
         })
         .collect();
     let current_estimate = state.model_call_estimates.last();
+    let active_provider = MissionActiveProvider {
+        provider_id: current_estimate.map_or_else(
+            || state.desktop_settings.ai_provider.provider_id.clone(),
+            |estimate| estimate.provider.clone(),
+        ),
+        display_name: current_estimate.map_or_else(
+            || state.desktop_settings.ai_provider.display_name.clone(),
+            |estimate| estimate.provider.clone(),
+        ),
+    };
+    let active_model = MissionActiveModel {
+        provider_id: current_estimate.map_or_else(
+            || state.desktop_settings.ai_provider.provider_id.clone(),
+            |estimate| estimate.provider.clone(),
+        ),
+        model_id: current_estimate.map_or_else(
+            || state.desktop_settings.ai_provider.selected_model_id.clone(),
+            |estimate| estimate.model.clone(),
+        ),
+    };
     let current_checkpoint = active_sessions
         .iter()
         .flat_map(|session| session.checkpoints.iter())
@@ -139,6 +186,9 @@ pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionContr
     };
 
     MissionControlSnapshot {
+        active_workspace: active_workspace_from_state(state),
+        active_provider,
+        active_model,
         active_session_count: active_sessions.len() as u64,
         active_agent_count: agent_ids.len() as u64,
         current_cost_usd: state
@@ -146,12 +196,6 @@ pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionContr
             .iter()
             .map(|estimate| estimate.estimated_cost_usd)
             .sum(),
-        provider: current_estimate
-            .map_or_else(|| "openai".to_owned(), |estimate| estimate.provider.clone()),
-        model: current_estimate.map_or_else(
-            || "gpt-5-codex".to_owned(),
-            |estimate| estimate.model.clone(),
-        ),
         current_checkpoint,
         human_gate_status,
         sessions: active_sessions
@@ -225,6 +269,26 @@ pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionContr
     }
 }
 
+fn active_workspace_from_state(state: &AgentOsState) -> Option<MissionActiveWorkspace> {
+    state
+        .workspaces
+        .iter()
+        .find(|workspace| workspace.status == WorkspaceStatus::Running)
+        .or_else(|| state.workspaces.first())
+        .map(active_workspace_summary)
+}
+
+fn active_workspace_summary(workspace: &WorkspaceRecord) -> MissionActiveWorkspace {
+    MissionActiveWorkspace {
+        id: workspace.id.clone(),
+        name: workspace.name.clone(),
+        path: workspace.path.clone(),
+        branch: workspace.branch.clone(),
+        mission: workspace.mission.clone(),
+        status: workspace.status,
+    }
+}
+
 fn evidence_summary(evidence: &Evidence) -> MissionEvidenceSummary {
     MissionEvidenceSummary {
         evidence_id: evidence.evidence_id.clone(),
@@ -239,7 +303,7 @@ fn evidence_summary(evidence: &Evidence) -> MissionEvidenceSummary {
 mod tests {
     use super::{
         initial_mission_control_snapshot, mission_control_snapshot_from_state, HumanGateStatus,
-        MissionControlSnapshot,
+        MissionActiveModel, MissionActiveProvider, MissionActiveWorkspace, MissionControlSnapshot,
     };
     use crate::core::{
         costs::ModelCallEstimate,
@@ -247,6 +311,7 @@ mod tests {
             Checkpoint, CheckpointStatus, FeatureSession, FeatureSessionStatus, GoalObject,
         },
         state::AgentOsState,
+        workspaces::WorkspaceStatus,
     };
 
     #[test]
@@ -256,11 +321,25 @@ mod tests {
         assert_eq!(
             snapshot,
             MissionControlSnapshot {
+                active_workspace: Some(MissionActiveWorkspace {
+                    branch: "dev".to_owned(),
+                    id: "fullstack-app".to_owned(),
+                    mission: "Build UI shell".to_owned(),
+                    name: "Fullstack App".to_owned(),
+                    path: "C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew".to_owned(),
+                    status: WorkspaceStatus::Running,
+                }),
+                active_provider: MissionActiveProvider {
+                    display_name: "OpenAI".to_owned(),
+                    provider_id: "openai".to_owned(),
+                },
+                active_model: MissionActiveModel {
+                    model_id: "gpt-5".to_owned(),
+                    provider_id: "openai".to_owned(),
+                },
                 active_session_count: 0,
                 active_agent_count: 0,
                 current_cost_usd: 0.0,
-                provider: "openai".to_owned(),
-                model: "gpt-5-codex".to_owned(),
                 current_checkpoint: "initial".to_owned(),
                 human_gate_status: HumanGateStatus::Open,
                 sessions: Vec::new(),
@@ -290,11 +369,25 @@ mod tests {
         assert_eq!(
             serialized,
             serde_json::json!({
+                "activeWorkspace": {
+                    "branch": "dev",
+                    "id": "fullstack-app",
+                    "mission": "Build UI shell",
+                    "name": "Fullstack App",
+                    "path": "C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew",
+                    "status": "running"
+                },
+                "activeProvider": {
+                    "displayName": "OpenAI",
+                    "providerId": "openai"
+                },
+                "activeModel": {
+                    "modelId": "gpt-5",
+                    "providerId": "openai"
+                },
                 "activeSessionCount": 0,
                 "activeAgentCount": 0,
                 "currentCostUsd": 0.0,
-                "provider": "openai",
-                "model": "gpt-5-codex",
                 "currentCheckpoint": "initial",
                 "humanGateStatus": "open",
                 "sessions": [],
@@ -349,10 +442,27 @@ mod tests {
         let snapshot = mission_control_snapshot_from_state(&state);
 
         assert_eq!(snapshot.current_cost_usd, 1.0);
-        assert_eq!(snapshot.provider, "anthropic");
-        assert_eq!(snapshot.model, "claude-sonnet");
+        assert_eq!(snapshot.active_provider.provider_id, "anthropic");
+        assert_eq!(snapshot.active_provider.display_name, "anthropic");
+        assert_eq!(snapshot.active_model.provider_id, "anthropic");
+        assert_eq!(snapshot.active_model.model_id, "claude-sonnet");
         assert_eq!(snapshot.cost_summary.total_usd, 1.0);
         assert_eq!(snapshot.cost_summary.model_call_count, 2);
+    }
+
+    #[test]
+    fn snapshot_uses_durable_provider_settings_when_no_model_call_exists() {
+        let mut state = AgentOsState::empty();
+        state.desktop_settings.ai_provider.provider_id = "openai".to_owned();
+        state.desktop_settings.ai_provider.display_name = "OpenAI".to_owned();
+        state.desktop_settings.ai_provider.selected_model_id = "gpt-live-settings".to_owned();
+
+        let snapshot = mission_control_snapshot_from_state(&state);
+
+        assert_eq!(snapshot.active_provider.provider_id, "openai");
+        assert_eq!(snapshot.active_provider.display_name, "OpenAI");
+        assert_eq!(snapshot.active_model.provider_id, "openai");
+        assert_eq!(snapshot.active_model.model_id, "gpt-live-settings");
     }
 
     #[test]

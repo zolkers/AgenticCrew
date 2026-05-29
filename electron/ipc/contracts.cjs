@@ -1,5 +1,6 @@
 const COMMANDS = new Set([
   "mission_control_snapshot",
+  "record_model_call_estimate",
   "workspace_snapshot",
   "create_workspace",
   "update_workspace_git_context",

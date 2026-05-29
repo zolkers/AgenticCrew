@@ -12,6 +12,7 @@ use agenticcrew_core::{
         CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest,
         UpdateAgentTemplateRequest,
     },
+    core::costs::RecordModelCallEstimateRequest,
     core::harnesses::{
         CreateHarnessProfileRequest, SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
     },
@@ -29,14 +30,14 @@ use agenticcrew_core::{
     create_agent_template_at_path, create_harness_profile_at_path, create_workspace_at_path,
     harness_studio_snapshot_at_path, import_pi_extension_at_path,
     inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
-    promote_agent_training_run_at_path, refresh_workspace_git_status_at_path,
-    register_github_skill_source_at_path, set_agent_template_active_at_path,
-    set_harness_profile_active_at_path, set_pi_extension_active_at_path, settings_snapshot_at_path,
-    skill_sources_snapshot_at_path, sync_github_skill_source_at_path,
-    sync_provider_models_at_path_with_catalog, update_agent_template_at_path,
-    update_ai_provider_settings_at_path, update_harness_profile_at_path,
-    update_workspace_git_context_at_path, update_workspace_loadout_at_path,
-    workspace_snapshot_at_path, DesktopCommandError,
+    promote_agent_training_run_at_path, record_model_call_estimate_at_path,
+    refresh_workspace_git_status_at_path, register_github_skill_source_at_path,
+    set_agent_template_active_at_path, set_harness_profile_active_at_path,
+    set_pi_extension_active_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
+    sync_github_skill_source_at_path, sync_provider_models_at_path_with_catalog,
+    update_agent_template_at_path, update_ai_provider_settings_at_path,
+    update_harness_profile_at_path, update_workspace_git_context_at_path,
+    update_workspace_loadout_at_path, workspace_snapshot_at_path, DesktopCommandError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -220,6 +221,12 @@ struct PromoteAgentTrainingRunArgs {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct RecordModelCallEstimateArgs {
+    request: RecordModelCallEstimateRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CreateWorkspaceArgs {
     request: CreateWorkspaceRequest,
 }
@@ -294,6 +301,14 @@ fn run() -> Result<(), DesktopCommandError> {
 
     match command.as_str() {
         "mission_control_snapshot" => print_json(&mission_control_snapshot_at_path(state_path)?),
+        "record_model_call_estimate" => {
+            let args = parse_args::<RecordModelCallEstimateArgs>(&args_json)?;
+
+            print_json(&record_model_call_estimate_at_path(
+                state_path,
+                args.request,
+            )?)
+        }
         "workspace_snapshot" => print_json(&workspace_snapshot_at_path(state_path)?),
         "create_workspace" => {
             let args = parse_args::<CreateWorkspaceArgs>(&args_json)?;

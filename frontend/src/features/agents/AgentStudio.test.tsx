@@ -152,6 +152,36 @@ describe("AgentStudio", () => {
     expect(screen.getByText("evaluations/loose-agent/release.json")).toBeInTheDocument();
   });
 
+  it("renders pending evaluation runs without artifacts", () => {
+    render(
+      <AgentStudio
+        harnessSnapshot={harnessSnapshot}
+        invoke={vi.fn()}
+        snapshot={{
+          ...templateSnapshot,
+          evaluationRuns: [
+            {
+              agentTemplateId: "loose-agent",
+              artifactPath: null,
+              baselineVersion: 2,
+              candidateVersion: 3,
+              estimatedCostCents: 0,
+              id: "eval-pending",
+              regressionCount: 0,
+              score: null,
+              status: "pending",
+              suiteId: "nightly"
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(screen.getByText("loose-agent / v2 -> v3")).toBeInTheDocument();
+    expect(screen.getAllByText("Pending").length).toBeGreaterThan(0);
+    expect(screen.queryByText("evaluations/loose-agent/release.json")).toBeNull();
+  });
+
   it("derives version summaries when older snapshots omit them", () => {
     render(
       <AgentStudio

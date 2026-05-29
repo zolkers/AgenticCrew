@@ -371,6 +371,10 @@ describe("SkillSources", () => {
     });
     rerender(<SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />);
     expect(screen.getByText("planning")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
+    await waitFor(() => {
+      expect(calls).toEqual(expect.arrayContaining([expect.objectContaining({ command: "inspect_cached_skill_source" })]));
+    });
 
     rerender(<SkillSources invoke={invoke} onSnapshotChange={onSnapshotChange} snapshot={snapshot} />);
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
@@ -392,5 +396,45 @@ describe("SkillSources", () => {
         expect.objectContaining({ command: "activate_skill_source" })
       ])
     );
+  });
+
+  it("surfaces source action failures", async () => {
+    const snapshot: SkillSourcesSnapshot = {
+      activeSourceCount: 0,
+      sources: [
+        {
+          active: false,
+          discoveredSkills: [],
+          id: "superpowers",
+          kind: "git_hub",
+          lastSyncError: null,
+          lastSyncStatus: "synced",
+          lastSyncedCommit: null,
+          localCachePath: "cache/superpowers",
+          permissionGate: {
+            approved: false,
+            policy: {
+              commands: [],
+              docker: false,
+              fileSystem: [],
+              git: false,
+              network: []
+            }
+          },
+          repositoryUrl: "https://github.com/obra/superpowers",
+          selectedRef: "main",
+          status: "validated",
+          trustLevel: "external",
+          validationErrors: []
+        }
+      ]
+    };
+    const invoke = vi.fn().mockRejectedValue(new Error("offline"));
+
+    render(<SkillSources invoke={invoke} snapshot={snapshot} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
+
+    expect(await screen.findByText("Skill source inspection failed")).toBeInTheDocument();
   });
 });

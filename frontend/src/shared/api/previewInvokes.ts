@@ -16,6 +16,22 @@ import type { InvokeSkillSources, SkillSourcesCommand } from "./skillSourcesApi"
 import type { InvokeWorkspace } from "./workspaceApi";
 
 const previewMissionControlSnapshot: MissionControlSnapshot = {
+  activeModel: {
+    modelId: "local-preview",
+    providerId: "browser"
+  },
+  activeProvider: {
+    displayName: "Browser preview",
+    providerId: "browser"
+  },
+  activeWorkspace: {
+    branch: "codex/cockpit-prototype",
+    id: "fullstack-app",
+    mission: "Build UI shell",
+    name: "Fullstack App",
+    path: "C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew",
+    status: "running"
+  },
   activeAgentCount: 0,
   activeSessionCount: 0,
   checkpoints: [],
@@ -30,8 +46,6 @@ const previewMissionControlSnapshot: MissionControlSnapshot = {
     workspaceCount: 2
   },
   humanGateStatus: "open",
-  model: "local-preview",
-  provider: "browser",
   recentEvidence: [],
   sessions: [],
   skillSummary: {
@@ -235,8 +249,38 @@ const previewSettingsSnapshot: SettingsSnapshot = {
   }
 };
 
-export const previewMissionControlInvoke: InvokeMissionControl = () =>
-  Promise.resolve(previewMissionControlSnapshot);
+export const previewMissionControlInvoke: InvokeMissionControl = (command, args) => {
+  if (command === "record_model_call_estimate") {
+    const request = args?.request as
+      | {
+          estimatedCostUsd?: number;
+          model?: string;
+          provider?: string;
+        }
+      | undefined;
+
+    return Promise.resolve({
+      ...previewMissionControlSnapshot,
+      activeModel: {
+        modelId: request?.model ?? previewMissionControlSnapshot.activeModel.modelId,
+        providerId: request?.provider ?? previewMissionControlSnapshot.activeModel.providerId
+      },
+      activeProvider: {
+        displayName: request?.provider ?? previewMissionControlSnapshot.activeProvider.displayName,
+        providerId: request?.provider ?? previewMissionControlSnapshot.activeProvider.providerId
+      },
+      costSummary: {
+        modelCallCount: previewMissionControlSnapshot.costSummary.modelCallCount + 1,
+        totalUsd:
+          previewMissionControlSnapshot.costSummary.totalUsd + (request?.estimatedCostUsd ?? 0)
+      },
+      currentCostUsd:
+        previewMissionControlSnapshot.currentCostUsd + (request?.estimatedCostUsd ?? 0)
+    });
+  }
+
+  return Promise.resolve(previewMissionControlSnapshot);
+};
 
 export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
   if (command === "create_workspace") {

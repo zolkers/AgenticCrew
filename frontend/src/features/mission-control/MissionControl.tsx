@@ -89,11 +89,15 @@ export function MissionControl({ snapshot }: MissionControlProps) {
           <dl className="mission-facts">
             <div>
               <dt>{t("missionControl.labels.providerModel", { defaultValue: "Provider / model" })}</dt>
-              <dd>{snapshot.provider} / {snapshot.model}</dd>
+              <dd>{snapshot.activeProvider.providerId} / {snapshot.activeModel.modelId}</dd>
             </div>
             <div>
               <dt>{t("missionControl.labels.currentCheckpoint", { defaultValue: "Checkpoint" })}</dt>
               <dd>{snapshot.currentCheckpoint}</dd>
+            </div>
+            <div>
+              <dt>Workspace</dt>
+              <dd>{snapshot.activeWorkspace?.name ?? "None"}</dd>
             </div>
             <div>
               <dt>Model calls</dt>

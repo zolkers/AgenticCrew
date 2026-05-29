@@ -16,10 +16,41 @@ describe("previewInvokes", () => {
 
   it("returns a Mission Control preview snapshot for browser previews", async () => {
     await expect(previewMissionControlInvoke("mission_control_snapshot")).resolves.toMatchObject({
+      activeModel: {
+        modelId: "local-preview",
+        providerId: "browser"
+      },
+      activeProvider: {
+        providerId: "browser"
+      },
       currentCheckpoint: "Preview mode",
-      humanGateStatus: "open",
-      model: "local-preview",
-      provider: "browser"
+      humanGateStatus: "open"
+    });
+  });
+
+  it("records model call estimates in Mission Control preview data", async () => {
+    await expect(
+      previewMissionControlInvoke("record_model_call_estimate", {
+        request: {
+          estimatedCostUsd: 0.42,
+          model: "gpt-preview-live",
+          provider: "openai"
+        }
+      })
+    ).resolves.toMatchObject({
+      activeModel: {
+        modelId: "gpt-preview-live",
+        providerId: "openai"
+      },
+      activeProvider: {
+        displayName: "openai",
+        providerId: "openai"
+      },
+      costSummary: {
+        modelCallCount: 1,
+        totalUsd: 0.42
+      },
+      currentCostUsd: 0.42
     });
   });
 

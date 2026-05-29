@@ -10,7 +10,7 @@ use super::{
         AgentTrainingStatus, CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest,
         SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
     },
-    costs::ModelCallEstimate,
+    costs::{ModelCallEstimate, ModelCallEstimateError, RecordModelCallEstimateRequest},
     evidence::{CommandExitCodeEvidence, Evidence},
     harnesses::{
         CreateHarnessProfileRequest, HarnessBinding, HarnessProfile, HarnessProfileError,
@@ -193,6 +193,19 @@ impl AgentOsState {
         }
 
         self.evidence.push(evidence);
+
+        Ok(())
+    }
+
+    pub fn record_model_call_estimate(
+        &mut self,
+        request: RecordModelCallEstimateRequest,
+    ) -> Result<(), StateMutationError> {
+        self.model_call_estimates.push(
+            request
+                .try_into()
+                .map_err(StateMutationError::InvalidModelCallEstimate)?,
+        );
 
         Ok(())
     }
@@ -779,6 +792,7 @@ pub enum StateMutationError {
     InvalidHarnessProfile(HarnessProfileError),
     InvalidPiExtension(PiExtensionError),
     InvalidAgentTemplate(AgentTemplateError),
+    InvalidModelCallEstimate(ModelCallEstimateError),
     InvalidDesktopSettings(SettingsValidationError),
     InvalidWorkspace(WorkspaceError),
     CheckpointNotPassed(SessionTransitionError),
@@ -867,6 +881,9 @@ impl fmt::Display for StateMutationError {
             }
             StateMutationError::InvalidAgentTemplate(error) => {
                 write!(formatter, "invalid agent template: {error}")
+            }
+            StateMutationError::InvalidModelCallEstimate(error) => {
+                write!(formatter, "invalid model call estimate: {error}")
             }
             StateMutationError::InvalidDesktopSettings(error) => {
                 write!(formatter, "invalid desktop settings: {error}")
@@ -1648,6 +1665,50 @@ mod tests {
             state.desktop_settings.ai_provider.api_key_last_four,
             Some("5678".to_owned())
         );
+    }
+
+    #[test]
+    fn record_model_call_estimate_appends_runtime_cost_state() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .record_model_call_estimate(crate::core::costs::RecordModelCallEstimateRequest {
+                agent_id: "developer".to_owned(),
+                cached_tokens: 25,
+                estimated_cost_usd: 0.42,
+                input_tokens: 100,
+                model: "gpt-live".to_owned(),
+                output_tokens: 50,
+                provider: "openai".to_owned(),
+            })
+            .expect("model call estimate should be valid");
+
+        assert_eq!(state.model_call_estimates.len(), 1);
+        assert_eq!(state.model_call_estimates[0].model, "gpt-live");
+        assert_eq!(state.model_call_estimates[0].estimated_cost_usd, 0.42);
+    }
+
+    #[test]
+    fn record_model_call_estimate_rejects_invalid_runtime_cost_state() {
+        let mut state = AgentOsState::empty();
+
+        let error = state
+            .record_model_call_estimate(crate::core::costs::RecordModelCallEstimateRequest {
+                agent_id: "developer".to_owned(),
+                cached_tokens: 0,
+                estimated_cost_usd: -0.01,
+                input_tokens: 100,
+                model: "gpt-live".to_owned(),
+                output_tokens: 50,
+                provider: "openai".to_owned(),
+            })
+            .expect_err("negative cost should fail");
+
+        assert_eq!(
+            error.to_string(),
+            "invalid model call estimate: estimated cost must be finite and non-negative"
+        );
+        assert!(state.model_call_estimates.is_empty());
     }
 
     #[test]

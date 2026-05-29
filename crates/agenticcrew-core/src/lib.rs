@@ -12,6 +12,7 @@ use core::{
         agent_studio_snapshot_from_state, AgentStudioSnapshot, CreateAgentTemplateRequest,
         PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest, UpdateAgentTemplateRequest,
     },
+    costs::RecordModelCallEstimateRequest,
     harnesses::{
         harness_studio_snapshot_from_state, CreateHarnessProfileRequest, HarnessStudioSnapshot,
         SetHarnessProfileActiveRequest, UpdateHarnessProfileRequest,
@@ -293,6 +294,15 @@ pub fn record_command_evidence_at_path(
     mutate_state_at_path(path, |state| state.record_command_evidence(request))
 }
 
+pub fn record_model_call_estimate_at_path(
+    path: impl AsRef<Path>,
+    request: RecordModelCallEstimateRequest,
+) -> Result<MissionControlSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.record_model_call_estimate(request))?;
+
+    Ok(mission_control_snapshot_from_state(&state))
+}
+
 pub fn close_feature_session_at_path(
     path: impl AsRef<Path>,
     session_id: &str,
@@ -479,13 +489,13 @@ mod tests {
         create_harness_profile_at_path, create_workspace_at_path, durable_state_snapshot_at_path,
         harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
         mission_control_snapshot_at_path, promote_agent_training_run_at_path,
-        record_command_evidence_at_path, record_skill_source_sync_success_at_path,
-        refresh_workspace_git_status_at_path, register_github_skill_source_at_path,
-        set_agent_template_active_at_path, set_harness_profile_active_at_path,
-        skill_sources_snapshot_at_path, state_file_path, update_agent_template_at_path,
-        update_harness_profile_at_path, update_workspace_git_context_at_path,
-        update_workspace_loadout_at_path, validate_skill_source_at_path,
-        workspace_snapshot_at_path, STATE_FILE_NAME,
+        record_command_evidence_at_path, record_model_call_estimate_at_path,
+        record_skill_source_sync_success_at_path, refresh_workspace_git_status_at_path,
+        register_github_skill_source_at_path, set_agent_template_active_at_path,
+        set_harness_profile_active_at_path, skill_sources_snapshot_at_path, state_file_path,
+        update_agent_template_at_path, update_harness_profile_at_path,
+        update_workspace_git_context_at_path, update_workspace_loadout_at_path,
+        validate_skill_source_at_path, workspace_snapshot_at_path, STATE_FILE_NAME,
     };
     use crate::core::{
         agents::{
@@ -493,6 +503,7 @@ mod tests {
             PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest,
             UpdateAgentTemplateRequest,
         },
+        costs::RecordModelCallEstimateRequest,
         harnesses::{
             CreateHarnessProfileRequest, SetHarnessProfileActiveRequest,
             UpdateHarnessProfileRequest,
@@ -605,6 +616,32 @@ mod tests {
 
         assert_eq!(snapshot.active_session_count, 1);
         assert_eq!(snapshot.current_checkpoint, "State tests");
+    }
+
+    #[test]
+    fn record_model_call_estimate_at_path_updates_mission_control_snapshot() {
+        let path = test_path(
+            "record_model_call_estimate_at_path_updates_mission_control_snapshot",
+            "state.json",
+        );
+
+        let snapshot = record_model_call_estimate_at_path(
+            &path,
+            RecordModelCallEstimateRequest {
+                agent_id: "developer".to_owned(),
+                cached_tokens: 25,
+                estimated_cost_usd: 0.42,
+                input_tokens: 100,
+                model: "gpt-live".to_owned(),
+                output_tokens: 50,
+                provider: "openai".to_owned(),
+            },
+        )
+        .expect("model call estimate should persist");
+
+        assert_eq!(snapshot.active_model.model_id, "gpt-live");
+        assert_eq!(snapshot.cost_summary.model_call_count, 1);
+        assert_eq!(snapshot.cost_summary.total_usd, 0.42);
     }
 
     #[test]
