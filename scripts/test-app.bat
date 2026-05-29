@@ -12,6 +12,18 @@ if errorlevel 1 (
   exit /b 1
 )
 
+docker info >nul 2>nul
+if errorlevel 1 (
+  echo Docker CLI is installed, but the Docker daemon is not reachable.
+  echo Start Docker Desktop and wait until it says "Docker Desktop is running", then retry:
+  echo   scripts\test-app.bat --quality
+  echo.
+  echo If you have local Rust build prerequisites installed, you can run the non-Docker gates with:
+  echo   npm run quality
+  echo   npm run desktop:test
+  exit /b 1
+)
+
 if "%~1"=="--quality" goto :quality
 if "%~1"=="quality" goto :quality
 if not "%~1"=="" (
