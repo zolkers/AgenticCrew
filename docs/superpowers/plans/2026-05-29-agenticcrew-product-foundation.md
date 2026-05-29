@@ -60,6 +60,25 @@ AgenticCrew should not explain itself with paragraphs inside the app. The defaul
 
 This keeps the app closer to Codex-style operational tooling: fast scanning first, details on demand.
 
+### Typography System
+
+Use three font families with clear responsibilities:
+
+- **Title/display font:** for product name, page titles, major panel headers, workspace names, and agent names. It should feel technical and premium, not playful.
+- **UI/body font:** for paragraphs, labels, tables, forms, buttons, menus, and dense operational data. It must optimize readability over personality.
+- **Accent serif:** for rare stylized moments only: empty-state accent words, editorial quotes, onboarding chapter labels, or high-level product framing. Do not use the serif in logs, tables, controls, or dense agent state.
+
+Initial stack:
+
+```css
+--font-title: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+--font-body: Inter, "Segoe UI", system-ui, sans-serif;
+--font-accent: "Fraunces", Georgia, serif;
+--font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+```
+
+If remote font loading is not available, the app must still look correct with the fallbacks. Typography should be tokenized in the Mantine theme and never hardcoded ad hoc in feature components.
+
 ### Framework Choice
 
 Adopt Mantine as the application UI framework, with TanStack Router and TanStack Query:
@@ -257,7 +276,15 @@ export const agenticCrewTheme = createTheme({
   primaryColor: "teal",
   defaultRadius: 4,
   fontFamily: "Inter, Segoe UI, system-ui, sans-serif",
+  headings: {
+    fontFamily: "Space Grotesk, Segoe UI, system-ui, sans-serif"
+  },
   fontFamilyMonospace: "Cascadia Code, SFMono-Regular, Consolas, monospace",
+  other: {
+    fontAccent: "Fraunces, Georgia, serif",
+    fontBody: "Inter, Segoe UI, system-ui, sans-serif",
+    fontTitle: "Space Grotesk, Segoe UI, system-ui, sans-serif"
+  },
   colors: {
     graphite: [
       "#f2f7f5",
@@ -1325,6 +1352,7 @@ git commit -m "docs: document product foundation architecture"
 - Browser preview remains deterministic but is isolated behind preview adapters.
 - The app uses Mantine, Tabler Icons, TanStack Router, and TanStack Query for the main app framework.
 - The app follows the icon-first density rule: no long explanatory text in primary operational surfaces, and icon-only controls have accessible labels plus tooltips.
+- The typography system uses distinct title, body, accent serif, and mono tokens; feature components do not hardcode random font stacks.
 - The user can see what every agent is doing through roster, timeline, activity feed, checkpoint board, gates, and artifacts.
 - Mission Control is a modern management view with real sessions, checkpoints, costs, provider/model, skills, and git summaries.
 - Skill Sources becomes a marketplace-like manager with search, registration, sync, inspection, permission review, route loading, and activation.
