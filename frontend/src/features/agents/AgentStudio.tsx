@@ -1,3 +1,4 @@
+import { Bot, FlaskConical, Route, Trophy } from "lucide-react";
 import type { AgentStudioSnapshot } from "../../shared/types/core";
 
 type AgentStudioProps = Readonly<{
@@ -17,6 +18,29 @@ export function AgentStudio({ snapshot }: AgentStudioProps) {
       {snapshot.templates.length === 0 ? (
         <p>No custom agent saved</p>
       ) : (
+        <>
+        <div className="surface-grid compact">
+          <article className="surface-card">
+            <Bot aria-hidden="true" size={20} />
+            <strong>Templates</strong>
+            <span>{snapshot.templates.length}</span>
+          </article>
+          <article className="surface-card">
+            <Route aria-hidden="true" size={20} />
+            <strong>Skill routes</strong>
+            <span>{snapshot.templates.reduce((count, template) => count + template.skillRoutes.length, 0)}</span>
+          </article>
+          <article className="surface-card">
+            <FlaskConical aria-hidden="true" size={20} />
+            <strong>Training</strong>
+            <span>{snapshot.trainingRuns.length} runs</span>
+          </article>
+          <article className="surface-card">
+            <Trophy aria-hidden="true" size={20} />
+            <strong>Evaluation</strong>
+            <span>Version scoring pending</span>
+          </article>
+        </div>
         <ul className="surface-list">
           {snapshot.templates.map((template) => (
             <li key={template.id}>
@@ -51,6 +75,7 @@ export function AgentStudio({ snapshot }: AgentStudioProps) {
             </li>
           ))}
         </ul>
+        </>
       )}
       {snapshot.trainingRuns.length > 0 ? (
         <p>{snapshot.trainingRuns.length} training run queued</p>

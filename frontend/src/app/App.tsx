@@ -3,18 +3,21 @@ import { MantineProvider, Tooltip } from "@mantine/core";
 import {
   Bot,
   Brain,
-  Cable,
   ChevronRight,
   FolderKanban,
   GitBranch,
+  KeyRound,
   LayoutDashboard,
+  Store,
   Route,
   Settings2
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AgentStudio } from "../features/agents/AgentStudio";
+import { GitPanel } from "../features/git/GitPanel";
 import { HarnessStudio } from "../features/harnesses/HarnessStudio";
 import { MissionControl } from "../features/mission-control/MissionControl";
+import { SettingsPanel } from "../features/settings/SettingsPanel";
 import { SkillSources } from "../features/skill-sources/SkillSources";
 import { loadAgentStudioSnapshot, type InvokeAgentStudio } from "../shared/api/agentStudioApi";
 import { loadHarnessStudioSnapshot, type InvokeHarnessStudio } from "../shared/api/harnessStudioApi";
@@ -48,13 +51,46 @@ type AppLoadState =
     }>
   | Readonly<{ status: "loading" }>;
 
-type AppView = "cockpit" | "missionControl" | "skillSources" | "harnessStudio" | "agentStudio";
+type AppView =
+  | "agentStudio"
+  | "cockpit"
+  | "gitPanel"
+  | "harnessStudio"
+  | "missionControl"
+  | "settings"
+  | "skillSources";
+
+type AppRouteState = Readonly<{
+  view: AppView;
+  workspaceId: null | string;
+}>;
+
+const routeSegmentByView: Record<AppView, string> = {
+  agentStudio: "agents",
+  cockpit: "cockpit",
+  gitPanel: "git",
+  harnessStudio: "harnesses",
+  missionControl: "mission",
+  settings: "settings",
+  skillSources: "skills"
+};
+
+const viewByRouteSegment: Record<string, AppView> = {
+  agents: "agentStudio",
+  cockpit: "cockpit",
+  git: "gitPanel",
+  harnesses: "harnessStudio",
+  mission: "missionControl",
+  settings: "settings",
+  skills: "skillSources"
+};
 
 export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvoke, skillSourcesInvoke }: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
-  const [activeView, setActiveView] = useState<AppView>("cockpit");
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+  const [routeState, setRouteState] = useState<AppRouteState>(() => resolveInitialRoute());
   const { t } = useTranslation();
+  const activeView = routeState.view;
+  const activeWorkspaceId = routeState.workspaceId;
 
   useEffect(() => {
     let isCurrent = true;
@@ -103,14 +139,26 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
     cockpitWorkspaces.map((workspace) => [workspace.id, workspace])
   ) as Record<string, CockpitWorkspace>;
   const activeWorkspace = activeWorkspaceId === null ? null : workspacesById[activeWorkspaceId];
+  const openWorkspace = (workspaceId: string, view: AppView = "cockpit") => {
+    setRouteState({ view, workspaceId });
+    window.history.pushState(null, "", `/workspace/${workspaceId}/${routeSegmentByView[view]}`);
+  };
+  const openLaunchpad = () => {
+    setRouteState({ view: "cockpit", workspaceId: null });
+    window.history.pushState(null, "", "/workspaces");
+  };
+  const openView = (view: AppView) => {
+    if (activeWorkspace !== null) {
+      openWorkspace(activeWorkspace.id, view);
+    }
+  };
 
   if (activeWorkspace === null) {
     return (
       <MantineProvider defaultColorScheme="dark">
         <WorkspaceLaunchpad
           onWorkspaceSelect={(workspaceId) => {
-            setActiveWorkspaceId(workspaceId);
-            setActiveView("cockpit");
+            openWorkspace(workspaceId);
           }}
           workspaces={cockpitWorkspaces}
         />
@@ -126,7 +174,7 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
           aria-pressed={activeView === "cockpit"}
           className="brand-button"
           onClick={() => {
-            setActiveView("cockpit");
+            openView("cockpit");
           }}
           type="button"
         >
@@ -152,7 +200,7 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
           aria-label="Choose workspace"
           className="topbar-icon"
           onClick={() => {
-            setActiveWorkspaceId(null);
+            openLaunchpad();
           }}
           title="Choose workspace"
           type="button"
@@ -164,15 +212,15 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
           icon={<LayoutDashboard aria-hidden="true" size={18} />}
           label={missionControlLabel}
           onClick={() => {
-            setActiveView("missionControl");
+            openView("missionControl");
           }}
         />
         <NavButton
           active={activeView === "skillSources"}
-          icon={<Cable aria-hidden="true" size={18} />}
+          icon={<Store aria-hidden="true" size={18} />}
           label={skillSourcesLabel}
           onClick={() => {
-            setActiveView("skillSources");
+            openView("skillSources");
           }}
         />
         <NavButton
@@ -180,7 +228,7 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
           icon={<Route aria-hidden="true" size={18} />}
           label={harnessStudioLabel}
           onClick={() => {
-            setActiveView("harnessStudio");
+            openView("harnessStudio");
           }}
         />
         <NavButton
@@ -188,7 +236,23 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
           icon={<Bot aria-hidden="true" size={18} />}
           label={agentStudioLabel}
           onClick={() => {
-            setActiveView("agentStudio");
+            openView("agentStudio");
+          }}
+        />
+        <NavButton
+          active={activeView === "gitPanel"}
+          icon={<GitBranch aria-hidden="true" size={18} />}
+          label="Git"
+          onClick={() => {
+            openView("gitPanel");
+          }}
+        />
+        <NavButton
+          active={activeView === "settings"}
+          icon={<KeyRound aria-hidden="true" size={18} />}
+          label="Settings"
+          onClick={() => {
+            openView("settings");
           }}
         />
       </nav>
@@ -196,7 +260,7 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
         {activeView === "cockpit" ? (
           <Cockpit
             activeWorkspace={activeWorkspace}
-            onWorkspaceChange={setActiveWorkspaceId}
+            onWorkspaceChange={openWorkspace}
             workspaces={cockpitWorkspaces}
           />
         ) : null}
@@ -210,10 +274,32 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
           <HarnessStudio snapshot={loadState.harnessStudioSnapshot} />
         ) : null}
         {activeView === "agentStudio" ? <AgentStudio snapshot={loadState.agentStudioSnapshot} /> : null}
+        {activeView === "gitPanel" ? <GitPanel workspace={activeWorkspace} /> : null}
+        {activeView === "settings" ? <SettingsPanel /> : null}
       </main>
       </div>
     </MantineProvider>
   );
+}
+
+function resolveInitialRoute(): AppRouteState {
+  const match = /^\/workspace\/([^/]+)(?:\/([^/]+))?/u.exec(window.location.pathname);
+
+  if (match === null) {
+    return { view: "cockpit", workspaceId: null };
+  }
+
+  const [, workspaceId, routeSegment = "cockpit"] = match;
+  const workspaceExists = cockpitWorkspaces.some((workspace) => workspace.id === workspaceId);
+
+  if (!workspaceExists) {
+    return { view: "cockpit", workspaceId: null };
+  }
+
+  return {
+    view: viewByRouteSegment[routeSegment] ?? "cockpit",
+    workspaceId
+  };
 }
 
 type NavButtonProps = Readonly<{

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Route, Search, ShieldCheck } from "lucide-react";
 import type { SkillSourcesSnapshot } from "../../shared/types/core";
 
 type SkillSourcesProps = Readonly<{
@@ -11,13 +12,35 @@ export function SkillSources({ snapshot }: SkillSourcesProps) {
 
   return (
     <section aria-label={title}>
-      <h2>{title}</h2>
-      <p>
-        {t("skillSources.activeCount", {
-          count: snapshot.activeSourceCount,
-          defaultValue: "{{count}} active source"
-        })}
-      </p>
+      <header className="surface-header">
+        <div>
+          <p className="eyebrow">Marketplace</p>
+          <h2>{title}</h2>
+        </div>
+        <strong>
+          {t("skillSources.activeCount", {
+            count: snapshot.activeSourceCount,
+            defaultValue: "{{count}} active source"
+          })}
+        </strong>
+      </header>
+      <div className="surface-grid compact">
+        <article className="surface-card">
+          <Search aria-hidden="true" size={20} />
+          <strong>Search</strong>
+          <span>Package discovery surface</span>
+        </article>
+        <article className="surface-card">
+          <Route aria-hidden="true" size={20} />
+          <strong>Routes</strong>
+          <span>agenticcrew://skills/source/name</span>
+        </article>
+        <article className="surface-card">
+          <ShieldCheck aria-hidden="true" size={20} />
+          <strong>Trust</strong>
+          <span>Permission gated</span>
+        </article>
+      </div>
       {snapshot.sources.length === 0 ? (
         <p>{t("skillSources.empty", { defaultValue: "No external skill source registered" })}</p>
       ) : (

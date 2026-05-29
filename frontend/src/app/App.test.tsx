@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { App } from "./App";
 import type { AgentStudioSnapshot, HarnessStudioSnapshot, MissionControlSnapshot, SkillSourcesSnapshot } from "../shared/types/core";
 
@@ -114,6 +114,10 @@ async function openDefaultWorkspace() {
 }
 
 describe("App", () => {
+  beforeEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
   afterEach(() => {
     cleanup();
   });
@@ -132,6 +136,7 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Choose a workspace" })).toBeInTheDocument();
     await openDefaultWorkspace();
     expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/fullstack-app/cockpit");
     expect(screen.getByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
     expect(screen.getAllByText("fullstack-app").length).toBeGreaterThan(0);
     expect(screen.getByText("Active terminal stream")).toBeInTheDocument();
@@ -156,6 +161,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /Mobile QA/ }));
 
     expect(screen.getByRole("heading", { name: "Stabilize device smoke" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/mobile-qa/cockpit");
     expect(screen.getAllByText("playwright-runner").length).toBeGreaterThan(0);
     expect(screen.queryByRole("heading", { name: "Build UI shell" })).not.toBeInTheDocument();
   });
@@ -285,6 +291,29 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Agent Studio" })).toBeInTheDocument();
     expect(screen.getByText("Developer Agent")).toBeInTheDocument();
     expect(screen.getByText("pi-execution-discipline")).toBeInTheDocument();
+  });
+
+  it("opens Git and Settings through stable workspace routes", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+
+    fireEvent.click(screen.getByRole("button", { name: "Git" }));
+    expect(await screen.findByRole("heading", { name: "Git Panel" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/fullstack-app/git");
+    expect(screen.getByText("PR workflow ready")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/fullstack-app/settings");
+    expect(screen.getByText("ChatGPT provider selected")).toBeInTheDocument();
   });
 
   it("renders an error state when the desktop command fails", async () => {
