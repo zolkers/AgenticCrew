@@ -2,9 +2,11 @@ use std::{env, path::PathBuf, process};
 
 use agenticcrew_desktop::{
     agent_studio_snapshot_at_path, approve_skill_source_permissions_at_path,
-    core::permissions::ApprovedPermissionPolicy, harness_studio_snapshot_at_path,
-    core::settings::UpdateAiProviderSettingsRequest, inspect_cached_skill_source_at_path,
-    mission_control_snapshot_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
+    core::harnesses::{CreateHarnessProfileRequest, SetHarnessProfileActiveRequest},
+    core::permissions::ApprovedPermissionPolicy, core::settings::UpdateAiProviderSettingsRequest,
+    create_harness_profile_at_path, harness_studio_snapshot_at_path,
+    inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
+    set_harness_profile_active_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
     sync_github_skill_source_at_path, update_ai_provider_settings_at_path, DesktopCommandError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -32,6 +34,18 @@ struct ApprovePermissionsArgs {
 #[serde(rename_all = "camelCase")]
 struct UpdateSettingsArgs {
     request: UpdateAiProviderSettingsRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateHarnessProfileArgs {
+    request: CreateHarnessProfileRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SetHarnessProfileActiveArgs {
+    request: SetHarnessProfileActiveRequest,
 }
 
 fn main() {
@@ -81,6 +95,19 @@ fn run() -> Result<(), DesktopCommandError> {
         "mission_control_snapshot" => print_json(&mission_control_snapshot_at_path(state_path)?),
         "skill_sources_snapshot" => print_json(&skill_sources_snapshot_at_path(state_path)?),
         "harness_studio_snapshot" => print_json(&harness_studio_snapshot_at_path(state_path)?),
+        "create_harness_profile" => {
+            let args = parse_args::<CreateHarnessProfileArgs>(&args_json)?;
+
+            print_json(&create_harness_profile_at_path(state_path, args.request)?)
+        }
+        "set_harness_profile_active" => {
+            let args = parse_args::<SetHarnessProfileActiveArgs>(&args_json)?;
+
+            print_json(&set_harness_profile_active_at_path(
+                state_path,
+                args.request,
+            )?)
+        }
         "agent_studio_snapshot" => print_json(&agent_studio_snapshot_at_path(state_path)?),
         "settings_snapshot" => print_json(&settings_snapshot_at_path(state_path)?),
         "sync_github_skill_source" => {

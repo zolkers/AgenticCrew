@@ -298,6 +298,62 @@ describe("App", () => {
     expect(screen.getByText("Execution Discipline")).toBeInTheDocument();
   });
 
+  it("keeps Harness Studio in sync after creating a local harness", async () => {
+    const updatedHarnessSnapshot: HarnessStudioSnapshot = {
+      activeProfileCount: 2,
+      bindings: [],
+      profiles: [
+        ...harnessStudioSnapshot.profiles,
+        {
+          active: true,
+          description: "Local execution profile for this workspace.",
+          id: "review-harness",
+          modules: [
+            {
+              content: "Require review before merge.",
+              enabled: true,
+              id: "review-harness/base-policy",
+              kind: "base_policy",
+              name: "Base Policy",
+              source: {
+                route: "agenticcrew://harnesses/local/review-harness",
+                sourceId: "local",
+                trustLevel: "local"
+              },
+              version: "1"
+            }
+          ],
+          name: "Review Harness",
+          skillRoutes: [],
+          version: "1"
+        }
+      ]
+    };
+    const interactiveHarnessInvoke = (command: string) =>
+      Promise.resolve(command === "harness_studio_snapshot" ? harnessStudioSnapshot : updatedHarnessSnapshot);
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={interactiveHarnessInvoke}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Harness Studio" }));
+    fireEvent.change(await screen.findByLabelText("Name"), { target: { value: "Review Harness" } });
+    fireEvent.change(screen.getByLabelText("Base policy"), {
+      target: { value: "Require review before merge." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create harness" }));
+
+    expect(await screen.findByText("Review Harness")).toBeInTheDocument();
+    expect(screen.getByText("2 active")).toBeInTheDocument();
+  });
+
   it("opens Agent Studio with the saved developer agent", async () => {
     render(
       <App

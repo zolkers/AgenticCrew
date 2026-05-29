@@ -2,6 +2,8 @@ const COMMANDS = new Set([
   "mission_control_snapshot",
   "skill_sources_snapshot",
   "harness_studio_snapshot",
+  "create_harness_profile",
+  "set_harness_profile_active",
   "agent_studio_snapshot",
   "settings_snapshot",
   "approve_skill_source_permissions",

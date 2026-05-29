@@ -9,7 +9,10 @@ use serde::Serialize;
 
 use core::{
     agents::{agent_studio_snapshot_from_state, AgentStudioSnapshot},
-    harnesses::{harness_studio_snapshot_from_state, HarnessStudioSnapshot},
+    harnesses::{
+        harness_studio_snapshot_from_state, CreateHarnessProfileRequest, HarnessStudioSnapshot,
+        SetHarnessProfileActiveRequest,
+    },
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
     permissions::ApprovedPermissionPolicy,
     settings::{
@@ -121,6 +124,24 @@ pub fn agent_studio_snapshot_at_path(
     let state = durable_state_snapshot_at_path(path)?;
 
     Ok(agent_studio_snapshot_from_state(&state))
+}
+
+pub fn create_harness_profile_at_path(
+    path: impl AsRef<Path>,
+    request: CreateHarnessProfileRequest,
+) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.create_harness_profile(request))?;
+
+    Ok(harness_studio_snapshot_from_state(&state))
+}
+
+pub fn set_harness_profile_active_at_path(
+    path: impl AsRef<Path>,
+    request: SetHarnessProfileActiveRequest,
+) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.set_harness_profile_active(request))?;
+
+    Ok(harness_studio_snapshot_from_state(&state))
 }
 
 pub fn settings_snapshot_at_path(
@@ -298,19 +319,21 @@ mod commands {
     use crate::{
         activate_skill_source_at_path, add_checkpoint_at_path, agent_studio_snapshot_at_path,
         approve_skill_source_permissions_at_path, close_feature_session_at_path,
+        core::harnesses::{CreateHarnessProfileRequest, SetHarnessProfileActiveRequest},
         core::permissions::ApprovedPermissionPolicy,
         core::settings::{SettingsSnapshot, UpdateAiProviderSettingsRequest},
         core::skills::{RegisterGitHubSkillSourceRequest, SkillSourcesSnapshot},
         core::state::AgentOsState,
         core::{agents::AgentStudioSnapshot, harnesses::HarnessStudioSnapshot},
-        create_feature_session_at_path, durable_state_snapshot_at_path,
+        create_feature_session_at_path, create_harness_profile_at_path,
+        durable_state_snapshot_at_path,
         harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
         mission_control_snapshot_at_path, record_command_evidence_at_path,
         register_github_skill_source_at_path, skill_sources_snapshot_at_path, state_file_path,
+        set_harness_profile_active_at_path, settings_snapshot_at_path,
         sync_github_skill_source_at_path, update_ai_provider_settings_at_path,
         validate_skill_source_at_path, CreateCheckpointRequest, CreateFeatureSessionRequest,
         DesktopCommandError, MissionControlSnapshot, RecordCommandEvidenceRequest,
-        settings_snapshot_at_path,
     };
 
     #[tauri::command]
@@ -339,6 +362,22 @@ mod commands {
         app: tauri::AppHandle,
     ) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
         harness_studio_snapshot_at_path(app_state_path(&app)?)
+    }
+
+    #[tauri::command]
+    pub fn create_harness_profile(
+        app: tauri::AppHandle,
+        request: CreateHarnessProfileRequest,
+    ) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
+        create_harness_profile_at_path(app_state_path(&app)?, request)
+    }
+
+    #[tauri::command]
+    pub fn set_harness_profile_active(
+        app: tauri::AppHandle,
+        request: SetHarnessProfileActiveRequest,
+    ) -> Result<HarnessStudioSnapshot, DesktopCommandError> {
+        set_harness_profile_active_at_path(app_state_path(&app)?, request)
     }
 
     #[tauri::command]
@@ -467,6 +506,8 @@ pub fn run() {
             commands::durable_state_snapshot,
             commands::skill_sources_snapshot,
             commands::harness_studio_snapshot,
+            commands::create_harness_profile,
+            commands::set_harness_profile_active,
             commands::agent_studio_snapshot,
             commands::settings_snapshot,
             commands::create_feature_session,
@@ -501,14 +542,16 @@ mod tests {
     use super::{
         activate_skill_source_at_path, add_checkpoint_at_path, agent_studio_snapshot_at_path,
         app_name, approve_skill_source_permissions_at_path, close_feature_session_at_path,
-        create_feature_session_at_path, durable_state_snapshot_at_path,
-        harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
-        mission_control_snapshot_at_path, record_command_evidence_at_path,
-        record_skill_source_sync_success_at_path, register_github_skill_source_at_path,
+        create_feature_session_at_path, create_harness_profile_at_path,
+        durable_state_snapshot_at_path, harness_studio_snapshot_at_path,
+        inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
+        record_command_evidence_at_path, record_skill_source_sync_success_at_path,
+        register_github_skill_source_at_path, set_harness_profile_active_at_path,
         skill_sources_snapshot_at_path, state_file_path, validate_skill_source_at_path,
         STATE_FILE_NAME,
     };
     use crate::core::{
+        harnesses::{CreateHarnessProfileRequest, SetHarnessProfileActiveRequest},
         permissions::{
             ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
             NetworkPermissionScope,
@@ -665,6 +708,42 @@ mod tests {
             snapshot.profiles[0].modules[0].source.route.as_deref(),
             Some("agenticcrew://harnesses/builtin-pi/pi-execution-discipline")
         );
+    }
+
+    #[test]
+    fn harness_profile_commands_persist_local_profiles() {
+        let path = test_path("harness_profile_commands_persist_local_profiles", "state.json");
+
+        let snapshot = create_harness_profile_at_path(
+            &path,
+            CreateHarnessProfileRequest {
+                active: false,
+                base_policy: "Use review gates.".to_owned(),
+                description: "Local review harness".to_owned(),
+                id: "local-review".to_owned(),
+                name: "Local Review".to_owned(),
+            },
+        )
+        .expect("local harness should persist");
+
+        assert_eq!(snapshot.profiles.len(), 2);
+        assert!(snapshot
+            .profiles
+            .iter()
+            .any(|profile| profile.id == "local-review"));
+
+        let snapshot = set_harness_profile_active_at_path(
+            &path,
+            SetHarnessProfileActiveRequest {
+                active: true,
+                profile_id: "local-review".to_owned(),
+            },
+        )
+        .expect("local harness status should persist");
+
+        assert_eq!(snapshot.active_profile_count, 2);
+        let loaded = harness_studio_snapshot_at_path(&path).expect("snapshot should load");
+        assert_eq!(snapshot, loaded);
     }
 
     #[test]

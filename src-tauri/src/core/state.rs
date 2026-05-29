@@ -8,7 +8,10 @@ use super::{
     agents::{AgentTemplate, AgentTrainingRun},
     costs::ModelCallEstimate,
     evidence::{CommandExitCodeEvidence, Evidence},
-    harnesses::{HarnessBinding, HarnessProfile},
+    harnesses::{
+        CreateHarnessProfileRequest, HarnessBinding, HarnessProfile, HarnessProfileError,
+        SetHarnessProfileActiveRequest,
+    },
     permissions::ApprovedPermissionPolicy,
     sessions::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
@@ -313,6 +316,43 @@ impl AgentOsState {
         Ok(())
     }
 
+    pub fn create_harness_profile(
+        &mut self,
+        request: CreateHarnessProfileRequest,
+    ) -> Result<(), StateMutationError> {
+        if self
+            .harness_profiles
+            .iter()
+            .any(|profile| profile.id == request.id)
+        {
+            return Err(StateMutationError::DuplicateHarnessProfile {
+                profile_id: request.id,
+            });
+        }
+
+        self.harness_profiles
+            .push(HarnessProfile::local(request).map_err(StateMutationError::InvalidHarnessProfile)?);
+
+        Ok(())
+    }
+
+    pub fn set_harness_profile_active(
+        &mut self,
+        request: SetHarnessProfileActiveRequest,
+    ) -> Result<(), StateMutationError> {
+        let profile = self
+            .harness_profiles
+            .iter_mut()
+            .find(|profile| profile.id == request.profile_id)
+            .ok_or_else(|| StateMutationError::MissingHarnessProfile {
+                profile_id: request.profile_id.clone(),
+            })?;
+
+        profile.active = request.active;
+
+        Ok(())
+    }
+
     pub fn update_ai_provider_settings(
         &mut self,
         request: UpdateAiProviderSettingsRequest,
@@ -389,7 +429,14 @@ pub enum StateMutationError {
     MissingSkillSource {
         source_id: String,
     },
+    DuplicateHarnessProfile {
+        profile_id: String,
+    },
+    MissingHarnessProfile {
+        profile_id: String,
+    },
     InvalidSkillSource(SkillSourceError),
+    InvalidHarnessProfile(HarnessProfileError),
     InvalidDesktopSettings(SettingsValidationError),
     CheckpointNotPassed(SessionTransitionError),
 }
@@ -427,8 +474,17 @@ impl fmt::Display for StateMutationError {
             StateMutationError::MissingSkillSource { source_id } => {
                 write!(formatter, "skill source '{source_id}' does not exist")
             }
+            StateMutationError::DuplicateHarnessProfile { profile_id } => {
+                write!(formatter, "harness profile '{profile_id}' already exists")
+            }
+            StateMutationError::MissingHarnessProfile { profile_id } => {
+                write!(formatter, "harness profile '{profile_id}' does not exist")
+            }
             StateMutationError::InvalidSkillSource(error) => {
                 write!(formatter, "invalid skill source: {error}")
+            }
+            StateMutationError::InvalidHarnessProfile(error) => {
+                write!(formatter, "invalid harness profile: {error}")
             }
             StateMutationError::InvalidDesktopSettings(error) => {
                 write!(formatter, "invalid desktop settings: {error}")
@@ -598,7 +654,9 @@ mod tests {
         agents::AgentTemplate,
         costs::ModelCallEstimate,
         evidence::{CommandExitCodeEvidence, Evidence},
-        harnesses::HarnessProfile,
+        harnesses::{
+            CreateHarnessProfileRequest, HarnessProfile, SetHarnessProfileActiveRequest,
+        },
         permissions::{
             ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
             NetworkPermissionScope,
@@ -675,6 +733,70 @@ mod tests {
             state.desktop_settings.ai_provider.api_key_last_four,
             Some("5678".to_owned())
         );
+    }
+
+    #[test]
+    fn create_harness_profile_adds_local_profile() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .create_harness_profile(CreateHarnessProfileRequest {
+                active: false,
+                base_policy: "Prefer traceable changes.".to_owned(),
+                description: "Local profile".to_owned(),
+                id: "local-careful".to_owned(),
+                name: "Local Careful".to_owned(),
+            })
+            .expect("harness profile should create");
+
+        let profile = state
+            .harness_profiles
+            .iter()
+            .find(|profile| profile.id == "local-careful")
+            .expect("created profile should exist");
+        assert_eq!(profile.name, "Local Careful");
+        assert_eq!(profile.modules[0].source.source_id, "local");
+        assert!(!profile.active);
+    }
+
+    #[test]
+    fn create_harness_profile_rejects_duplicate_id() {
+        let mut state = AgentOsState::empty();
+        let request = CreateHarnessProfileRequest {
+            active: false,
+            base_policy: "Prefer traceable changes.".to_owned(),
+            description: "Local profile".to_owned(),
+            id: "local-careful".to_owned(),
+            name: "Local Careful".to_owned(),
+        };
+
+        state
+            .create_harness_profile(request.clone())
+            .expect("harness profile should create");
+        let error = state
+            .create_harness_profile(request)
+            .expect_err("duplicate profile should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::DuplicateHarnessProfile {
+                profile_id: "local-careful".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn set_harness_profile_active_updates_existing_profile() {
+        let mut state = AgentOsState::empty();
+
+        state
+            .set_harness_profile_active(SetHarnessProfileActiveRequest {
+                active: false,
+                profile_id: "pi-execution-discipline".to_owned(),
+            })
+            .expect("profile should update");
+
+        assert!(!state.harness_profiles[0].active);
     }
 
     #[test]

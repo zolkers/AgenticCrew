@@ -1,9 +1,35 @@
-import type { HarnessStudioSnapshot } from "../types/core";
+import type {
+  CreateHarnessProfileRequest,
+  HarnessStudioSnapshot,
+  SetHarnessProfileActiveRequest
+} from "../types/core";
 
-export type InvokeHarnessStudio = (command: "harness_studio_snapshot") => Promise<HarnessStudioSnapshot>;
+export type HarnessStudioCommand =
+  | "create_harness_profile"
+  | "harness_studio_snapshot"
+  | "set_harness_profile_active";
+
+export type InvokeHarnessStudio = (
+  command: HarnessStudioCommand,
+  args?: Record<string, unknown>
+) => Promise<HarnessStudioSnapshot>;
 
 export async function loadHarnessStudioSnapshot(
   invoke: InvokeHarnessStudio
 ): Promise<HarnessStudioSnapshot> {
   return invoke("harness_studio_snapshot");
+}
+
+export async function createHarnessProfile(
+  invoke: InvokeHarnessStudio,
+  request: CreateHarnessProfileRequest
+): Promise<HarnessStudioSnapshot> {
+  return invoke("create_harness_profile", { request });
+}
+
+export async function setHarnessProfileActive(
+  invoke: InvokeHarnessStudio,
+  request: SetHarnessProfileActiveRequest
+): Promise<HarnessStudioSnapshot> {
+  return invoke("set_harness_profile_active", { request });
 }

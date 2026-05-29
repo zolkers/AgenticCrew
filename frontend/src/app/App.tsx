@@ -289,7 +289,16 @@ export function App({
           <SkillSources snapshot={loadState.skillSourcesSnapshot} />
         ) : null}
         {activeView === "harnessStudio" ? (
-          <HarnessStudio snapshot={loadState.harnessStudioSnapshot} />
+          <HarnessStudio
+            invoke={harnessStudioInvoke}
+            onSnapshotChange={(harnessStudioSnapshot) => {
+              setLoadState({
+                ...loadState,
+                harnessStudioSnapshot
+              });
+            }}
+            snapshot={loadState.harnessStudioSnapshot}
+          />
         ) : null}
         {activeView === "agentStudio" ? <AgentStudio snapshot={loadState.agentStudioSnapshot} /> : null}
         {activeView === "gitPanel" ? <GitPanel workspace={activeWorkspace} /> : null}

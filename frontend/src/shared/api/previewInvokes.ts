@@ -119,8 +119,62 @@ const previewSettingsSnapshot: SettingsSnapshot = {
 export const previewMissionControlInvoke: InvokeMissionControl = () =>
   Promise.resolve(previewMissionControlSnapshot);
 
-export const previewHarnessStudioInvoke: InvokeHarnessStudio = () =>
-  Promise.resolve(previewHarnessStudioSnapshot);
+export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) => {
+  if (command === "create_harness_profile") {
+    const request = args?.request as
+      | { active?: boolean; basePolicy?: string; description?: string; id?: string; name?: string }
+      | undefined;
+    const id = request?.id ?? "preview-local";
+
+    return Promise.resolve({
+      ...previewHarnessStudioSnapshot,
+      activeProfileCount: previewHarnessStudioSnapshot.activeProfileCount + (request?.active ? 1 : 0),
+      profiles: [
+        ...previewHarnessStudioSnapshot.profiles,
+        {
+          active: request?.active ?? false,
+          description: request?.description ?? "Preview local harness",
+          id,
+          modules: [
+            {
+              content: request?.basePolicy ?? "Preview base policy",
+              enabled: true,
+              id: `${id}/base-policy`,
+              kind: "base_policy",
+              name: "Base Policy",
+              source: {
+                route: `agenticcrew://harnesses/local/${id}`,
+                sourceId: "local",
+                trustLevel: "local"
+              },
+              version: "1"
+            }
+          ],
+          name: request?.name ?? "Preview Local",
+          skillRoutes: [],
+          version: "1"
+        }
+      ]
+    });
+  }
+
+  if (command === "set_harness_profile_active") {
+    const request = args?.request as { active?: boolean; profileId?: string } | undefined;
+    const profileId = request?.profileId;
+    const active = request?.active;
+    const profiles = previewHarnessStudioSnapshot.profiles.map((profile) =>
+      profile.id === profileId ? { ...profile, active: active ?? profile.active } : profile
+    );
+
+    return Promise.resolve({
+      ...previewHarnessStudioSnapshot,
+      activeProfileCount: profiles.filter((profile) => profile.active).length,
+      profiles
+    });
+  }
+
+  return Promise.resolve(previewHarnessStudioSnapshot);
+};
 
 export const previewAgentStudioInvoke: InvokeAgentStudio = () =>
   Promise.resolve(previewAgentStudioSnapshot);

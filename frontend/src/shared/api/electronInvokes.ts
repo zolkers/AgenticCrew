@@ -19,8 +19,8 @@ function invokeElectron<Command extends keyof ElectronCommandMap>(
 export const electronAgentStudioInvoke: InvokeAgentStudio = (command) =>
   invokeElectron(command);
 
-export const electronHarnessStudioInvoke: InvokeHarnessStudio = (command) =>
-  invokeElectron(command);
+export const electronHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =>
+  invokeElectron(command, args);
 
 export const electronMissionControlInvoke: InvokeMissionControl = (command) =>
   invokeElectron(command);

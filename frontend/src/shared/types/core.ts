@@ -126,6 +126,19 @@ export type HarnessStudioSnapshot = {
   profiles: HarnessProfile[];
 };
 
+export type CreateHarnessProfileRequest = {
+  active: boolean;
+  basePolicy: string;
+  description: string;
+  id: string;
+  name: string;
+};
+
+export type SetHarnessProfileActiveRequest = {
+  active: boolean;
+  profileId: string;
+};
+
 export type AgentTemplate = {
   active: boolean;
   budgetCents: number;
@@ -178,10 +191,12 @@ export type UpdateAiProviderSettingsRequest = {
 export type ElectronCommandMap = {
   approve_skill_source_permissions: unknown;
   agent_studio_snapshot: AgentStudioSnapshot;
+  create_harness_profile: HarnessStudioSnapshot;
   harness_studio_snapshot: HarnessStudioSnapshot;
   inspect_cached_skill_source: unknown;
   mission_control_snapshot: MissionControlSnapshot;
   settings_snapshot: SettingsSnapshot;
+  set_harness_profile_active: HarnessStudioSnapshot;
   skill_sources_snapshot: SkillSourcesSnapshot;
   sync_github_skill_source: unknown;
   update_ai_provider_settings: SettingsSnapshot;

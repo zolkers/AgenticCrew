@@ -42,6 +42,67 @@ describe("previewInvokes", () => {
     });
   });
 
+  it("handles preview harness profile creation and activation toggles", async () => {
+    await expect(
+      previewHarnessStudioInvoke("create_harness_profile", {
+        request: {
+          active: true,
+          basePolicy: "Validate",
+          description: "Local preview",
+          id: "local-preview",
+          name: "Local Preview"
+        }
+      })
+    ).resolves.toMatchObject({
+      activeProfileCount: 2,
+      profiles: [{ id: "pi-execution-discipline" }, { id: "local-preview" }]
+    });
+
+    await expect(
+      previewHarnessStudioInvoke("set_harness_profile_active", {
+        request: {
+          active: false,
+          profileId: "pi-execution-discipline"
+        }
+      })
+    ).resolves.toMatchObject({
+      activeProfileCount: 0,
+      profiles: [{ active: false, id: "pi-execution-discipline" }]
+    });
+  });
+
+  it("uses preview harness fallbacks when action args are absent", async () => {
+    await expect(previewHarnessStudioInvoke("create_harness_profile")).resolves.toMatchObject({
+      activeProfileCount: 1,
+      profiles: [
+        { id: "pi-execution-discipline" },
+        {
+          active: false,
+          description: "Preview local harness",
+          id: "preview-local",
+          modules: [{ content: "Preview base policy" }],
+          name: "Preview Local"
+        }
+      ]
+    });
+
+    await expect(previewHarnessStudioInvoke("set_harness_profile_active")).resolves.toMatchObject({
+      activeProfileCount: 1,
+      profiles: [{ active: true, id: "pi-execution-discipline" }]
+    });
+
+    await expect(
+      previewHarnessStudioInvoke("set_harness_profile_active", {
+        request: {
+          profileId: "pi-execution-discipline"
+        }
+      })
+    ).resolves.toMatchObject({
+      activeProfileCount: 1,
+      profiles: [{ active: true, id: "pi-execution-discipline" }]
+    });
+  });
+
   it("returns Agent Studio preview data for browser previews", async () => {
     await expect(previewAgentStudioInvoke("agent_studio_snapshot")).resolves.toMatchObject({
       activeTemplateCount: 1,

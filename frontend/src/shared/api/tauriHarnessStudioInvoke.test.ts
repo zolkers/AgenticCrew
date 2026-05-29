@@ -14,12 +14,12 @@ describe("tauriHarnessStudioInvoke", () => {
   it("forwards the harness studio command", async () => {
     vi.mocked(invoke).mockResolvedValue({ activeProfileCount: 0, bindings: [], profiles: [] });
 
-    await expect(tauriHarnessStudioInvoke("harness_studio_snapshot")).resolves.toEqual({
+    await expect(tauriHarnessStudioInvoke("create_harness_profile", { request: { id: "local" } })).resolves.toEqual({
       activeProfileCount: 0,
       bindings: [],
       profiles: []
     });
 
-    expect(invoke).toHaveBeenCalledWith("harness_studio_snapshot");
+    expect(invoke).toHaveBeenCalledWith("create_harness_profile", { request: { id: "local" } });
   });
 });

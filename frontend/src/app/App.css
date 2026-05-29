@@ -37,7 +37,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -574,6 +575,55 @@ button {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--color-border-soft);
+}
+
+.harness-form {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.harness-form label {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.harness-form label span {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.harness-form input,
+.harness-form textarea {
+  width: 100%;
+  min-height: 2.55rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  background: var(--color-terminal);
+}
+
+.harness-form textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.inline-action {
+  display: inline-flex;
+  justify-self: start;
+  gap: 0.4rem;
+  align-items: center;
+  min-height: 2.2rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
+  color: var(--color-text);
+  background: var(--color-panel-strong);
 }
 
 .settings-form label {

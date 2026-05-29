@@ -35,8 +35,14 @@ describe("electronInvokes", () => {
 
     await expect(electronSkillSourcesInvoke("sync_github_skill_source", { sourceId: "superpowers" })).resolves
       .toBeUndefined();
+    await expect(electronHarnessStudioInvoke("set_harness_profile_active", {
+      request: { active: false, profileId: "local" }
+    })).resolves.toBeUndefined();
 
     expect(invoke).toHaveBeenCalledWith("sync_github_skill_source", { sourceId: "superpowers" });
+    expect(invoke).toHaveBeenCalledWith("set_harness_profile_active", {
+      request: { active: false, profileId: "local" }
+    });
   });
 
   it("rejects when the Electron bridge is unavailable", async () => {
