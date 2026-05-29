@@ -3,6 +3,9 @@
   background: #151a1f;
   font-family:
     Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Aptos Display", "Segoe UI", Inter, system-ui, sans-serif;
+  --font-accent: Georgia, "Times New Roman", serif;
   --color-page: #151a1f;
   --color-panel: #1d242b;
   --color-panel-strong: #24313a;
@@ -29,6 +32,7 @@ body {
   margin: 0;
   min-width: 320px;
   background: var(--color-page);
+  font-family: var(--font-body);
 }
 
 button,
@@ -49,7 +53,7 @@ button {
   top: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(210px, 1.2fr) minmax(160px, 0.9fr) minmax(150px, 0.8fr) repeat(4, auto);
+  grid-template-columns: minmax(210px, 1.2fr) minmax(160px, 0.9fr) minmax(150px, 0.8fr) repeat(5, auto);
   gap: 0.75rem;
   align-items: center;
   padding: 0.75rem 1rem;
@@ -59,6 +63,7 @@ button {
 
 .brand-button,
 .topbar-tab,
+.topbar-icon,
 .workspace-card,
 .plugins-panel button,
 .command-bar button {
@@ -118,8 +123,19 @@ button {
 }
 
 .topbar-tab {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, auto);
+  gap: 0.45rem;
+  align-items: center;
   min-height: 2.5rem;
   padding: 0.45rem 0.75rem;
+}
+
+.topbar-icon {
+  display: grid;
+  width: 2.5rem;
+  min-height: 2.5rem;
+  place-items: center;
 }
 
 .brand-button[aria-pressed="true"],
@@ -132,6 +148,140 @@ button {
 
 .app-main {
   padding: 1rem;
+}
+
+.workspace-launchpad {
+  display: grid;
+  gap: 1.25rem;
+  min-height: 100vh;
+  align-content: center;
+  padding: clamp(1rem, 4vw, 3rem);
+  background:
+    linear-gradient(135deg, rgba(78, 212, 200, 0.13), transparent 38%),
+    linear-gradient(315deg, rgba(220, 125, 115, 0.12), transparent 36%),
+    var(--color-page);
+}
+
+.launchpad-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 720px);
+  gap: 1rem;
+  align-items: center;
+}
+
+.launchpad-mark {
+  display: grid;
+  width: 4rem;
+  height: 4rem;
+  place-items: center;
+  border: 1px solid rgba(78, 212, 200, 0.42);
+  border-radius: 8px;
+  color: var(--color-ink);
+  background: var(--color-teal);
+  font-family: var(--font-accent);
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.launchpad-header h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 1;
+}
+
+.launchpad-header p:last-child {
+  max-width: 46rem;
+  margin: 0.65rem 0 0;
+  color: var(--color-muted);
+  font-size: 1rem;
+}
+
+.launchpad-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.launchpad-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+  min-height: 13rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  text-align: left;
+  background: rgba(29, 36, 43, 0.86);
+}
+
+.launchpad-card:hover,
+.launchpad-card:focus-visible {
+  border-color: rgba(78, 212, 200, 0.7);
+  outline: 0;
+  background: #22313a;
+}
+
+.launchpad-card-icon {
+  display: grid;
+  width: 2.6rem;
+  height: 2.6rem;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--color-teal);
+  background: var(--color-teal-deep);
+}
+
+.launchpad-card-main {
+  min-width: 0;
+}
+
+.launchpad-card-main strong,
+.launchpad-card-main small {
+  display: block;
+}
+
+.launchpad-card-main strong {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+}
+
+.launchpad-card-main small {
+  margin-top: 0.2rem;
+  color: var(--color-muted);
+}
+
+.launchpad-card-meta,
+.launchpad-card-action {
+  grid-column: 1 / -1;
+}
+
+.launchpad-card-meta {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--color-muted);
+}
+
+.launchpad-card-meta span,
+.launchpad-card-action {
+  display: flex;
+  min-width: 0;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.launchpad-card-meta span {
+  overflow-wrap: anywhere;
+}
+
+.launchpad-card-action {
+  justify-self: start;
+  align-self: end;
+  margin-top: auto;
+  color: var(--color-teal);
+  font-weight: 800;
 }
 
 .cockpit-grid {
@@ -310,6 +460,7 @@ button {
 .agent-header h3 {
   margin: 0;
   letter-spacing: 0;
+  font-family: var(--font-display);
 }
 
 .cockpit-hero h1 {
@@ -516,6 +667,7 @@ section[aria-label="Agent Studio"] {
 
 @media (max-width: 920px) {
   .topbar,
+  .launchpad-header,
   .cockpit-grid,
   .cockpit-hero,
   .agent-header,

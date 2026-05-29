@@ -11,4 +11,5 @@ __pycache__/
 target/
 src-tauri/gen/
 *.log
+*.tsbuildinfo
 *.egg-info/

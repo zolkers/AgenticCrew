@@ -1,4 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { MantineProvider, Tooltip } from "@mantine/core";
+import {
+  Bot,
+  Brain,
+  Cable,
+  ChevronRight,
+  FolderKanban,
+  GitBranch,
+  LayoutDashboard,
+  Route,
+  Settings2
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AgentStudio } from "../features/agents/AgentStudio";
 import { HarnessStudio } from "../features/harnesses/HarnessStudio";
@@ -41,7 +53,7 @@ type AppView = "cockpit" | "missionControl" | "skillSources" | "harnessStudio" |
 export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvoke, skillSourcesInvoke }: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
   const [activeView, setActiveView] = useState<AppView>("cockpit");
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState(cockpitWorkspaces[0].id);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -90,10 +102,25 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
   const workspacesById = Object.fromEntries(
     cockpitWorkspaces.map((workspace) => [workspace.id, workspace])
   ) as Record<string, CockpitWorkspace>;
-  const activeWorkspace = workspacesById[activeWorkspaceId];
+  const activeWorkspace = activeWorkspaceId === null ? null : workspacesById[activeWorkspaceId];
+
+  if (activeWorkspace === null) {
+    return (
+      <MantineProvider defaultColorScheme="dark">
+        <WorkspaceLaunchpad
+          onWorkspaceSelect={(workspaceId) => {
+            setActiveWorkspaceId(workspaceId);
+            setActiveView("cockpit");
+          }}
+          workspaces={cockpitWorkspaces}
+        />
+      </MantineProvider>
+    );
+  }
 
   return (
-    <div className="app-shell">
+    <MantineProvider defaultColorScheme="dark">
+      <div className="app-shell">
       <nav aria-label={t("app.navigationLabel", { defaultValue: "Workspace navigation" })} className="topbar">
         <button
           aria-pressed={activeView === "cockpit"}
@@ -122,45 +149,48 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
           </strong>
         </div>
         <button
-          className="topbar-tab"
-          aria-pressed={activeView === "missionControl"}
+          aria-label="Choose workspace"
+          className="topbar-icon"
+          onClick={() => {
+            setActiveWorkspaceId(null);
+          }}
+          title="Choose workspace"
+          type="button"
+        >
+          <FolderKanban aria-hidden="true" size={18} />
+        </button>
+        <NavButton
+          active={activeView === "missionControl"}
+          icon={<LayoutDashboard aria-hidden="true" size={18} />}
+          label={missionControlLabel}
           onClick={() => {
             setActiveView("missionControl");
           }}
-          type="button"
-        >
-          {missionControlLabel}
-        </button>
-        <button
-          className="topbar-tab"
-          aria-pressed={activeView === "skillSources"}
+        />
+        <NavButton
+          active={activeView === "skillSources"}
+          icon={<Cable aria-hidden="true" size={18} />}
+          label={skillSourcesLabel}
           onClick={() => {
             setActiveView("skillSources");
           }}
-          type="button"
-        >
-          {skillSourcesLabel}
-        </button>
-        <button
-          className="topbar-tab"
-          aria-pressed={activeView === "harnessStudio"}
+        />
+        <NavButton
+          active={activeView === "harnessStudio"}
+          icon={<Route aria-hidden="true" size={18} />}
+          label={harnessStudioLabel}
           onClick={() => {
             setActiveView("harnessStudio");
           }}
-          type="button"
-        >
-          {harnessStudioLabel}
-        </button>
-        <button
-          className="topbar-tab"
-          aria-pressed={activeView === "agentStudio"}
+        />
+        <NavButton
+          active={activeView === "agentStudio"}
+          icon={<Bot aria-hidden="true" size={18} />}
+          label={agentStudioLabel}
           onClick={() => {
             setActiveView("agentStudio");
           }}
-          type="button"
-        >
-          {agentStudioLabel}
-        </button>
+        />
       </nav>
       <main aria-label={t("app.mainLabel", { defaultValue: "Workspace" })} className="app-main">
         {activeView === "cockpit" ? (
@@ -181,7 +211,91 @@ export function App({ agentStudioInvoke, harnessStudioInvoke, missionControlInvo
         ) : null}
         {activeView === "agentStudio" ? <AgentStudio snapshot={loadState.agentStudioSnapshot} /> : null}
       </main>
-    </div>
+      </div>
+    </MantineProvider>
+  );
+}
+
+type NavButtonProps = Readonly<{
+  active: boolean;
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}>;
+
+function NavButton({ active, icon, label, onClick }: NavButtonProps) {
+  return (
+    <Tooltip label={label} position="bottom" withArrow>
+      <button aria-pressed={active} className="topbar-tab" onClick={onClick} type="button">
+        {icon}
+        <span>{label}</span>
+      </button>
+    </Tooltip>
+  );
+}
+
+type WorkspaceLaunchpadProps = Readonly<{
+  onWorkspaceSelect: (workspaceId: string) => void;
+  workspaces: readonly CockpitWorkspace[];
+}>;
+
+function WorkspaceLaunchpad({ onWorkspaceSelect, workspaces }: WorkspaceLaunchpadProps) {
+  return (
+    <main aria-labelledby="workspace-launchpad-title" className="workspace-launchpad">
+      <header className="launchpad-header">
+        <div className="launchpad-mark" aria-hidden="true">
+          AC
+        </div>
+        <div>
+          <p className="eyebrow">AgenticCrew</p>
+          <h1 id="workspace-launchpad-title">Choose a workspace</h1>
+          <p>Load agents, harnesses, skills, and Git context for the mission you want to run.</p>
+        </div>
+      </header>
+
+      <section aria-label="Available workspaces" className="launchpad-grid">
+        {workspaces.map((workspace) => {
+          const budgetPercent = Math.round((workspace.budgetUsedUsd / workspace.budgetLimitUsd) * 100);
+
+          return (
+            <button
+              className="launchpad-card"
+              key={workspace.id}
+              onClick={() => {
+                onWorkspaceSelect(workspace.id);
+              }}
+              type="button"
+            >
+              <span className="launchpad-card-icon" aria-hidden="true">
+                <FolderKanban size={22} />
+              </span>
+              <span className="launchpad-card-main">
+                <strong>{workspace.name}</strong>
+                <small>{workspace.id}</small>
+              </span>
+              <span className="launchpad-card-meta">
+                <span>
+                  <GitBranch aria-hidden="true" size={15} />
+                  {workspace.branch}
+                </span>
+                <span>
+                  <Brain aria-hidden="true" size={15} />
+                  {workspace.agents.length} agents
+                </span>
+                <span>
+                  <Settings2 aria-hidden="true" size={15} />
+                  {budgetPercent}% budget
+                </span>
+              </span>
+              <span className="launchpad-card-action">
+                Open workspace
+                <ChevronRight aria-hidden="true" size={18} />
+              </span>
+            </button>
+          );
+        })}
+      </section>
+    </main>
   );
 }
 

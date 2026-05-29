@@ -109,6 +109,10 @@ function createDeferredSnapshot<T>() {
   return { promise, rejectSnapshot, resolveSnapshot };
 }
 
+async function openDefaultWorkspace() {
+  fireEvent.click(await screen.findByRole("button", { name: /Fullstack App/ }));
+}
+
 describe("App", () => {
   afterEach(() => {
     cleanup();
@@ -125,6 +129,8 @@ describe("App", () => {
     );
 
     expect(screen.getByText("Loading Mission Control")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Choose a workspace" })).toBeInTheDocument();
+    await openDefaultWorkspace();
     expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
     expect(screen.getAllByText("fullstack-app").length).toBeGreaterThan(0);
@@ -144,6 +150,7 @@ describe("App", () => {
       />
     );
 
+    await openDefaultWorkspace();
     expect(await screen.findByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Mobile QA/ }));
@@ -163,6 +170,7 @@ describe("App", () => {
       />
     );
 
+    await openDefaultWorkspace();
     expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Plugins" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open plugin bay" })).toBeInTheDocument();
@@ -178,6 +186,7 @@ describe("App", () => {
       />
     );
 
+    await openDefaultWorkspace();
     expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
     expect(await screen.findByText("Injected from invoke")).toBeInTheDocument();
@@ -198,6 +207,7 @@ describe("App", () => {
       />
     );
 
+    await openDefaultWorkspace();
     expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
 
@@ -217,6 +227,7 @@ describe("App", () => {
       />
     );
 
+    await openDefaultWorkspace();
     expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
@@ -246,6 +257,7 @@ describe("App", () => {
       />
     );
 
+    await openDefaultWorkspace();
     expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Harness Studio" }));
@@ -265,6 +277,7 @@ describe("App", () => {
       />
     );
 
+    await openDefaultWorkspace();
     expect(await screen.findByRole("heading", { name: "AgenticCrew Cockpit" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Agent Studio" }));
