@@ -1066,6 +1066,7 @@ function Cockpit({
   const activeRunCommands = activeRun === undefined
     ? []
     : runsSnapshot.commands.filter((command) => command.runId === activeRun.id);
+  const runtimeAllowedPrograms = runsSnapshot.runtimePolicy?.allowedPrograms ?? [];
   const availableMissionSkillRoutes = uniqueSkillManifests([
     ...availableSkillRoutes,
     ...[
@@ -1378,6 +1379,16 @@ function Cockpit({
               </button>
             </div>
           )}
+          <section aria-label="Runtime command policy" className="runtime-policy-strip">
+            <span>Allowed runtime commands</span>
+            <ul>
+              {runtimeAllowedPrograms.length === 0 ? (
+                <li>policy unavailable</li>
+              ) : (
+                runtimeAllowedPrograms.map((program) => <li key={program}>{program}</li>)
+              )}
+            </ul>
+          </section>
 
           <div className="terminal-stream" aria-label="Run event log">
             {activeRun === undefined ? (

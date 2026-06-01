@@ -156,7 +156,7 @@ pub fn runs_snapshot_at_path(
 ) -> Result<RunsSnapshot, DesktopCommandError> {
     let state = durable_state_snapshot_at_path(path)?;
 
-    Ok(runs_snapshot_from_state(&state))
+    Ok(runs_snapshot_from_state(&state, ALLOWED_RUNTIME_PROGRAMS))
 }
 
 pub fn create_workspace_at_path(
@@ -227,7 +227,7 @@ pub fn start_run_at_path(
         write_run_manifest(run)?;
     }
 
-    Ok(runs_snapshot_from_state(&state))
+    Ok(runs_snapshot_from_state(&state, ALLOWED_RUNTIME_PROGRAMS))
 }
 
 pub fn prepare_run_at_path(
@@ -273,7 +273,7 @@ pub fn record_run_command_at_path(
     let created_at = current_unix_timestamp_string()?;
     let state = mutate_state_at_path(path, |state| state.record_run_command(request, created_at))?;
 
-    Ok(runs_snapshot_from_state(&state))
+    Ok(runs_snapshot_from_state(&state, ALLOWED_RUNTIME_PROGRAMS))
 }
 
 pub fn execute_run_command_at_path(
@@ -655,7 +655,7 @@ fn transition_run_at_path(
         write_run_manifest(run)?;
     }
 
-    Ok(runs_snapshot_from_state(&state))
+    Ok(runs_snapshot_from_state(&state, ALLOWED_RUNTIME_PROGRAMS))
 }
 
 fn write_run_manifest(run: &RunRecord) -> Result<(), DesktopCommandError> {

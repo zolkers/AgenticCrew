@@ -173,7 +173,10 @@ const runsSnapshot: RunsSnapshot = {
   activeRunId: null,
   commands: [],
   events: [],
-  runs: []
+  runs: [],
+  runtimePolicy: {
+    allowedPrograms: ["cargo", "git", "node", "npm", "rustc"]
+  }
 };
 
 function createDeferredSnapshot<T>() {
@@ -223,6 +226,9 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
     expect(screen.getAllByText("fullstack-app").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "No active run" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Runtime command policy")).toHaveTextContent("Allowed runtime commands");
+    expect(screen.getByLabelText("Runtime command policy")).toHaveTextContent("cargo");
+    expect(screen.getByLabelText("Runtime command policy")).toHaveTextContent("rustc");
     expect(screen.getByLabelText("Selected run loadout")).toHaveTextContent("Developer Agent");
     expect(screen.getByRole("form", { name: "Start run" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start run" })).toBeEnabled();
@@ -898,6 +904,40 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "Choose a workspace" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workspaces");
+  });
+
+  it("opens agent runtime sections from the command palette", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open Mission Control" }));
+    expect(await screen.findByRole("heading", { name: "Mission Control" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/fullstack-app/mission");
+
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open Skill Sources" }));
+    expect(await screen.findByRole("heading", { name: "Skill Sources" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/fullstack-app/skills");
+
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open Execution Policies" }));
+    expect(await screen.findByRole("heading", { name: "Execution Policies" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/fullstack-app/harnesses");
+
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open Agent Profiles" }));
+    expect(await screen.findByRole("heading", { name: "Agent Profiles" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/fullstack-app/agents");
   });
 
   it("routes topbar branch actions through the Git panel", async () => {

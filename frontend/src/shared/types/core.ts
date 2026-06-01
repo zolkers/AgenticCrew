@@ -301,11 +301,16 @@ export type RunEvent = {
   runId: string;
 };
 
+export type RuntimeCommandPolicy = {
+  allowedPrograms: string[];
+};
+
 export type RunsSnapshot = {
   activeRunId?: string | null;
   commands: RunCommandRecord[];
   events: RunEvent[];
   runs: RunRecord[];
+  runtimePolicy?: RuntimeCommandPolicy;
 };
 
 export type StartRunRequest = {

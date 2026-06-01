@@ -214,19 +214,35 @@ pub struct RunParticipantRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RuntimeCommandPolicy {
+    pub allowed_programs: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RunsSnapshot {
     pub active_run_id: Option<String>,
     pub commands: Vec<RunCommandRecord>,
     pub events: Vec<RunEvent>,
     pub runs: Vec<RunRecord>,
+    pub runtime_policy: RuntimeCommandPolicy,
 }
 
-pub fn runs_snapshot_from_state(state: &AgentOsState) -> RunsSnapshot {
+pub fn runs_snapshot_from_state(
+    state: &AgentOsState,
+    allowed_runtime_programs: &[&str],
+) -> RunsSnapshot {
     RunsSnapshot {
         active_run_id: state.runs.last().map(|run| run.id.clone()),
         commands: state.run_commands.clone(),
         events: state.run_events.clone(),
         runs: state.runs.clone(),
+        runtime_policy: RuntimeCommandPolicy {
+            allowed_programs: allowed_runtime_programs
+                .iter()
+                .map(|program| (*program).to_owned())
+                .collect(),
+        },
     }
 }
 
@@ -653,9 +669,13 @@ mod tests {
         .expect("run");
         state.runs.push(run);
 
-        let snapshot = runs_snapshot_from_state(&state);
+        let snapshot = runs_snapshot_from_state(&state, &["node", "npm"]);
 
         assert_eq!(snapshot.active_run_id, Some("run-1".to_owned()));
+        assert_eq!(
+            snapshot.runtime_policy.allowed_programs,
+            vec!["node".to_owned(), "npm".to_owned()]
+        );
         assert_eq!(snapshot.runs.len(), 1);
     }
 

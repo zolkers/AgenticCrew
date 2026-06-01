@@ -196,6 +196,7 @@ describe("previewInvokes", () => {
         })
       ]
     });
+    expect(snapshot.runtimePolicy?.allowedPrograms).toEqual(["cargo", "git", "node", "npm", "rustc"]);
   });
 
   it("queues preview runs with explicit crew participants", async () => {

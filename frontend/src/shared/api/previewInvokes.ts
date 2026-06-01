@@ -64,11 +64,16 @@ const previewWorkspaceSnapshot: WorkspaceSnapshot = {
   workspaces: [...cockpitWorkspaces]
 };
 
+const previewRuntimeAllowedPrograms = ["cargo", "git", "node", "npm", "rustc"];
+
 const previewRunsSnapshot: RunsSnapshot = {
   activeRunId: null,
   commands: [],
   events: [],
-  runs: []
+  runs: [],
+  runtimePolicy: {
+    allowedPrograms: previewRuntimeAllowedPrograms
+  }
 };
 
 const previewSkillSourcesSnapshot: SkillSourcesSnapshot = {
@@ -140,7 +145,7 @@ let currentPreviewSkillSourcesSnapshot = previewSkillSourcesSnapshot;
 let currentPreviewHarnessStudioSnapshot = previewHarnessStudioSnapshot;
 
 let currentPreviewRunsSnapshot = previewRunsSnapshot;
-const previewAllowedRuntimePrograms = new Set(["cargo", "git", "node", "npm", "rustc"]);
+const previewAllowedRuntimePrograms = new Set(previewRuntimeAllowedPrograms);
 
 type PreviewStartRunRequest = {
   agentTemplateId?: null | string;
@@ -633,7 +638,8 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
           runId
         }
       ],
-      runs: [...currentPreviewRunsSnapshot.runs, run]
+      runs: [...currentPreviewRunsSnapshot.runs, run],
+      runtimePolicy: currentPreviewRunsSnapshot.runtimePolicy
     };
   }
 
@@ -685,7 +691,8 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
               updatedAt
             }
           : run
-      )
+      ),
+      runtimePolicy: currentPreviewRunsSnapshot.runtimePolicy
     };
   }
 

@@ -1487,6 +1487,41 @@ button {
   color: var(--color-teal);
 }
 
+.runtime-policy-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.7rem 0;
+  padding: 0.58rem 0.65rem;
+  border: 1px solid rgba(173, 183, 195, 0.16);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.runtime-policy-strip span {
+  color: #b8c5d1;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.runtime-policy-strip ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.runtime-policy-strip li {
+  padding: 0.18rem 0.42rem;
+  border: 1px solid rgba(114, 229, 174, 0.2);
+  border-radius: 999px;
+  color: #d4f8e8;
+  font-size: 0.72rem;
+}
+
 .command-bar {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
