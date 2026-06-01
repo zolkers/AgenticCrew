@@ -359,6 +359,35 @@ describe("previewInvokes", () => {
     ]);
   });
 
+  it("records blocked preview run commands as failed evidence", async () => {
+    await previewRunsInvoke("start_run", {
+      request: {
+        id: "blocked-preview",
+        task: "Exercise policy gate",
+        workspaceId: "fullstack-app"
+      }
+    });
+
+    const snapshot = await previewRunsInvoke("execute_run_command", {
+      request: {
+        args: ["hello"],
+        cwd: null,
+        participantId: "developer",
+        program: "definitely-not-allowed",
+        runId: "blocked-preview"
+      }
+    });
+
+    expect(snapshot.commands).toEqual([
+      expect.objectContaining({
+        exitCode: 126,
+        runId: "blocked-preview",
+        status: "failed",
+        stderr: "blocked by runtime command policy: 'definitely-not-allowed' is not allowed"
+      })
+    ]);
+  });
+
   it("mutates preview skill source workflow state", async () => {
     await previewSkillSourcesInvoke("register_github_skill_source", {
       request: {

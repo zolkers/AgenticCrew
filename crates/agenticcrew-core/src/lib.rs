@@ -46,6 +46,7 @@ use core::{
 };
 
 pub const STATE_FILE_NAME: &str = "agenticcrew-state.json";
+const ALLOWED_RUNTIME_PROGRAMS: &[&str] = &["cargo", "git", "node", "npm", "rustc"];
 
 pub fn app_name() -> &'static str {
     "AgenticCrew"
@@ -314,6 +315,20 @@ pub fn execute_run_command_at_path(
         .filter(|candidate| !candidate.is_empty())
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(&run.worktree_path));
+    if !is_allowed_runtime_program(program) {
+        let record = RecordRunCommandRequest {
+            command: format_command(program, &request.args),
+            cwd: cwd.display().to_string(),
+            exit_code: 126,
+            participant_id: request.participant_id,
+            run_id: run.id.clone(),
+            stderr: format!("blocked by runtime command policy: '{program}' is not allowed"),
+            stdout: String::new(),
+        };
+
+        return record_run_command_at_path(state_path, record);
+    }
+
     let output = Command::new(program)
         .args(&request.args)
         .current_dir(&cwd)
@@ -676,6 +691,18 @@ fn format_command(program: &str, args: &[String]) -> String {
         .chain(args.iter().cloned())
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn is_allowed_runtime_program(program: &str) -> bool {
+    let path = Path::new(program);
+    let is_plain_program = path
+        .parent()
+        .is_none_or(|parent| parent.as_os_str().is_empty());
+    let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+        return false;
+    };
+
+    is_plain_program && ALLOWED_RUNTIME_PROGRAMS.contains(&stem)
 }
 
 #[cfg(test)]
@@ -1078,6 +1105,28 @@ mod tests {
             .command
             .starts_with("rustc --version"));
         assert!(executed_snapshot.commands[1].stdout.contains("rustc"));
+
+        let blocked_snapshot = execute_run_command_at_path(
+            &path,
+            ExecuteRunCommandRequest {
+                args: vec!["hello".to_owned()],
+                cwd: None,
+                participant_id: "developer".to_owned(),
+                program: "definitely-not-allowed".to_owned(),
+                run_id: "run-1".to_owned(),
+            },
+        )
+        .expect("blocked run command should record evidence");
+
+        assert_eq!(blocked_snapshot.commands.len(), 3);
+        assert_eq!(
+            blocked_snapshot.commands[2].status,
+            RunCommandStatus::Failed
+        );
+        assert_eq!(blocked_snapshot.commands[2].exit_code, 126);
+        assert!(blocked_snapshot.commands[2]
+            .stderr
+            .contains("blocked by runtime command policy"));
     }
 
     #[test]

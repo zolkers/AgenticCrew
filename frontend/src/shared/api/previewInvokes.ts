@@ -140,6 +140,7 @@ let currentPreviewSkillSourcesSnapshot = previewSkillSourcesSnapshot;
 let currentPreviewHarnessStudioSnapshot = previewHarnessStudioSnapshot;
 
 let currentPreviewRunsSnapshot = previewRunsSnapshot;
+const previewAllowedRuntimePrograms = new Set(["cargo", "git", "node", "npm", "rustc"]);
 
 type PreviewStartRunRequest = {
   agentTemplateId?: null | string;
@@ -701,15 +702,16 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
     const program = request?.program ?? "node";
     const commandText = [program, ...(request?.args ?? [])].join(" ");
     const runId = request?.runId ?? currentPreviewRunsSnapshot.activeRunId ?? "preview-run";
+    const blocked = !previewAllowedRuntimePrograms.has(program.replace(/\.[^.]+$/u, ""));
 
     currentPreviewRunsSnapshot = appendPreviewRunCommand({
       command: commandText,
       cwd: request?.cwd ?? "preview",
-      exitCode: 0,
+      exitCode: blocked ? 126 : 0,
       participantId: request?.participantId ?? "developer",
       runId,
-      stderr: "",
-      stdout: "runtime check passed"
+      stderr: blocked ? `blocked by runtime command policy: '${program}' is not allowed` : "",
+      stdout: blocked ? "" : "runtime check passed"
     });
   }
 
