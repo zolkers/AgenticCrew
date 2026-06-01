@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   electronAgentStudioInvoke,
+  electronCommitPreviewInvoke,
   electronHarnessStudioInvoke,
   electronMissionControlInvoke,
   electronRunsInvoke,
@@ -24,6 +25,7 @@ describe("electronInvokes", () => {
     await expect(electronAgentStudioInvoke("agent_studio_snapshot")).resolves.toEqual({ ok: true });
     await expect(electronSettingsInvoke("settings_snapshot")).resolves.toEqual({ ok: true });
     await expect(electronWorkspaceInvoke("workspace_snapshot")).resolves.toEqual({ ok: true });
+    await expect(electronCommitPreviewInvoke("commit_preview")).resolves.toEqual({ ok: true });
     await expect(electronRunsInvoke("runs_snapshot")).resolves.toEqual({ ok: true });
 
     expect(invoke).toHaveBeenCalledWith("mission_control_snapshot", undefined);
@@ -32,6 +34,7 @@ describe("electronInvokes", () => {
     expect(invoke).toHaveBeenCalledWith("agent_studio_snapshot", undefined);
     expect(invoke).toHaveBeenCalledWith("settings_snapshot", undefined);
     expect(invoke).toHaveBeenCalledWith("workspace_snapshot", undefined);
+    expect(invoke).toHaveBeenCalledWith("commit_preview", undefined);
     expect(invoke).toHaveBeenCalledWith("runs_snapshot", undefined);
   });
 

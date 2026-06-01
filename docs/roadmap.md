@@ -25,7 +25,7 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - Controlled runtime command execution: Electron/Rust can now execute a participant-scoped command as `program + args[]` without shell expansion, capture stdout/stderr, and persist the result as run command evidence.
 - Runtime command policy gate: controlled execution now applies an explicit program allowlist and records blocked commands as failed evidence instead of launching them.
 - Runtime policy contract: run snapshots now expose the backend-owned allowed command policy so the cockpit can show what the current execution gate permits.
-- Coverage ratchet: frontend coverage has been raised above 98% globally with additional App, Git preview, and Skill Sources regression tests while keeping the 100% target explicit.
+- Coverage ratchet: frontend coverage has been raised above 99% globally with additional App, Agent Studio, Harness Studio, Git preview, Skill Sources, and Electron bridge regression tests while keeping the 100% target explicit.
 
 **Next focus:**
 - Multi-agent runtime execution: replace preview-only browser data with sidecar-backed crew manifests, isolated participant worktrees, live per-agent event streams, pause/resume/kill controls, and audited command execution.

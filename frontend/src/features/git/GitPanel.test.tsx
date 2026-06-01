@@ -281,6 +281,30 @@ describe("GitPanel", () => {
     expect(onRefreshGitStatus).toHaveBeenCalledOnce();
   });
 
+  it("renders the empty history preview state", () => {
+    const workspace: CockpitWorkspace = {
+      activeAgentId: "dev",
+      agents: [],
+      branch: "dev",
+      budgetLimitUsd: 10,
+      budgetUsedUsd: 1,
+      checkpoints: [],
+      gitHistory: [],
+      id: "settings-workspace",
+      logs: [],
+      mission: "Wire settings",
+      name: "Settings Workspace",
+      path: "C:\\repo\\AgenticCrew",
+      skills: [],
+      status: "running"
+    };
+
+    renderGitPanel(workspace, { branchOptions: ["main", "dev"] });
+
+    expect(screen.getByText("No local history loaded")).toBeInTheDocument();
+    expect(screen.getByText("Commit history will appear here once this workspace reports Git log data.")).toBeInTheDocument();
+  });
+
   it("requires a commit message before preparing a commit", () => {
     const workspace: CockpitWorkspace = {
       activeAgentId: "dev",

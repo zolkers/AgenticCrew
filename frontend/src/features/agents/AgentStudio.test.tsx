@@ -176,6 +176,55 @@ describe("AgentStudio", () => {
     expect(screen.getByRole("button", { name: "Activate" })).toBeInTheDocument();
   });
 
+  it("selects templates from the roster and closes the create panel with defaults restored", () => {
+    const snapshot: AgentStudioSnapshot = {
+      activeTemplateCount: 1,
+      templates: [
+        templateSnapshot.templates[0],
+        {
+          active: false,
+          budgetCents: 500,
+          description: "Runs local provider experiments.",
+          harnessProfileId: "pi-execution-discipline",
+          id: "local-agent",
+          modelId: "local-code-1",
+          name: "Local Agent",
+          providerId: "local-ai",
+          reasoningEffort: "high",
+          role: "qa",
+          skillRoutes: ["agenticcrew://skills/local/debug"],
+          version: 1
+        }
+      ],
+      trainingRuns: []
+    };
+
+    render(
+      <AgentStudio
+        harnessSnapshot={harnessSnapshot}
+        invoke={vi.fn()}
+        modelOptions={[
+          ...modelOptions,
+          { id: "local-code-1", label: "Local Code 1", providerId: "local-ai" }
+        ]}
+        snapshot={snapshot}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Local Agent/u }));
+
+    expect(screen.getByLabelText("Selected agent details")).toHaveTextContent("local-ai / local-code-1");
+    expect(screen.getByLabelText("Local Agent skill routes")).toHaveTextContent("agenticcrew://skills/local/debug");
+
+    fireEvent.click(screen.getByRole("button", { name: "New agent" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Temporary Agent" } });
+    expect(screen.getByLabelText("Name")).toHaveValue("Temporary Agent");
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(screen.queryByLabelText("Create agent panel")).not.toBeInTheDocument();
+  });
+
   it("creates a local agent template from the form", async () => {
     const nextSnapshot: AgentStudioSnapshot = {
       activeTemplateCount: 2,

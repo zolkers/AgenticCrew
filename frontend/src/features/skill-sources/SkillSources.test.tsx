@@ -362,6 +362,35 @@ describe("SkillSources", () => {
     expect(screen.getByText("No external skill source registered")).toBeInTheDocument();
   });
 
+  it("edits the GitHub source registration form before submitting", async () => {
+    const invoke = vi.fn().mockResolvedValue({ activeSourceCount: 0, sources: [] });
+
+    render(
+      <SkillSources
+        invoke={invoke}
+        snapshot={{ activeSourceCount: 0, sources: [] }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add source" }));
+    fireEvent.change(screen.getByLabelText("Source id"), { target: { value: " team-skills " } });
+    fireEvent.change(screen.getByLabelText("Repository URL"), {
+      target: { value: " https://github.com/team/agentic-skills " }
+    });
+    fireEvent.change(screen.getByLabelText("Ref"), { target: { value: " v1.2.3 " } });
+    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith("register_github_skill_source", {
+        request: {
+          id: "team-skills",
+          repositoryUrl: "https://github.com/team/agentic-skills",
+          selectedRef: "v1.2.3"
+        }
+      });
+    });
+  });
+
   it("registers, syncs, approves, and activates sources through the command boundary", async () => {
     const source = {
       active: false,

@@ -76,6 +76,42 @@ describe("HarnessStudio", () => {
     expect(screen.getByText("agenticcrew://skills/review")).toBeInTheDocument();
   });
 
+  it("selects harness profiles from the roster and closes the create panel", () => {
+    render(
+      <HarnessStudio
+        invoke={vi.fn()}
+        snapshot={{
+          activeProfileCount: 1,
+          bindings: [],
+          profiles: [
+            profileFixture("profile-on", true),
+            {
+              ...profileFixture("profile-review", false),
+              description: "Review-focused harness",
+              modules: [],
+              name: "Review Harness",
+              skillRoutes: ["agenticcrew://skills/review"]
+            }
+          ]
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Review Harness/u }));
+
+    expect(screen.getByLabelText("Selected harness details")).toHaveTextContent("Review-focused harness");
+    expect(screen.getByLabelText("Selected harness details")).toHaveTextContent("No base policy content");
+    expect(screen.getByLabelText("Review Harness skill routes")).toHaveTextContent("agenticcrew://skills/review");
+
+    fireEvent.click(screen.getByRole("button", { name: "New harness" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Temporary Harness" } });
+    expect(screen.getByLabelText("Name")).toHaveValue("Temporary Harness");
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(screen.queryByLabelText("Create harness panel")).not.toBeInTheDocument();
+  });
+
   it("renders Rust-provided effective harness previews", () => {
     render(
       <HarnessStudio
