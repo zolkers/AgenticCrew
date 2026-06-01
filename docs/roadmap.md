@@ -25,6 +25,7 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - Controlled runtime command execution: Electron/Rust can now execute a participant-scoped command as `program + args[]` without shell expansion, capture stdout/stderr, and persist the result as run command evidence.
 - Runtime command policy gate: controlled execution now applies an explicit program allowlist and records blocked commands as failed evidence instead of launching them.
 - Runtime policy contract: run snapshots now expose the backend-owned allowed command policy so the cockpit can show what the current execution gate permits.
+- Coverage ratchet: frontend coverage has been raised above 98% globally with additional App, Git preview, and Skill Sources regression tests while keeping the 100% target explicit.
 
 **Next focus:**
 - Multi-agent runtime execution: replace preview-only browser data with sidecar-backed crew manifests, isolated participant worktrees, live per-agent event streams, pause/resume/kill controls, and audited command execution.
@@ -196,7 +197,7 @@ Completed on `dev`:
 10. Add mission-level skill selection to queued runs.
 11. Add OpenAI/Gemini provider selection and persisted thinking effort across settings, agents, and run launch.
 
-Next tranche: configurable workspace/agent command policies, per-agent event streaming, pause/resume/kill controls, and progressive removal of preview-only data from desktop runtime paths. Git commit preview, durable run manifests, lifecycle controls, audited command records, controlled command execution, the first command allowlist gate, and the surfaced runtime policy contract are completed slices of this runtime-backed replacement work.
+Next tranche: configurable workspace/agent command policies, per-agent event streaming, pause/resume/kill controls, progressive removal of preview-only data from desktop runtime paths, and continued coverage ratcheting toward the 100% target. Git commit preview, durable run manifests, lifecycle controls, audited command records, controlled command execution, the first command allowlist gate, and the surfaced runtime policy contract are completed slices of this runtime-backed replacement work.
 
 ## Task Roadmap
 

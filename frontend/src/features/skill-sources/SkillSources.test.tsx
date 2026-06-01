@@ -270,6 +270,92 @@ describe("SkillSources", () => {
     expect(screen.getByText("No skill source matches")).toBeInTheDocument();
   });
 
+  it("switches selected sources and skill previews", () => {
+    const snapshot: SkillSourcesSnapshot = {
+      activeSourceCount: 1,
+      sources: [
+        {
+          active: true,
+          discoveredSkills: [],
+          id: "local-pack",
+          kind: "local",
+          lastSyncError: null,
+          lastSyncStatus: "synced",
+          lastSyncedCommit: null,
+          localCachePath: "C:/AgenticCrew/cache/skills/local-pack",
+          permissionGate: {
+            approved: true,
+            policy: {
+              commands: [],
+              docker: false,
+              fileSystem: [],
+              git: false,
+              network: []
+            }
+          },
+          repositoryUrl: "file:///skills",
+          selectedRef: "local",
+          status: "validated",
+          trustLevel: "local",
+          validationErrors: []
+        },
+        {
+          active: false,
+          discoveredSkills: [
+            {
+              description: "Build implementation plans",
+              id: "external-pack/planning",
+              name: "planning",
+              relativePath: "skills/planning/SKILL.md",
+              route: "agenticcrew://skills/external-pack/planning"
+            },
+            {
+              description: "Debug failures systematically",
+              id: "external-pack/debugger",
+              name: "debugger",
+              relativePath: "skills/debugger/SKILL.md",
+              route: "agenticcrew://skills/external-pack/debugger"
+            }
+          ],
+          id: "external-pack",
+          kind: "git_hub",
+          lastSyncError: null,
+          lastSyncStatus: "synced",
+          lastSyncedCommit: "def456",
+          localCachePath: "C:/AgenticCrew/cache/skills/external-pack",
+          permissionGate: {
+            approved: false,
+            policy: {
+              commands: [],
+              docker: false,
+              fileSystem: [],
+              git: false,
+              network: []
+            }
+          },
+          repositoryUrl: "https://github.com/example/skills",
+          selectedRef: "main",
+          status: "validated",
+          trustLevel: "external",
+          validationErrors: []
+        }
+      ]
+    };
+
+    render(<SkillSources invoke={() => Promise.resolve(snapshot)} snapshot={snapshot} />);
+
+    expect(screen.getByRole("button", { name: "Active" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /external-pack/u }));
+
+    expect(screen.getByLabelText("Skill preview")).toHaveTextContent("planning");
+    expect(screen.getByLabelText("Skill preview")).toHaveTextContent("Build implementation plans");
+
+    fireEvent.click(screen.getByText("debugger").closest("button") as HTMLElement);
+
+    expect(screen.getByLabelText("Skill preview")).toHaveTextContent("debugger");
+    expect(screen.getByLabelText("Skill preview")).toHaveTextContent("Debug failures systematically");
+  });
+
   it("renders the empty state", () => {
     render(<SkillSources snapshot={{ activeSourceCount: 0, sources: [] }} />);
 

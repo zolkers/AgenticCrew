@@ -189,6 +189,41 @@ describe("GitPanel", () => {
     expect(screen.getByLabelText("Selected file diff")).toHaveTextContent("docs/roadmap.md");
   });
 
+  it("surfaces commit preview backend failures", async () => {
+    const workspace: CockpitWorkspace = {
+      activeAgentId: "dev",
+      agents: [],
+      branch: "dev",
+      budgetLimitUsd: 10,
+      budgetUsedUsd: 1,
+      checkpoints: [],
+      gitHistory: [
+        {
+          author: "Codex",
+          branch: "dev",
+          hash: "badcafe",
+          message: "fix(git): inspect failed preview",
+          relativeTime: "now"
+        }
+      ],
+      id: "settings-workspace",
+      logs: [],
+      mission: "Wire settings",
+      name: "Settings Workspace",
+      path: "C:\\repo\\AgenticCrew",
+      skills: [],
+      status: "running"
+    };
+
+    renderGitPanel(workspace, {
+      branchOptions: ["dev"],
+      commitPreviewInvoke: vi.fn(() => Promise.reject(new Error("git show failed")))
+    });
+
+    expect(await screen.findByText("git show failed")).toBeInTheDocument();
+    expect(screen.getByLabelText("Commit file statistics")).toHaveTextContent("0");
+  });
+
   it("submits selected branch while preserving the internal workspace path", () => {
     const workspace: CockpitWorkspace = {
       activeAgentId: "dev",
@@ -282,6 +317,15 @@ describe("GitPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Commit" }));
 
     expect(screen.getByText("Commit prepared: style(git): add commit composer")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Commit message"), {
+      target: { value: "feat(git): prepare push flow" }
+    });
+    expect(screen.queryByText("Commit prepared: style(git): add commit composer")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Commit & Push" }));
+
+    expect(screen.getByText("Commit and push prepared: feat(git): prepare push flow")).toBeInTheDocument();
   });
 
   it("keeps commit actions disabled when the workspace is clean", () => {

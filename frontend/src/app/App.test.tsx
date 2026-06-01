@@ -717,6 +717,71 @@ describe("App", () => {
     expect(screen.getByLabelText("Run event log")).toHaveTextContent("Run failed");
   });
 
+  it("selects compact run list entries for detail review", async () => {
+    const runBase = {
+      agentTemplateId: "developer-pi",
+      baseBranch: "dev",
+      createdAt: "preview",
+      harnessProfileId: "pi-execution-discipline",
+      manifestPath: "C:\\repo\\.agenticcrew\\runs\\run-alpha\\run-manifest.json",
+      modelId: "gpt-5",
+      participants: [],
+      providerId: "openai",
+      reasoningEffort: "medium" as const,
+      runBranch: "codex/run-alpha",
+      skillRoutes: [],
+      startedAt: null,
+      status: "queued" as const,
+      stoppedAt: null,
+      updatedAt: "preview",
+      workspaceId: "fullstack-app",
+      worktreePath: "C:\\repo\\.agenticcrew\\runs\\run-alpha"
+    };
+    const runsInvoke: InvokeRuns = () =>
+      Promise.resolve({
+        activeRunId: "run-alpha",
+        commands: [],
+        events: [],
+        runs: [
+          {
+            ...runBase,
+            id: "run-alpha",
+            task: "First queued task"
+          },
+          {
+            ...runBase,
+            id: "run-beta",
+            manifestPath: "C:\\repo\\.agenticcrew\\runs\\run-beta\\run-manifest.json",
+            runBranch: "codex/run-beta",
+            task: "Second queued task",
+            worktreePath: "C:\\repo\\.agenticcrew\\runs\\run-beta"
+          }
+        ],
+        runtimePolicy: {
+          allowedPrograms: ["node"]
+        }
+      });
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        runsInvoke={runsInvoke}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    expect(await screen.findByRole("heading", { name: "run-alpha" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open run run-beta" }));
+
+    expect(await screen.findByRole("heading", { name: "run-beta" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Run event log")).toHaveTextContent("Second queued task");
+  });
+
   it("switches workspace from the cockpit dropdown and updates visible agent context", async () => {
     render(
       <App
@@ -923,6 +988,11 @@ describe("App", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Open Mission Control" }));
     expect(await screen.findByRole("heading", { name: "Mission Control" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workspace/fullstack-app/mission");
+
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open Cockpit" }));
+    expect(await screen.findByRole("heading", { name: "AgenticCrew Workbench" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/fullstack-app/cockpit");
 
     fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
     fireEvent.click(await screen.findByRole("button", { name: "Open Skill Sources" }));
