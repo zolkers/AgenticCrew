@@ -32,7 +32,15 @@ import { loadAgentStudioSnapshot, type InvokeAgentStudio } from "../shared/api/a
 import { loadHarnessStudioSnapshot, type InvokeHarnessStudio } from "../shared/api/harnessStudioApi";
 import { loadMissionControlSnapshot, type InvokeMissionControl } from "../shared/api/missionControlApi";
 import { previewCommitPreviewInvoke, previewRunsInvoke, previewWorkspaceInvoke } from "../shared/api/previewInvokes";
-import { loadRunsSnapshot, startRun, type InvokeRuns } from "../shared/api/runsApi";
+import {
+  completeRun,
+  failRun,
+  loadRunsSnapshot,
+  prepareRun,
+  startPreparedRun,
+  startRun,
+  type InvokeRuns
+} from "../shared/api/runsApi";
 import { loadSettingsSnapshot, type InvokeSettings } from "../shared/api/settingsApi";
 import { loadSkillSourcesSnapshot, type InvokeSkillSources } from "../shared/api/skillSourcesApi";
 import {
@@ -432,6 +440,16 @@ export function App({
     });
     replaceRunsSnapshot(runsSnapshot);
   };
+  const transitionWorkspaceRun = async (runId: string, action: RunLifecycleAction) => {
+    const transition = {
+      complete: completeRun,
+      fail: failRun,
+      prepare: prepareRun,
+      start: startPreparedRun
+    }[action];
+    const runsSnapshot = await transition(runsInvoke, runId);
+    replaceRunsSnapshot(runsSnapshot);
+  };
   const activeSkillRoutes = loadState.skillSourcesSnapshot.sources
     .filter((source) => source.active)
     .flatMap((source) => source.discoveredSkills ?? []);
@@ -623,6 +641,9 @@ export function App({
             }}
             onRunStart={(task, skillRoutes, reasoningEffort, runMode) => {
               void startWorkspaceRun(task, skillRoutes, reasoningEffort, runMode);
+            }}
+            onRunTransition={(runId, action) => {
+              void transitionWorkspaceRun(runId, action);
             }}
             runsSnapshot={loadState.runsSnapshot}
             tokenSummary={tokenSummary}
@@ -983,6 +1004,7 @@ type CockpitProps = Readonly<{
     reasoningEffort: ReasoningEffort,
     runMode: RunLaunchMode
   ) => void;
+  onRunTransition: (runId: string, action: RunLifecycleAction) => void;
   onWorkspaceChange: (workspaceId: string) => void;
   runsSnapshot: RunsSnapshot;
   tokenSummary: MissionCostSummary;
@@ -995,6 +1017,7 @@ type WorkspaceLoadout = Readonly<{
 }>;
 
 type RunLaunchMode = "crew" | "solo";
+type RunLifecycleAction = "complete" | "fail" | "prepare" | "start";
 
 function Cockpit({
   activeWorkspace,
@@ -1004,6 +1027,7 @@ function Cockpit({
   harnessStudioSnapshot,
   onLoadoutChange,
   onRunStart,
+  onRunTransition,
   onWorkspaceChange,
   runsSnapshot,
   tokenSummary,
@@ -1281,6 +1305,46 @@ function Cockpit({
               {activeRun?.status ?? "idle"}
             </span>
           </header>
+          {activeRun === undefined ? null : (
+            <div className="run-control-strip" aria-label="Runtime controls">
+              <button
+                disabled={activeRun.status !== "queued"}
+                onClick={() => {
+                  onRunTransition(activeRun.id, "prepare");
+                }}
+                type="button"
+              >
+                Prepare
+              </button>
+              <button
+                disabled={activeRun.status !== "preparing"}
+                onClick={() => {
+                  onRunTransition(activeRun.id, "start");
+                }}
+                type="button"
+              >
+                Start
+              </button>
+              <button
+                disabled={activeRun.status !== "running"}
+                onClick={() => {
+                  onRunTransition(activeRun.id, "complete");
+                }}
+                type="button"
+              >
+                Complete
+              </button>
+              <button
+                disabled={activeRun.status !== "running" && activeRun.status !== "preparing"}
+                onClick={() => {
+                  onRunTransition(activeRun.id, "fail");
+                }}
+                type="button"
+              >
+                Fail
+              </button>
+            </div>
+          )}
 
           <div className="terminal-stream" aria-label="Run event log">
             {activeRun === undefined ? (

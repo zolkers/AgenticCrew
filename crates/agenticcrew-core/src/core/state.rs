@@ -20,7 +20,10 @@ use super::{
     pi_extensions::{
         ImportPiExtensionRequest, PiExtension, PiExtensionError, SetPiExtensionActiveRequest,
     },
-    runs::{RunError, RunEvent, RunRecord, StartRunRequest},
+    runs::{
+        RunError, RunEvent, RunEventLevel, RunParticipantStatus, RunRecord, RunStatus,
+        StartRunRequest,
+    },
     sessions::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
         SessionTransitionError,
@@ -801,6 +804,132 @@ impl AgentOsState {
 
         Ok(())
     }
+
+    pub fn prepare_run(
+        &mut self,
+        run_id: &str,
+        updated_at: String,
+    ) -> Result<(), StateMutationError> {
+        self.transition_run(
+            run_id,
+            RunStatus::Preparing,
+            RunParticipantStatus::Preparing,
+            "Run preparing",
+            "preparing",
+            updated_at,
+        )
+    }
+
+    pub fn start_prepared_run(
+        &mut self,
+        run_id: &str,
+        updated_at: String,
+    ) -> Result<(), StateMutationError> {
+        self.transition_run(
+            run_id,
+            RunStatus::Running,
+            RunParticipantStatus::Running,
+            "Run running",
+            "running",
+            updated_at,
+        )
+    }
+
+    pub fn complete_run(
+        &mut self,
+        run_id: &str,
+        updated_at: String,
+    ) -> Result<(), StateMutationError> {
+        self.transition_run(
+            run_id,
+            RunStatus::Completed,
+            RunParticipantStatus::Completed,
+            "Run completed",
+            "completed",
+            updated_at,
+        )
+    }
+
+    pub fn fail_run(&mut self, run_id: &str, updated_at: String) -> Result<(), StateMutationError> {
+        self.transition_run(
+            run_id,
+            RunStatus::Failed,
+            RunParticipantStatus::Failed,
+            "Run failed",
+            "failed",
+            updated_at,
+        )
+    }
+
+    fn transition_run(
+        &mut self,
+        run_id: &str,
+        run_status: RunStatus,
+        participant_status: RunParticipantStatus,
+        run_message: &'static str,
+        participant_message_status: &'static str,
+        updated_at: String,
+    ) -> Result<(), StateMutationError> {
+        let run_position = self
+            .runs
+            .iter()
+            .position(|run| run.id == run_id)
+            .ok_or_else(|| StateMutationError::MissingRun {
+                run_id: run_id.to_owned(),
+            })?;
+        let participant_ids = {
+            let run = &mut self.runs[run_position];
+            run.status = run_status;
+            run.updated_at = updated_at.clone();
+            if run_status == RunStatus::Running && run.started_at.is_none() {
+                run.started_at = Some(updated_at.clone());
+            }
+            if matches!(
+                run_status,
+                RunStatus::Completed | RunStatus::Failed | RunStatus::Stopped
+            ) {
+                run.stopped_at = Some(updated_at.clone());
+            }
+            for participant in &mut run.participants {
+                participant.status = participant_status;
+            }
+
+            run.participants
+                .iter()
+                .map(|participant| participant.id.clone())
+                .collect::<Vec<_>>()
+        };
+
+        self.push_run_event(run_id, None, run_message, updated_at.clone());
+        for participant_id in participant_ids {
+            self.push_run_event(
+                run_id,
+                Some(&participant_id),
+                format!("Participant {participant_id} {participant_message_status}"),
+                updated_at.clone(),
+            );
+        }
+
+        Ok(())
+    }
+
+    fn push_run_event(
+        &mut self,
+        run_id: &str,
+        participant_id: Option<&str>,
+        message: impl Into<String>,
+        created_at: String,
+    ) {
+        let event_index = self.run_events.len() + 1;
+        self.run_events.push(RunEvent {
+            created_at,
+            id: format!("{run_id}-event-{event_index}"),
+            level: RunEventLevel::Info,
+            message: message.into(),
+            participant_id: participant_id.map(str::to_owned),
+            run_id: run_id.to_owned(),
+        });
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -900,6 +1029,9 @@ pub enum StateMutationError {
     DuplicateRun {
         run_id: String,
     },
+    MissingRun {
+        run_id: String,
+    },
     InvalidSkillSource(SkillSourceError),
     InvalidHarnessProfile(HarnessProfileError),
     InvalidPiExtension(PiExtensionError),
@@ -985,6 +1117,9 @@ impl fmt::Display for StateMutationError {
             }
             StateMutationError::DuplicateRun { run_id } => {
                 write!(formatter, "run '{run_id}' already exists")
+            }
+            StateMutationError::MissingRun { run_id } => {
+                write!(formatter, "run '{run_id}' does not exist")
             }
             StateMutationError::InvalidSkillSource(error) => {
                 write!(formatter, "invalid skill source: {error}")
@@ -1189,7 +1324,8 @@ mod tests {
         },
         pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
         runs::{
-            RunParticipantExecutionMode, RunParticipantRequest, RunParticipantRole, StartRunRequest,
+            RunParticipantExecutionMode, RunParticipantRequest, RunParticipantRole,
+            RunParticipantStatus, RunStatus, StartRunRequest,
         },
         sessions::{
             Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
@@ -1780,6 +1916,54 @@ mod tests {
                 template_id: "missing-agent".to_owned()
             }
         );
+    }
+
+    #[test]
+    fn run_lifecycle_updates_run_participants_and_events() {
+        let mut state = AgentOsState::empty();
+        state
+            .start_run(
+                StartRunRequest {
+                    agent_template_id: Some("developer-pi".to_owned()),
+                    harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                    id: "crew-run".to_owned(),
+                    model_id: None,
+                    participants: Vec::new(),
+                    provider_id: None,
+                    reasoning_effort: None,
+                    skill_routes: Vec::new(),
+                    task: "Build with runtime controls".to_owned(),
+                    workspace_id: "fullstack-app".to_owned(),
+                },
+                "123".to_owned(),
+            )
+            .expect("run should queue");
+
+        state
+            .prepare_run("crew-run", "124".to_owned())
+            .expect("run should prepare");
+        assert_eq!(state.runs[0].status, RunStatus::Preparing);
+        assert_eq!(
+            state.runs[0].participants[0].status,
+            RunParticipantStatus::Preparing
+        );
+
+        state
+            .start_prepared_run("crew-run", "125".to_owned())
+            .expect("run should start");
+        assert_eq!(state.runs[0].status, RunStatus::Running);
+        assert_eq!(state.runs[0].started_at, Some("125".to_owned()));
+
+        state
+            .complete_run("crew-run", "126".to_owned())
+            .expect("run should complete");
+        assert_eq!(state.runs[0].status, RunStatus::Completed);
+        assert_eq!(state.runs[0].stopped_at, Some("126".to_owned()));
+        assert!(state
+            .run_events
+            .iter()
+            .any(|event| event.participant_id.as_deref() == Some("developer")
+                && event.message == "Participant developer completed"));
     }
 
     #[test]

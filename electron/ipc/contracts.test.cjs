@@ -14,6 +14,10 @@ test("accepts known snapshot commands", () => {
     assertCommand("update_workspace_loadout");
     assertCommand("runs_snapshot");
     assertCommand("start_run");
+    assertCommand("prepare_run");
+    assertCommand("start_prepared_run");
+    assertCommand("complete_run");
+    assertCommand("fail_run");
     assertCommand("skill_sources_snapshot");
     assertCommand("harness_studio_snapshot");
     assertCommand("create_harness_profile");

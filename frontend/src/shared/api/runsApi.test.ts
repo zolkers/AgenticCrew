@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { loadRunsSnapshot, startRun, type InvokeRuns } from "./runsApi";
+import {
+  completeRun,
+  failRun,
+  loadRunsSnapshot,
+  prepareRun,
+  startPreparedRun,
+  startRun,
+  type InvokeRuns
+} from "./runsApi";
 
 describe("runsApi", () => {
   it("loads the runs snapshot", async () => {
@@ -49,5 +57,23 @@ describe("runsApi", () => {
         workspaceId: "fullstack-app"
       }
     });
+  });
+
+  it("sends run lifecycle commands with the run id", async () => {
+    const invoke = vi.fn<InvokeRuns>().mockResolvedValue({
+      activeRunId: "run-1",
+      events: [],
+      runs: []
+    });
+
+    await prepareRun(invoke, "run-1");
+    await startPreparedRun(invoke, "run-1");
+    await completeRun(invoke, "run-1");
+    await failRun(invoke, "run-1");
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "prepare_run", { runId: "run-1" });
+    expect(invoke).toHaveBeenNthCalledWith(2, "start_prepared_run", { runId: "run-1" });
+    expect(invoke).toHaveBeenNthCalledWith(3, "complete_run", { runId: "run-1" });
+    expect(invoke).toHaveBeenNthCalledWith(4, "fail_run", { runId: "run-1" });
   });
 });

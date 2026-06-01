@@ -264,6 +264,7 @@ export type RunEvent = {
   id: string;
   level: RunEventLevel;
   message: string;
+  participantId?: string | null;
   runId: string;
 };
 
@@ -636,6 +637,7 @@ export type ElectronCommandMap = {
   refresh_workspace_git_status: WorkspaceSnapshot;
   register_github_skill_source: unknown;
   runs_snapshot: RunsSnapshot;
+  prepare_run: RunsSnapshot;
   settings_snapshot: SettingsSnapshot;
   set_agent_template_active: AgentStudioSnapshot;
   set_harness_profile_active: HarnessStudioSnapshot;
@@ -644,7 +646,10 @@ export type ElectronCommandMap = {
   activate_skill_source: unknown;
   sync_github_skill_source: unknown;
   sync_provider_models: SettingsSnapshot;
+  complete_run: RunsSnapshot;
+  fail_run: RunsSnapshot;
   start_run: RunsSnapshot;
+  start_prepared_run: RunsSnapshot;
   update_agent_template: AgentStudioSnapshot;
   update_ai_provider_settings: SettingsSnapshot;
   update_harness_profile: HarnessStudioSnapshot;

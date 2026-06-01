@@ -20,6 +20,7 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - Backend-backed Git commit previews: the Git panel now loads selected commit metadata, changed files, stats, and patch lines through the Electron/Rust sidecar instead of generating UI-only diffs.
 - Multi-provider AI configuration: OpenAI and Gemini are exposed through a shared provider registry, model pickers are provider-aware, and settings/agents/runs persist `low`, `medium`, or `high` thinking effort.
 - Crew-oriented run records: queued runs now persist participants in the Rust-owned run manifest, and the cockpit can launch Solo or Crew mode with developer/reviewer participant scopes.
+- Crew runtime lifecycle controls: run records can move through preparing, running, completed, and failed states through Rust/Electron commands while updating participant statuses, runtime events, and the run manifest.
 
 **Next focus:**
 - Multi-agent runtime execution: replace preview-only browser data with sidecar-backed crew manifests, isolated participant worktrees, live per-agent event streams, pause/resume/kill controls, and audited command execution.

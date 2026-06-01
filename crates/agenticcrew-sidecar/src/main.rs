@@ -7,7 +7,7 @@ use std::{
 
 use agenticcrew_core::{
     activate_skill_source_at_path, agent_studio_snapshot_at_path,
-    approve_skill_source_permissions_at_path, commit_preview_at_path,
+    approve_skill_source_permissions_at_path, commit_preview_at_path, complete_run_at_path,
     core::agents::{
         CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest,
         UpdateAgentTemplateRequest,
@@ -29,16 +29,17 @@ use agenticcrew_core::{
         UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
     },
     create_agent_template_at_path, create_harness_profile_at_path, create_workspace_at_path,
-    harness_studio_snapshot_at_path, import_pi_extension_at_path,
-    inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
+    fail_run_at_path, harness_studio_snapshot_at_path, import_pi_extension_at_path,
+    inspect_cached_skill_source_at_path, mission_control_snapshot_at_path, prepare_run_at_path,
     promote_agent_training_run_at_path, record_model_call_estimate_at_path,
     refresh_workspace_git_status_at_path, register_github_skill_source_at_path,
     runs_snapshot_at_path, set_agent_template_active_at_path, set_harness_profile_active_at_path,
     set_pi_extension_active_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
-    start_run_at_path, sync_github_skill_source_at_path, sync_provider_models_at_path_with_catalog,
-    update_agent_template_at_path, update_ai_provider_settings_at_path,
-    update_harness_profile_at_path, update_workspace_git_context_at_path,
-    update_workspace_loadout_at_path, workspace_snapshot_at_path, DesktopCommandError,
+    start_prepared_run_at_path, start_run_at_path, sync_github_skill_source_at_path,
+    sync_provider_models_at_path_with_catalog, update_agent_template_at_path,
+    update_ai_provider_settings_at_path, update_harness_profile_at_path,
+    update_workspace_git_context_at_path, update_workspace_loadout_at_path,
+    workspace_snapshot_at_path, DesktopCommandError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -262,6 +263,12 @@ struct StartRunArgs {
     request: StartRunRequest,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RunIdArgs {
+    run_id: String,
+}
+
 fn main() {
     if let Err(error) = run() {
         print_error(error);
@@ -359,6 +366,26 @@ fn run() -> Result<(), DesktopCommandError> {
             let args = parse_args::<StartRunArgs>(&args_json)?;
 
             print_json(&start_run_at_path(state_path, args.request)?)
+        }
+        "prepare_run" => {
+            let args = parse_args::<RunIdArgs>(&args_json)?;
+
+            print_json(&prepare_run_at_path(state_path, &args.run_id)?)
+        }
+        "start_prepared_run" => {
+            let args = parse_args::<RunIdArgs>(&args_json)?;
+
+            print_json(&start_prepared_run_at_path(state_path, &args.run_id)?)
+        }
+        "complete_run" => {
+            let args = parse_args::<RunIdArgs>(&args_json)?;
+
+            print_json(&complete_run_at_path(state_path, &args.run_id)?)
+        }
+        "fail_run" => {
+            let args = parse_args::<RunIdArgs>(&args_json)?;
+
+            print_json(&fail_run_at_path(state_path, &args.run_id)?)
         }
         "skill_sources_snapshot" => print_json(&skill_sources_snapshot_at_path(state_path)?),
         "harness_studio_snapshot" => print_json(&harness_studio_snapshot_at_path(state_path)?),

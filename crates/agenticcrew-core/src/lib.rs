@@ -225,6 +225,42 @@ pub fn start_run_at_path(
     Ok(runs_snapshot_from_state(&state))
 }
 
+pub fn prepare_run_at_path(
+    path: impl AsRef<Path>,
+    run_id: &str,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    transition_run_at_path(path, run_id, |state, updated_at| {
+        state.prepare_run(run_id, updated_at)
+    })
+}
+
+pub fn start_prepared_run_at_path(
+    path: impl AsRef<Path>,
+    run_id: &str,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    transition_run_at_path(path, run_id, |state, updated_at| {
+        state.start_prepared_run(run_id, updated_at)
+    })
+}
+
+pub fn complete_run_at_path(
+    path: impl AsRef<Path>,
+    run_id: &str,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    transition_run_at_path(path, run_id, |state, updated_at| {
+        state.complete_run(run_id, updated_at)
+    })
+}
+
+pub fn fail_run_at_path(
+    path: impl AsRef<Path>,
+    run_id: &str,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    transition_run_at_path(path, run_id, |state, updated_at| {
+        state.fail_run(run_id, updated_at)
+    })
+}
+
 pub fn create_agent_template_at_path(
     path: impl AsRef<Path>,
     request: CreateAgentTemplateRequest,
@@ -516,6 +552,20 @@ fn mutate_state_at_path(
     Ok(state)
 }
 
+fn transition_run_at_path(
+    path: impl AsRef<Path>,
+    run_id: &str,
+    transition: impl FnOnce(&mut AgentOsState, String) -> Result<(), StateMutationError>,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    let updated_at = current_unix_timestamp_string()?;
+    let state = mutate_state_at_path(path, |state| transition(state, updated_at))?;
+    if let Some(run) = state.runs.iter().find(|run| run.id == run_id) {
+        write_run_manifest(run)?;
+    }
+
+    Ok(runs_snapshot_from_state(&state))
+}
+
 fn write_run_manifest(run: &RunRecord) -> Result<(), DesktopCommandError> {
     let manifest_path = PathBuf::from(&run.manifest_path);
     let parent = manifest_path.parent().ok_or_else(|| {
@@ -563,8 +613,8 @@ mod tests {
         record_skill_source_sync_success_at_path, refresh_workspace_git_status_at_path,
         register_github_skill_source_at_path, runs_snapshot_at_path,
         set_agent_template_active_at_path, set_harness_profile_active_at_path,
-        skill_sources_snapshot_at_path, start_run_at_path, state_file_path,
-        update_agent_template_at_path, update_harness_profile_at_path,
+        skill_sources_snapshot_at_path, start_prepared_run_at_path, start_run_at_path,
+        state_file_path, update_agent_template_at_path, update_harness_profile_at_path,
         update_workspace_git_context_at_path, update_workspace_loadout_at_path,
         validate_skill_source_at_path, workspace_snapshot_at_path, STATE_FILE_NAME,
     };
@@ -879,6 +929,22 @@ mod tests {
             snapshot,
             runs_snapshot_at_path(&path).expect("runs snapshot should load")
         );
+
+        let running_snapshot =
+            start_prepared_run_at_path(&path, "run-1").expect("run should start through command");
+        assert_eq!(
+            running_snapshot.runs[0].status,
+            crate::core::runs::RunStatus::Running
+        );
+        assert_eq!(
+            running_snapshot.runs[0].participants[0].status,
+            crate::core::runs::RunParticipantStatus::Running
+        );
+        let manifest_json = fs::read_to_string(&running_snapshot.runs[0].manifest_path)
+            .expect("manifest should update");
+        let manifest: serde_json::Value =
+            serde_json::from_str(&manifest_json).expect("manifest should be valid json");
+        assert_eq!(manifest["participants"][0]["status"], "running");
     }
 
     #[test]

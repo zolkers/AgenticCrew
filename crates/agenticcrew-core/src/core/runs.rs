@@ -117,6 +117,8 @@ pub struct RunManifest {
 pub struct RunEvent {
     pub id: String,
     pub run_id: String,
+    #[serde(default)]
+    pub participant_id: Option<String>,
     pub level: RunEventLevel,
     pub message: String,
     pub created_at: String,
@@ -348,6 +350,7 @@ impl RunEvent {
             id: format!("{run_id}-event-1"),
             level: RunEventLevel::Info,
             message: message.into(),
+            participant_id: None,
             run_id: run_id.to_owned(),
         }
     }

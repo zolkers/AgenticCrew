@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { App } from "./App";
+import type { InvokeRuns } from "../shared/api/runsApi";
 import type {
   AgentStudioSnapshot,
   HarnessStudioSnapshot,
@@ -277,7 +278,7 @@ describe("App", () => {
         }
       ]
     };
-    const runsInvoke = (command: "runs_snapshot" | "start_run", args?: Record<string, unknown>) => {
+    const runsInvoke: InvokeRuns = (command, args) => {
       if (command === "start_run") {
         const request = args?.request as {
           id: string;
@@ -377,7 +378,7 @@ describe("App", () => {
   });
 
   it("keeps solo runs to one write participant", async () => {
-    const runsInvoke = (command: "runs_snapshot" | "start_run", args?: Record<string, unknown>) => {
+    const runsInvoke: InvokeRuns = (command, args) => {
       if (command === "start_run") {
         const request = args?.request as {
           id: string;
@@ -454,6 +455,209 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start run" }));
 
     expect(await screen.findByLabelText("Run event log")).toHaveTextContent("crew: developer implementation write");
+  });
+
+  it("moves a queued run through runtime controls", async () => {
+    const queuedRun = {
+      agentTemplateId: "developer-pi",
+      baseBranch: "dev",
+      createdAt: "preview",
+      harnessProfileId: "pi-execution-discipline",
+      id: "run-control",
+      manifestPath: "C:\\repo\\.agenticcrew\\runs\\run-control\\run-manifest.json",
+      modelId: "gpt-5",
+      participants: [
+        {
+          agentTemplateId: "developer-pi",
+          executionMode: "write" as const,
+          harnessProfileId: "pi-execution-discipline",
+          id: "developer",
+          modelId: "gpt-5",
+          providerId: "openai",
+          reasoningEffort: "medium" as const,
+          role: "implementation" as const,
+          skillRoutes: [],
+          status: "queued" as const
+        }
+      ],
+      providerId: "openai",
+      reasoningEffort: "medium" as const,
+      runBranch: "codex/run-control",
+      skillRoutes: [],
+      startedAt: null,
+      status: "queued" as const,
+      stoppedAt: null,
+      task: "Control runtime state",
+      updatedAt: "preview",
+      workspaceId: "fullstack-app",
+      worktreePath: "C:\\repo\\.agenticcrew\\runs\\run-control"
+    };
+    const transitionStatus = {
+      complete_run: "completed",
+      fail_run: "failed",
+      prepare_run: "preparing",
+      start_prepared_run: "running"
+    } as const;
+    const eventsByCommand = {
+      complete_run: "Run completed",
+      fail_run: "Run failed",
+      prepare_run: "Run preparing",
+      start_prepared_run: "Run running"
+    } as const;
+    const runsInvoke: InvokeRuns = (command, args) => {
+      if (command in transitionStatus) {
+        expect(args).toEqual({ runId: "run-control" });
+        const status = transitionStatus[command as keyof typeof transitionStatus];
+
+        return Promise.resolve({
+          activeRunId: "run-control",
+          events: [
+            {
+              createdAt: "preview",
+              id: "run-control-event-2",
+              level: "info" as const,
+              message: eventsByCommand[command as keyof typeof eventsByCommand],
+              participantId: null,
+              runId: "run-control"
+            }
+          ],
+          runs: [
+            {
+              ...queuedRun,
+              participants: queuedRun.participants.map((participant) => ({
+                ...participant,
+                status
+              })),
+              status
+            }
+          ]
+        });
+      }
+
+      return Promise.resolve({
+        activeRunId: "run-control",
+        events: [],
+        runs: [queuedRun]
+      });
+    };
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        runsInvoke={runsInvoke}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Prepare" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("preparing").length).toBeGreaterThan(0);
+    });
+    expect(screen.getByLabelText("Run event log")).toHaveTextContent("Run preparing");
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    await waitFor(() => {
+      expect(screen.getAllByText("running").length).toBeGreaterThan(0);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+    await waitFor(() => {
+      expect(screen.getAllByText("completed").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("can fail a preparing run from runtime controls", async () => {
+    const preparingRun = {
+      agentTemplateId: "developer-pi",
+      baseBranch: "dev",
+      createdAt: "preview",
+      harnessProfileId: "pi-execution-discipline",
+      id: "run-fail-control",
+      manifestPath: "C:\\repo\\.agenticcrew\\runs\\run-fail-control\\run-manifest.json",
+      modelId: "gpt-5",
+      participants: [
+        {
+          agentTemplateId: "developer-pi",
+          executionMode: "write" as const,
+          harnessProfileId: "pi-execution-discipline",
+          id: "developer",
+          modelId: "gpt-5",
+          providerId: "openai",
+          reasoningEffort: "medium" as const,
+          role: "implementation" as const,
+          skillRoutes: [],
+          status: "preparing" as const
+        }
+      ],
+      providerId: "openai",
+      reasoningEffort: "medium" as const,
+      runBranch: "codex/run-fail-control",
+      skillRoutes: [],
+      startedAt: null,
+      status: "preparing" as const,
+      stoppedAt: null,
+      task: "Fail runtime state",
+      updatedAt: "preview",
+      workspaceId: "fullstack-app",
+      worktreePath: "C:\\repo\\.agenticcrew\\runs\\run-fail-control"
+    };
+    const runsInvoke: InvokeRuns = (command, args) => {
+      if (command === "fail_run") {
+        expect(args).toEqual({ runId: "run-fail-control" });
+
+        return Promise.resolve({
+          activeRunId: "run-fail-control",
+          events: [
+            {
+              createdAt: "preview",
+              id: "run-fail-control-event-2",
+              level: "info" as const,
+              message: "Run failed",
+              participantId: null,
+              runId: "run-fail-control"
+            }
+          ],
+          runs: [
+            {
+              ...preparingRun,
+              participants: preparingRun.participants.map((participant) => ({
+                ...participant,
+                status: "failed" as const
+              })),
+              status: "failed" as const
+            }
+          ]
+        });
+      }
+
+      return Promise.resolve({
+        activeRunId: "run-fail-control",
+        events: [],
+        runs: [preparingRun]
+      });
+    };
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        runsInvoke={runsInvoke}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Fail" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("failed").length).toBeGreaterThan(0);
+    });
+    expect(screen.getByLabelText("Run event log")).toHaveTextContent("Run failed");
   });
 
   it("switches workspace from the cockpit dropdown and updates visible agent context", async () => {

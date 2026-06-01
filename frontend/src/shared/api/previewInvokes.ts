@@ -634,6 +634,57 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
     };
   }
 
+  if (
+    command === "prepare_run" ||
+    command === "start_prepared_run" ||
+    command === "complete_run" ||
+    command === "fail_run"
+  ) {
+    const request = args as { runId?: string } | undefined;
+    const runId = request?.runId;
+    const nextStatusByCommand = {
+      complete_run: "completed",
+      fail_run: "failed",
+      prepare_run: "preparing",
+      start_prepared_run: "running"
+    } as const;
+    const nextStatus = nextStatusByCommand[command];
+    const updatedAt = "preview";
+
+    currentPreviewRunsSnapshot = {
+      activeRunId: runId ?? currentPreviewRunsSnapshot.activeRunId,
+      events: [
+        ...currentPreviewRunsSnapshot.events,
+        ...(runId === undefined
+          ? []
+          : [
+              {
+                createdAt: updatedAt,
+                id: `${runId}-event-${String(currentPreviewRunsSnapshot.events.length + 1)}`,
+                level: "info" as const,
+                message: `Run ${nextStatus}`,
+                runId
+              }
+            ])
+      ],
+      runs: currentPreviewRunsSnapshot.runs.map((run) =>
+        run.id === runId
+          ? {
+              ...run,
+              participants: run.participants.map((participant) => ({
+                ...participant,
+                status: nextStatus
+              })),
+              startedAt: command === "start_prepared_run" ? updatedAt : run.startedAt,
+              status: nextStatus,
+              stoppedAt: command === "complete_run" || command === "fail_run" ? updatedAt : run.stoppedAt,
+              updatedAt
+            }
+          : run
+      )
+    };
+  }
+
   return Promise.resolve(currentPreviewRunsSnapshot);
 };
 

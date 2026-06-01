@@ -257,6 +257,26 @@ describe("previewInvokes", () => {
     });
   });
 
+  it("updates preview run lifecycle status", async () => {
+    await previewRunsInvoke("start_run", {
+      request: {
+        id: "lifecycle-preview",
+        task: "Exercise lifecycle",
+        workspaceId: "fullstack-app"
+      }
+    });
+
+    const snapshot = await previewRunsInvoke("prepare_run", { runId: "lifecycle-preview" });
+
+    expect(snapshot.runs.find((run) => run.id === "lifecycle-preview")).toMatchObject({
+      participants: [expect.objectContaining({ status: "preparing" })],
+      status: "preparing"
+    });
+    expect(snapshot.events).toEqual(
+      expect.arrayContaining([expect.objectContaining({ message: "Run preparing" })])
+    );
+  });
+
   it("mutates preview skill source workflow state", async () => {
     await previewSkillSourcesInvoke("register_github_skill_source", {
       request: {
