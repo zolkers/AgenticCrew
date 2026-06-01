@@ -21,8 +21,8 @@ use super::{
         ImportPiExtensionRequest, PiExtension, PiExtensionError, SetPiExtensionActiveRequest,
     },
     runs::{
-        RunError, RunEvent, RunEventLevel, RunParticipantStatus, RunRecord, RunStatus,
-        StartRunRequest,
+        RecordRunCommandRequest, RunCommandRecord, RunError, RunEvent, RunEventLevel,
+        RunParticipantStatus, RunRecord, RunStatus, StartRunRequest,
     },
     sessions::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
@@ -73,6 +73,8 @@ pub struct AgentOsState {
     #[serde(default)]
     pub runs: Vec<RunRecord>,
     #[serde(default)]
+    pub run_commands: Vec<RunCommandRecord>,
+    #[serde(default)]
     pub run_events: Vec<RunEvent>,
 }
 
@@ -95,6 +97,7 @@ impl AgentOsState {
             desktop_settings: DesktopSettings::default(),
             workspaces: WorkspaceRecord::built_in_workspaces(),
             runs: Vec::new(),
+            run_commands: Vec::new(),
             run_events: Vec::new(),
         }
     }
@@ -861,6 +864,48 @@ impl AgentOsState {
         )
     }
 
+    pub fn record_run_command(
+        &mut self,
+        request: RecordRunCommandRequest,
+        created_at: String,
+    ) -> Result<(), StateMutationError> {
+        let run = self
+            .runs
+            .iter()
+            .find(|run| run.id == request.run_id)
+            .ok_or_else(|| StateMutationError::MissingRun {
+                run_id: request.run_id.clone(),
+            })?;
+        if !run
+            .participants
+            .iter()
+            .any(|participant| participant.id == request.participant_id)
+        {
+            return Err(StateMutationError::MissingRunParticipant {
+                run_id: request.run_id,
+                participant_id: request.participant_id,
+            });
+        }
+
+        let command_index = self
+            .run_commands
+            .iter()
+            .filter(|command| command.run_id == run.id)
+            .count()
+            + 1;
+        let command_id = format!("{}-command-{command_index}", run.id);
+        let command = RunCommandRecord::recorded(command_id, request, created_at.clone())
+            .map_err(StateMutationError::InvalidRun)?;
+        let message = format!("Command '{}' exited {}", command.command, command.exit_code);
+        let run_id = command.run_id.clone();
+        let participant_id = command.participant_id.clone();
+
+        self.run_commands.push(command);
+        self.push_run_event(&run_id, Some(&participant_id), message, created_at);
+
+        Ok(())
+    }
+
     fn transition_run(
         &mut self,
         run_id: &str,
@@ -1032,6 +1077,10 @@ pub enum StateMutationError {
     MissingRun {
         run_id: String,
     },
+    MissingRunParticipant {
+        run_id: String,
+        participant_id: String,
+    },
     InvalidSkillSource(SkillSourceError),
     InvalidHarnessProfile(HarnessProfileError),
     InvalidPiExtension(PiExtensionError),
@@ -1120,6 +1169,15 @@ impl fmt::Display for StateMutationError {
             }
             StateMutationError::MissingRun { run_id } => {
                 write!(formatter, "run '{run_id}' does not exist")
+            }
+            StateMutationError::MissingRunParticipant {
+                run_id,
+                participant_id,
+            } => {
+                write!(
+                    formatter,
+                    "participant '{participant_id}' does not exist in run '{run_id}'"
+                )
             }
             StateMutationError::InvalidSkillSource(error) => {
                 write!(formatter, "invalid skill source: {error}")
@@ -1324,8 +1382,9 @@ mod tests {
         },
         pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
         runs::{
-            RunParticipantExecutionMode, RunParticipantRequest, RunParticipantRole,
-            RunParticipantStatus, RunStatus, StartRunRequest,
+            RecordRunCommandRequest, RunCommandStatus, RunParticipantExecutionMode,
+            RunParticipantRequest, RunParticipantRole, RunParticipantStatus, RunStatus,
+            StartRunRequest,
         },
         sessions::{
             Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
@@ -1964,6 +2023,99 @@ mod tests {
             .iter()
             .any(|event| event.participant_id.as_deref() == Some("developer")
                 && event.message == "Participant developer completed"));
+    }
+
+    #[test]
+    fn record_run_command_stores_participant_scoped_evidence() {
+        let mut state = AgentOsState::empty();
+        state
+            .start_run(
+                StartRunRequest {
+                    agent_template_id: Some("developer-pi".to_owned()),
+                    harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                    id: "crew-run".to_owned(),
+                    model_id: None,
+                    participants: Vec::new(),
+                    provider_id: None,
+                    reasoning_effort: None,
+                    skill_routes: Vec::new(),
+                    task: "Build with audited commands".to_owned(),
+                    workspace_id: "fullstack-app".to_owned(),
+                },
+                "123".to_owned(),
+            )
+            .expect("run should queue");
+
+        state
+            .record_run_command(
+                RecordRunCommandRequest {
+                    command: "npm test".to_owned(),
+                    cwd: "C:\\repo".to_owned(),
+                    exit_code: 0,
+                    participant_id: "developer".to_owned(),
+                    run_id: "crew-run".to_owned(),
+                    stderr: String::new(),
+                    stdout: "ok".to_owned(),
+                },
+                "124".to_owned(),
+            )
+            .expect("command should record");
+
+        assert_eq!(state.run_commands.len(), 1);
+        assert_eq!(state.run_commands[0].id, "crew-run-command-1");
+        assert_eq!(state.run_commands[0].participant_id, "developer");
+        assert_eq!(state.run_commands[0].status, RunCommandStatus::Succeeded);
+        assert_eq!(state.run_commands[0].stdout, "ok");
+        assert!(state
+            .run_events
+            .iter()
+            .any(|event| event.participant_id.as_deref() == Some("developer")
+                && event.message == "Command 'npm test' exited 0"));
+    }
+
+    #[test]
+    fn record_run_command_rejects_unknown_participant() {
+        let mut state = AgentOsState::empty();
+        state
+            .start_run(
+                StartRunRequest {
+                    agent_template_id: Some("developer-pi".to_owned()),
+                    harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                    id: "crew-run".to_owned(),
+                    model_id: None,
+                    participants: Vec::new(),
+                    provider_id: None,
+                    reasoning_effort: None,
+                    skill_routes: Vec::new(),
+                    task: "Build with audited commands".to_owned(),
+                    workspace_id: "fullstack-app".to_owned(),
+                },
+                "123".to_owned(),
+            )
+            .expect("run should queue");
+
+        let error = state
+            .record_run_command(
+                RecordRunCommandRequest {
+                    command: "npm test".to_owned(),
+                    cwd: "C:\\repo".to_owned(),
+                    exit_code: 0,
+                    participant_id: "reviewer".to_owned(),
+                    run_id: "crew-run".to_owned(),
+                    stderr: String::new(),
+                    stdout: "ok".to_owned(),
+                },
+                "124".to_owned(),
+            )
+            .expect_err("unknown participant should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::MissingRunParticipant {
+                participant_id: "reviewer".to_owned(),
+                run_id: "crew-run".to_owned()
+            }
+        );
     }
 
     #[test]
@@ -2663,6 +2815,7 @@ mod tests {
             desktop_settings: DesktopSettings::default(),
             workspaces: WorkspaceRecord::built_in_workspaces(),
             runs: Vec::new(),
+            run_commands: Vec::new(),
             run_events: Vec::new(),
         }
     }

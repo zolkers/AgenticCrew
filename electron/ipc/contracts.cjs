@@ -13,6 +13,7 @@ const COMMANDS = new Set([
   "start_prepared_run",
   "complete_run",
   "fail_run",
+  "record_run_command",
   "skill_sources_snapshot",
   "harness_studio_snapshot",
   "create_harness_profile",

@@ -18,7 +18,7 @@ use agenticcrew_core::{
     },
     core::permissions::ApprovedPermissionPolicy,
     core::pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
-    core::runs::StartRunRequest,
+    core::runs::{RecordRunCommandRequest, StartRunRequest},
     core::settings::{
         AiModelRecord, ProviderModelCatalog, ProviderModelCatalogError, SyncProviderModelsRequest,
         UpdateAiProviderSettingsRequest,
@@ -32,14 +32,14 @@ use agenticcrew_core::{
     fail_run_at_path, harness_studio_snapshot_at_path, import_pi_extension_at_path,
     inspect_cached_skill_source_at_path, mission_control_snapshot_at_path, prepare_run_at_path,
     promote_agent_training_run_at_path, record_model_call_estimate_at_path,
-    refresh_workspace_git_status_at_path, register_github_skill_source_at_path,
-    runs_snapshot_at_path, set_agent_template_active_at_path, set_harness_profile_active_at_path,
-    set_pi_extension_active_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
-    start_prepared_run_at_path, start_run_at_path, sync_github_skill_source_at_path,
-    sync_provider_models_at_path_with_catalog, update_agent_template_at_path,
-    update_ai_provider_settings_at_path, update_harness_profile_at_path,
-    update_workspace_git_context_at_path, update_workspace_loadout_at_path,
-    workspace_snapshot_at_path, DesktopCommandError,
+    record_run_command_at_path, refresh_workspace_git_status_at_path,
+    register_github_skill_source_at_path, runs_snapshot_at_path, set_agent_template_active_at_path,
+    set_harness_profile_active_at_path, set_pi_extension_active_at_path, settings_snapshot_at_path,
+    skill_sources_snapshot_at_path, start_prepared_run_at_path, start_run_at_path,
+    sync_github_skill_source_at_path, sync_provider_models_at_path_with_catalog,
+    update_agent_template_at_path, update_ai_provider_settings_at_path,
+    update_harness_profile_at_path, update_workspace_git_context_at_path,
+    update_workspace_loadout_at_path, workspace_snapshot_at_path, DesktopCommandError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -269,6 +269,12 @@ struct RunIdArgs {
     run_id: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RecordRunCommandArgs {
+    request: RecordRunCommandRequest,
+}
+
 fn main() {
     if let Err(error) = run() {
         print_error(error);
@@ -386,6 +392,11 @@ fn run() -> Result<(), DesktopCommandError> {
             let args = parse_args::<RunIdArgs>(&args_json)?;
 
             print_json(&fail_run_at_path(state_path, &args.run_id)?)
+        }
+        "record_run_command" => {
+            let args = parse_args::<RecordRunCommandArgs>(&args_json)?;
+
+            print_json(&record_run_command_at_path(state_path, args.request)?)
         }
         "skill_sources_snapshot" => print_json(&skill_sources_snapshot_at_path(state_path)?),
         "harness_studio_snapshot" => print_json(&harness_studio_snapshot_at_path(state_path)?),

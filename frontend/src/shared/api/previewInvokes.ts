@@ -66,6 +66,7 @@ const previewWorkspaceSnapshot: WorkspaceSnapshot = {
 
 const previewRunsSnapshot: RunsSnapshot = {
   activeRunId: null,
+  commands: [],
   events: [],
   runs: []
 };
@@ -620,6 +621,7 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
 
     currentPreviewRunsSnapshot = {
       activeRunId: runId,
+      commands: currentPreviewRunsSnapshot.commands,
       events: [
         ...currentPreviewRunsSnapshot.events,
         {
@@ -653,6 +655,7 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
 
     currentPreviewRunsSnapshot = {
       activeRunId: runId ?? currentPreviewRunsSnapshot.activeRunId,
+      commands: currentPreviewRunsSnapshot.commands,
       events: [
         ...currentPreviewRunsSnapshot.events,
         ...(runId === undefined
@@ -682,6 +685,52 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
             }
           : run
       )
+    };
+  }
+
+  if (command === "record_run_command") {
+    const request = args?.request as
+      | {
+          command?: string;
+          cwd?: string;
+          exitCode?: number;
+          participantId?: string;
+          runId?: string;
+          stderr?: string;
+          stdout?: string;
+        }
+      | undefined;
+    const runId = request?.runId ?? currentPreviewRunsSnapshot.activeRunId ?? "preview-run";
+    const command = request?.command ?? "agenticcrew runtime check";
+    const exitCode = request?.exitCode ?? 0;
+    const commandRecord = {
+      command,
+      createdAt: "preview",
+      cwd: request?.cwd ?? "preview",
+      exitCode,
+      id: `${runId}-command-${String(currentPreviewRunsSnapshot.commands.length + 1)}`,
+      participantId: request?.participantId ?? "developer",
+      runId,
+      status: exitCode === 0 ? "succeeded" as const : "failed" as const,
+      stderr: request?.stderr ?? "",
+      stdout: request?.stdout ?? ""
+    };
+
+    currentPreviewRunsSnapshot = {
+      ...currentPreviewRunsSnapshot,
+      activeRunId: runId,
+      commands: [...currentPreviewRunsSnapshot.commands, commandRecord],
+      events: [
+        ...currentPreviewRunsSnapshot.events,
+        {
+          createdAt: "preview",
+          id: `${runId}-event-${String(currentPreviewRunsSnapshot.events.length + 1)}`,
+          level: "info",
+          message: `Command '${command}' exited ${String(exitCode)}`,
+          participantId: commandRecord.participantId,
+          runId
+        }
+      ]
     };
   }
 

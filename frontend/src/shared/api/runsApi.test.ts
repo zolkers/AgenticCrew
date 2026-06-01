@@ -4,6 +4,7 @@ import {
   failRun,
   loadRunsSnapshot,
   prepareRun,
+  recordRunCommand,
   startPreparedRun,
   startRun,
   type InvokeRuns
@@ -13,12 +14,14 @@ describe("runsApi", () => {
   it("loads the runs snapshot", async () => {
     const invoke = vi.fn<InvokeRuns>().mockResolvedValue({
       activeRunId: null,
+      commands: [],
       events: [],
       runs: []
     });
 
     await expect(loadRunsSnapshot(invoke)).resolves.toEqual({
       activeRunId: null,
+      commands: [],
       events: [],
       runs: []
     });
@@ -28,6 +31,7 @@ describe("runsApi", () => {
   it("starts a run with a request payload", async () => {
     const invoke = vi.fn<InvokeRuns>().mockResolvedValue({
       activeRunId: "run-1",
+      commands: [],
       events: [],
       runs: []
     });
@@ -62,6 +66,7 @@ describe("runsApi", () => {
   it("sends run lifecycle commands with the run id", async () => {
     const invoke = vi.fn<InvokeRuns>().mockResolvedValue({
       activeRunId: "run-1",
+      commands: [],
       events: [],
       runs: []
     });
@@ -75,5 +80,36 @@ describe("runsApi", () => {
     expect(invoke).toHaveBeenNthCalledWith(2, "start_prepared_run", { runId: "run-1" });
     expect(invoke).toHaveBeenNthCalledWith(3, "complete_run", { runId: "run-1" });
     expect(invoke).toHaveBeenNthCalledWith(4, "fail_run", { runId: "run-1" });
+  });
+
+  it("records audited run command evidence", async () => {
+    const invoke = vi.fn<InvokeRuns>().mockResolvedValue({
+      activeRunId: "run-1",
+      commands: [],
+      events: [],
+      runs: []
+    });
+
+    await recordRunCommand(invoke, {
+      command: "npm test",
+      cwd: "C:\\repo",
+      exitCode: 0,
+      participantId: "developer",
+      runId: "run-1",
+      stderr: "",
+      stdout: "ok"
+    });
+
+    expect(invoke).toHaveBeenCalledWith("record_run_command", {
+      request: {
+        command: "npm test",
+        cwd: "C:\\repo",
+        exitCode: 0,
+        participantId: "developer",
+        runId: "run-1",
+        stderr: "",
+        stdout: "ok"
+      }
+    });
   });
 });

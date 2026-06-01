@@ -171,6 +171,7 @@ const settingsInvoke = () => Promise.resolve(settingsSnapshot);
 
 const runsSnapshot: RunsSnapshot = {
   activeRunId: null,
+  commands: [],
   events: [],
   runs: []
 };
@@ -298,6 +299,7 @@ describe("App", () => {
 
         return Promise.resolve({
           activeRunId: request.id,
+          commands: [],
           events: [
             {
               createdAt: "preview",
@@ -395,6 +397,7 @@ describe("App", () => {
 
         return Promise.resolve({
           activeRunId: request.id,
+          commands: [],
           events: [],
           runs: [
             {
@@ -511,6 +514,7 @@ describe("App", () => {
 
         return Promise.resolve({
           activeRunId: "run-control",
+          commands: [],
           events: [
             {
               createdAt: "preview",
@@ -534,8 +538,52 @@ describe("App", () => {
         });
       }
 
+      if (command === "record_run_command") {
+        expect(args).toEqual({
+          request: {
+            command: "agenticcrew runtime check",
+            cwd: "C:\\repo\\.agenticcrew\\runs\\run-control",
+            exitCode: 0,
+            participantId: "developer",
+            runId: "run-control",
+            stderr: "",
+            stdout: "runtime check passed"
+          }
+        });
+
+        return Promise.resolve({
+          activeRunId: "run-control",
+          commands: [
+            {
+              command: "agenticcrew runtime check",
+              createdAt: "preview",
+              cwd: "C:\\repo\\.agenticcrew\\runs\\run-control",
+              exitCode: 0,
+              id: "run-control-command-1",
+              participantId: "developer",
+              runId: "run-control",
+              status: "succeeded" as const,
+              stderr: "",
+              stdout: "runtime check passed"
+            }
+          ],
+          events: [],
+          runs: [
+            {
+              ...queuedRun,
+              participants: queuedRun.participants.map((participant) => ({
+                ...participant,
+                status: "running" as const
+              })),
+              status: "running" as const
+            }
+          ]
+        });
+      }
+
       return Promise.resolve({
         activeRunId: "run-control",
+        commands: [],
         events: [],
         runs: [queuedRun]
       });
@@ -563,6 +611,9 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getAllByText("running").length).toBeGreaterThan(0);
     });
+    fireEvent.click(screen.getByRole("button", { name: "Record check" }));
+    expect(await screen.findByLabelText("Run command evidence")).toHaveTextContent("agenticcrew runtime check");
+    expect(screen.getByLabelText("Run command evidence")).toHaveTextContent("succeeded");
     fireEvent.click(screen.getByRole("button", { name: "Complete" }));
     await waitFor(() => {
       expect(screen.getAllByText("completed").length).toBeGreaterThan(0);
@@ -610,6 +661,7 @@ describe("App", () => {
 
         return Promise.resolve({
           activeRunId: "run-fail-control",
+          commands: [],
           events: [
             {
               createdAt: "preview",
@@ -635,6 +687,7 @@ describe("App", () => {
 
       return Promise.resolve({
         activeRunId: "run-fail-control",
+        commands: [],
         events: [],
         runs: [preparingRun]
       });

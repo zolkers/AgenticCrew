@@ -540,6 +540,7 @@ mod tests {
             desktop_settings: Default::default(),
             workspaces: Vec::new(),
             runs: Vec::new(),
+            run_commands: Vec::new(),
             run_events: Vec::new(),
         }
     }

@@ -277,6 +277,59 @@ describe("previewInvokes", () => {
     );
   });
 
+  it("records preview run command evidence", async () => {
+    await previewRunsInvoke("start_run", {
+      request: {
+        id: "command-preview",
+        task: "Exercise command evidence",
+        workspaceId: "fullstack-app"
+      }
+    });
+
+    const snapshot = await previewRunsInvoke("record_run_command", {
+      request: {
+        command: "npm test",
+        cwd: "C:\\repo",
+        exitCode: 0,
+        participantId: "developer",
+        runId: "command-preview",
+        stderr: "",
+        stdout: "ok"
+      }
+    });
+
+    expect(snapshot.commands).toEqual([
+      expect.objectContaining({
+        command: "npm test",
+        participantId: "developer",
+        runId: "command-preview",
+        status: "succeeded"
+      })
+    ]);
+    expect(snapshot.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: "Command 'npm test' exited 0",
+          participantId: "developer"
+        })
+      ])
+    );
+  });
+
+  it("records preview command evidence with default args", async () => {
+    const snapshot = await previewRunsInvoke("record_run_command");
+
+    expect(snapshot.activeRunId).toBe("preview-run");
+    expect(snapshot.commands).toEqual([
+      expect.objectContaining({
+        command: "agenticcrew runtime check",
+        participantId: "developer",
+        runId: "preview-run",
+        status: "succeeded"
+      })
+    ]);
+  });
+
   it("mutates preview skill source workflow state", async () => {
     await previewSkillSourcesInvoke("register_github_skill_source", {
       request: {
@@ -310,6 +363,17 @@ describe("previewInvokes", () => {
           status: "validated"
         }
       ]
+    });
+  });
+
+  it("ignores preview skill source commands without matching args", async () => {
+    await expect(previewSkillSourcesInvoke("approve_skill_source_permissions")).resolves.toBeUndefined();
+    await expect(previewSkillSourcesInvoke("inspect_cached_skill_source")).resolves.toBeUndefined();
+    await expect(previewSkillSourcesInvoke("activate_skill_source")).resolves.toBeUndefined();
+
+    await expect(previewSkillSourcesInvoke("skill_sources_snapshot")).resolves.toMatchObject({
+      activeSourceCount: 0,
+      sources: [expect.objectContaining({ id: "preview-superpowers" })]
     });
   });
 

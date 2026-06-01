@@ -21,6 +21,7 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - Multi-provider AI configuration: OpenAI and Gemini are exposed through a shared provider registry, model pickers are provider-aware, and settings/agents/runs persist `low`, `medium`, or `high` thinking effort.
 - Crew-oriented run records: queued runs now persist participants in the Rust-owned run manifest, and the cockpit can launch Solo or Crew mode with developer/reviewer participant scopes.
 - Crew runtime lifecycle controls: run records can move through preparing, running, completed, and failed states through Rust/Electron commands while updating participant statuses, runtime events, and the run manifest.
+- Audited run command evidence: the Rust runtime snapshot now records participant-scoped command results with cwd, stdout/stderr, exit code, status, and timeline events, exposed through Electron and the cockpit.
 
 **Next focus:**
 - Multi-agent runtime execution: replace preview-only browser data with sidecar-backed crew manifests, isolated participant worktrees, live per-agent event streams, pause/resume/kill controls, and audited command execution.
@@ -192,7 +193,7 @@ Completed on `dev`:
 10. Add mission-level skill selection to queued runs.
 11. Add OpenAI/Gemini provider selection and persisted thinking effort across settings, agents, and run launch.
 
-Next tranche: crew-aware runtime execution, controlled command execution, per-agent event streaming, and progressive removal of preview-only data from desktop runtime paths. Git commit preview and durable run manifests are the first completed slices of this runtime-backed replacement work.
+Next tranche: controlled command execution that launches sandboxed processes from the sidecar, per-agent event streaming, pause/resume/kill controls, and progressive removal of preview-only data from desktop runtime paths. Git commit preview, durable run manifests, lifecycle controls, and audited command records are the first completed slices of this runtime-backed replacement work.
 
 ## Task Roadmap
 

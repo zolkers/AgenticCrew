@@ -1441,6 +1441,52 @@ button {
   color: inherit;
 }
 
+.run-command-evidence {
+  margin: 0.75rem 0;
+  padding: 0.7rem;
+  border: 1px solid rgba(173, 183, 195, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.run-command-evidence h4 {
+  margin: 0 0 0.55rem;
+  color: #f3f6fa;
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.run-command-evidence ul {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.run-command-evidence li {
+  display: grid;
+  grid-template-columns: minmax(5rem, 0.8fr) minmax(0, 1.7fr) auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 2rem;
+  color: #d4f8e8;
+}
+
+.run-command-evidence strong,
+.run-command-evidence small,
+.run-command-evidence span {
+  color: #b8c5d1;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+}
+
+.run-command-evidence strong {
+  color: var(--color-teal);
+}
+
 .command-bar {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

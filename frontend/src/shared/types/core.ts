@@ -235,6 +235,31 @@ export type RunParticipant = {
 
 export type RunParticipantRequest = Omit<RunParticipant, "status">;
 
+export type RunCommandStatus = "failed" | "succeeded";
+
+export type RunCommandRecord = {
+  command: string;
+  createdAt: string;
+  cwd: string;
+  exitCode: number;
+  id: string;
+  participantId: string;
+  runId: string;
+  status: RunCommandStatus;
+  stderr: string;
+  stdout: string;
+};
+
+export type RecordRunCommandRequest = {
+  command: string;
+  cwd: string;
+  exitCode: number;
+  participantId: string;
+  runId: string;
+  stderr: string;
+  stdout: string;
+};
+
 export type RunRecord = {
   agentTemplateId?: string | null;
   baseBranch: string;
@@ -270,6 +295,7 @@ export type RunEvent = {
 
 export type RunsSnapshot = {
   activeRunId?: string | null;
+  commands: RunCommandRecord[];
   events: RunEvent[];
   runs: RunRecord[];
 };
@@ -633,6 +659,7 @@ export type ElectronCommandMap = {
   inspect_cached_skill_source: unknown;
   mission_control_snapshot: MissionControlSnapshot;
   promote_agent_training_run: AgentStudioSnapshot;
+  record_run_command: RunsSnapshot;
   record_model_call_estimate: MissionControlSnapshot;
   refresh_workspace_git_status: WorkspaceSnapshot;
   register_github_skill_source: unknown;

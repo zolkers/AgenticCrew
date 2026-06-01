@@ -20,7 +20,9 @@ use core::{
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
     permissions::ApprovedPermissionPolicy,
     pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
-    runs::{runs_snapshot_from_state, RunRecord, RunsSnapshot, StartRunRequest},
+    runs::{
+        runs_snapshot_from_state, RecordRunCommandRequest, RunRecord, RunsSnapshot, StartRunRequest,
+    },
     settings::{
         settings_snapshot_from_state, sync_provider_models_with_catalog, ProviderModelCatalog,
         SettingsSnapshot, SyncProviderModelsRequest, UpdateAiProviderSettingsRequest,
@@ -259,6 +261,16 @@ pub fn fail_run_at_path(
     transition_run_at_path(path, run_id, |state, updated_at| {
         state.fail_run(run_id, updated_at)
     })
+}
+
+pub fn record_run_command_at_path(
+    path: impl AsRef<Path>,
+    request: RecordRunCommandRequest,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    let created_at = current_unix_timestamp_string()?;
+    let state = mutate_state_at_path(path, |state| state.record_run_command(request, created_at))?;
+
+    Ok(runs_snapshot_from_state(&state))
 }
 
 pub fn create_agent_template_at_path(
@@ -610,11 +622,12 @@ mod tests {
         harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
         mission_control_snapshot_at_path, promote_agent_training_run_at_path,
         record_command_evidence_at_path, record_model_call_estimate_at_path,
-        record_skill_source_sync_success_at_path, refresh_workspace_git_status_at_path,
-        register_github_skill_source_at_path, runs_snapshot_at_path,
-        set_agent_template_active_at_path, set_harness_profile_active_at_path,
-        skill_sources_snapshot_at_path, start_prepared_run_at_path, start_run_at_path,
-        state_file_path, update_agent_template_at_path, update_harness_profile_at_path,
+        record_run_command_at_path, record_skill_source_sync_success_at_path,
+        refresh_workspace_git_status_at_path, register_github_skill_source_at_path,
+        runs_snapshot_at_path, set_agent_template_active_at_path,
+        set_harness_profile_active_at_path, skill_sources_snapshot_at_path,
+        start_prepared_run_at_path, start_run_at_path, state_file_path,
+        update_agent_template_at_path, update_harness_profile_at_path,
         update_workspace_git_context_at_path, update_workspace_loadout_at_path,
         validate_skill_source_at_path, workspace_snapshot_at_path, STATE_FILE_NAME,
     };
@@ -633,7 +646,7 @@ mod tests {
             ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
             NetworkPermissionScope,
         },
-        runs::StartRunRequest,
+        runs::{RecordRunCommandRequest, RunCommandStatus, StartRunRequest},
         sessions::GoalObject,
         settings::ReasoningEffort,
         skills::RegisterGitHubSkillSourceRequest,
@@ -945,6 +958,30 @@ mod tests {
         let manifest: serde_json::Value =
             serde_json::from_str(&manifest_json).expect("manifest should be valid json");
         assert_eq!(manifest["participants"][0]["status"], "running");
+
+        let command_snapshot = record_run_command_at_path(
+            &path,
+            RecordRunCommandRequest {
+                command: "npm test".to_owned(),
+                cwd: workspace_path.display().to_string(),
+                exit_code: 0,
+                participant_id: "developer".to_owned(),
+                run_id: "run-1".to_owned(),
+                stderr: String::new(),
+                stdout: "ok".to_owned(),
+            },
+        )
+        .expect("run command should record");
+        assert_eq!(command_snapshot.commands.len(), 1);
+        assert_eq!(
+            command_snapshot.commands[0].status,
+            RunCommandStatus::Succeeded
+        );
+        assert_eq!(command_snapshot.commands[0].stdout, "ok");
+        assert_eq!(
+            command_snapshot,
+            runs_snapshot_at_path(&path).expect("runs snapshot should include commands")
+        );
     }
 
     #[test]

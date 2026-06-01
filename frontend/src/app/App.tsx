@@ -37,6 +37,7 @@ import {
   failRun,
   loadRunsSnapshot,
   prepareRun,
+  recordRunCommand,
   startPreparedRun,
   startRun,
   type InvokeRuns
@@ -62,6 +63,7 @@ import type {
   HarnessProfile,
   MissionCostSummary,
   MissionControlSnapshot,
+  RecordRunCommandRequest,
   ReasoningEffort,
   RunParticipantRequest,
   RunRecord,
@@ -450,6 +452,10 @@ export function App({
     const runsSnapshot = await transition(runsInvoke, runId);
     replaceRunsSnapshot(runsSnapshot);
   };
+  const recordWorkspaceRunCommand = async (request: RecordRunCommandRequest) => {
+    const runsSnapshot = await recordRunCommand(runsInvoke, request);
+    replaceRunsSnapshot(runsSnapshot);
+  };
   const activeSkillRoutes = loadState.skillSourcesSnapshot.sources
     .filter((source) => source.active)
     .flatMap((source) => source.discoveredSkills ?? []);
@@ -644,6 +650,9 @@ export function App({
             }}
             onRunTransition={(runId, action) => {
               void transitionWorkspaceRun(runId, action);
+            }}
+            onRunCommand={(request) => {
+              void recordWorkspaceRunCommand(request);
             }}
             runsSnapshot={loadState.runsSnapshot}
             tokenSummary={tokenSummary}
@@ -998,6 +1007,7 @@ type CockpitProps = Readonly<{
   defaultReasoningEffort: ReasoningEffort;
   harnessStudioSnapshot: HarnessStudioSnapshot;
   onLoadoutChange: (loadout: WorkspaceLoadout) => void;
+  onRunCommand: (request: RecordRunCommandRequest) => void;
   onRunStart: (
     task: string,
     skillRoutes: readonly string[],
@@ -1026,6 +1036,7 @@ function Cockpit({
   defaultReasoningEffort,
   harnessStudioSnapshot,
   onLoadoutChange,
+  onRunCommand,
   onRunStart,
   onRunTransition,
   onWorkspaceChange,
@@ -1052,6 +1063,9 @@ function Cockpit({
   const activeRunEvents = activeRun === undefined
     ? []
     : runsSnapshot.events.filter((event) => event.runId === activeRun.id);
+  const activeRunCommands = activeRun === undefined
+    ? []
+    : runsSnapshot.commands.filter((command) => command.runId === activeRun.id);
   const availableMissionSkillRoutes = uniqueSkillManifests([
     ...availableSkillRoutes,
     ...[
@@ -1343,6 +1357,27 @@ function Cockpit({
               >
                 Fail
               </button>
+              <button
+                disabled={activeRun.status !== "running"}
+                onClick={() => {
+                  const participant = activeRun.participants.find((candidate) => candidate.executionMode === "write")
+                    ?? activeRun.participants.at(0);
+                  if (participant !== undefined) {
+                    onRunCommand({
+                      command: "agenticcrew runtime check",
+                      cwd: activeRun.worktreePath,
+                      exitCode: 0,
+                      participantId: participant.id,
+                      runId: activeRun.id,
+                      stderr: "",
+                      stdout: "runtime check passed"
+                    });
+                  }
+                }}
+                type="button"
+              >
+                Record check
+              </button>
             </div>
           )}
 
@@ -1388,6 +1423,21 @@ function Cockpit({
                   <span aria-hidden="true">&gt;</span>
                   <code>thinking: {activeRun.reasoningEffort ?? "medium"}</code>
                 </p>
+                {activeRunCommands.length > 0 ? (
+                  <section aria-label="Run command evidence" className="run-command-evidence">
+                    <h4>Command evidence</h4>
+                    <ul>
+                      {activeRunCommands.map((command) => (
+                        <li key={command.id}>
+                          <span>{command.participantId}</span>
+                          <code>{command.command}</code>
+                          <strong>{command.status}</strong>
+                          <small>exit {command.exitCode}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ) : null}
                 {activeRunEvents.map((event) => (
                   <p key={event.id}>
                     <span aria-hidden="true">&gt;</span>

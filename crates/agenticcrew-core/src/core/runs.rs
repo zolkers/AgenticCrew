@@ -49,6 +49,40 @@ pub struct RunRecord {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
+pub enum RunCommandStatus {
+    Failed,
+    Succeeded,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunCommandRecord {
+    pub id: String,
+    pub run_id: String,
+    pub participant_id: String,
+    pub command: String,
+    pub cwd: String,
+    pub status: RunCommandStatus,
+    pub exit_code: i32,
+    pub stdout: String,
+    pub stderr: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordRunCommandRequest {
+    pub run_id: String,
+    pub participant_id: String,
+    pub command: String,
+    pub cwd: String,
+    pub exit_code: i32,
+    pub stdout: String,
+    pub stderr: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RunParticipantExecutionMode {
     ReadOnly,
     Write,
@@ -170,6 +204,7 @@ pub struct RunParticipantRequest {
 #[serde(rename_all = "camelCase")]
 pub struct RunsSnapshot {
     pub active_run_id: Option<String>,
+    pub commands: Vec<RunCommandRecord>,
     pub events: Vec<RunEvent>,
     pub runs: Vec<RunRecord>,
 }
@@ -177,8 +212,34 @@ pub struct RunsSnapshot {
 pub fn runs_snapshot_from_state(state: &AgentOsState) -> RunsSnapshot {
     RunsSnapshot {
         active_run_id: state.runs.last().map(|run| run.id.clone()),
+        commands: state.run_commands.clone(),
         events: state.run_events.clone(),
         runs: state.runs.clone(),
+    }
+}
+
+impl RunCommandRecord {
+    pub fn recorded(
+        id: String,
+        request: RecordRunCommandRequest,
+        created_at: String,
+    ) -> Result<Self, RunError> {
+        Ok(Self {
+            command: validate_required("run command", request.command)?,
+            created_at,
+            cwd: validate_required("run command cwd", request.cwd)?,
+            exit_code: request.exit_code,
+            id,
+            participant_id: validate_identifier("run participant id", request.participant_id)?,
+            run_id: validate_identifier("run id", request.run_id)?,
+            status: if request.exit_code == 0 {
+                RunCommandStatus::Succeeded
+            } else {
+                RunCommandStatus::Failed
+            },
+            stderr: request.stderr,
+            stdout: request.stdout,
+        })
     }
 }
 
