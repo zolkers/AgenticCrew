@@ -112,7 +112,6 @@ button {
 .brand-button small,
 .topbar-workspace span,
 .eyebrow,
-.agent-header p,
 .agent-list small,
 .checkpoint-list small,
 .plugins-panel p,
@@ -1052,7 +1051,7 @@ button {
 
 .terminal-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -1078,8 +1077,7 @@ button {
 }
 
 .cockpit-hero h1,
-.cockpit-hero h2,
-.agent-header h3 {
+.cockpit-hero h2 {
   margin: 0;
   letter-spacing: 0;
   font-family: var(--font-display);
@@ -1153,45 +1151,78 @@ button {
   font-weight: 800;
 }
 
-.agent-terminal {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  margin: 0;
+.mission-composer-panel,
+.run-detail-panel {
   min-width: 0;
-  overflow: hidden;
-  border-top: 1px solid rgba(125, 211, 199, 0.2);
+  margin: 0;
+  border-top: 1px solid var(--color-border);
   background: var(--color-terminal-deep);
 }
 
-.agent-header {
+.mission-composer-panel {
   display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1.2fr);
-  gap: 0.6rem;
-  padding: 0.45rem 0.75rem;
-  border-bottom: 1px solid var(--color-border);
-  background:
-    linear-gradient(90deg, rgba(125, 211, 199, 0.07), transparent 36%),
-    #202428;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem 1rem;
 }
 
-.agent-header p {
-  margin: 0.12rem 0 0;
-  font-size: 0.82rem;
+.mission-composer-header {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.34fr) minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
 }
 
-.agent-header h3 {
-  font-size: 0.95rem;
+.mission-composer-header h3,
+.run-detail-panel h3 {
+  margin: 0;
+  letter-spacing: 0;
+  font-family: var(--font-display);
+}
+
+.mission-composer-header h3 {
+  font-size: 1.05rem;
+}
+
+.composer-loadout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.composer-loadout div {
+  min-width: 0;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
+  background: rgba(31, 35, 39, 0.72);
+}
+
+.composer-loadout dt {
+  color: var(--color-muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.composer-loadout dd {
+  margin: 0.2rem 0 0;
+  overflow: hidden;
+  color: #f4f8ff;
+  font-size: 0.86rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .run-composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.45rem;
-  align-items: end;
+  gap: 0.7rem;
 }
 
 .run-composer label {
-  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.3rem;
   color: var(--color-muted);
   font-size: 0.68rem;
   font-weight: 800;
@@ -1199,13 +1230,17 @@ button {
 }
 
 .run-composer textarea {
-  min-height: 4.4rem;
+  width: 100%;
+  min-height: 7rem;
+  max-height: 15rem;
   resize: vertical;
-  padding: 0.55rem 0.65rem;
+  padding: 0.8rem 0.85rem;
   border: 1px solid var(--color-border);
   border-radius: 4px;
   color: var(--color-text);
-  background: #1c2025;
+  font-size: 0.96rem;
+  line-height: 1.45;
+  background: #191d22;
 }
 
 .run-composer textarea:focus {
@@ -1213,9 +1248,25 @@ button {
   outline: 2px solid rgba(125, 211, 199, 0.24);
 }
 
+.run-composer-controls {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.run-composer-controls select {
+  width: 100%;
+  min-height: 2.35rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  background: var(--color-terminal);
+}
+
 .mission-skill-picker {
   display: flex;
-  grid-column: 1 / -1;
   flex-wrap: wrap;
   gap: 0.45rem;
   min-width: 0;
@@ -1257,6 +1308,7 @@ button {
   align-items: center;
   justify-content: center;
   min-height: 2.25rem;
+  align-self: end;
   padding: 0 0.8rem;
   border: 1px solid rgba(125, 211, 199, 0.48);
   border-radius: 4px;
@@ -1268,6 +1320,63 @@ button {
 .run-composer button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
+}
+
+.run-detail-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.run-detail-panel > header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background: #202428;
+}
+
+.run-detail-panel h3 {
+  font-size: 0.92rem;
+}
+
+.run-state-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.4rem;
+  min-height: 1.6rem;
+  padding: 0 0.55rem;
+  border: 1px solid rgba(106, 169, 255, 0.38);
+  border-radius: 4px;
+  color: var(--color-codex);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  background: rgba(106, 169, 255, 0.08);
+}
+
+.run-state-queued,
+.run-state-preparing {
+  border-color: rgba(245, 194, 107, 0.38);
+  color: #f5c26b;
+  background: rgba(245, 194, 107, 0.08);
+}
+
+.run-state-running {
+  border-color: rgba(125, 211, 199, 0.42);
+  color: var(--color-teal);
+  background: rgba(125, 211, 199, 0.08);
+}
+
+.run-state-failed,
+.run-state-stopping {
+  border-color: rgba(255, 126, 126, 0.42);
+  color: #ff9a9a;
+  background: rgba(255, 126, 126, 0.08);
 }
 
 .terminal-stream {
@@ -3124,7 +3233,8 @@ section[aria-label="Settings"] {
   .workspace-create-form,
   .cockpit-grid,
   .cockpit-hero,
-  .agent-header,
+  .mission-composer-header,
+  .run-composer-controls,
   .command-bar,
   .agent-studio-layout,
   .studio-editor-panel .agent-form,

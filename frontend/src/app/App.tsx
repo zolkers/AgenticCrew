@@ -1136,42 +1136,56 @@ function Cockpit({
           </dl>
         </header>
 
-        <article className="agent-terminal" aria-labelledby="run-composer-title">
-          <header className="agent-header">
+        <article className="mission-composer-panel" aria-labelledby="run-composer-title">
+          <header className="mission-composer-header">
             <div>
-              <p className="eyebrow">Run composer</p>
-              <h3 id="run-composer-title">{selectedAgentTemplate?.name ?? "Agent profile"}</h3>
-              <p>
-                {(selectedAgentTemplate?.role ?? "developer")} / {(selectedAgentTemplate?.modelId ?? "model pending")}
-              </p>
-              <p>
-                Policy: {selectedHarnessProfile?.name ?? (selectedHarnessProfileId || "None")}
-              </p>
+              <p className="eyebrow">Mission composer</p>
+              <h3 id="run-composer-title">Start a run</h3>
             </div>
-            <form
-              aria-label="Start run"
-              className="run-composer"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const task = runTask.trim();
-                if (task.length > 0) {
-                  setSelectedRunId(null);
-                  onRunStart(
-                    task,
-                    selectedMissionSkillRoutes.filter((route) => availableMissionSkillRouteSet.has(route)),
-                    runReasoningEffort
-                  );
-                }
-              }}
-            >
-              <label htmlFor="run-task">Task</label>
+            <dl className="composer-loadout" aria-label="Selected run loadout">
+              <div>
+                <dt>Agent</dt>
+                <dd>{selectedAgentTemplate?.name ?? "Agent profile"}</dd>
+              </div>
+              <div>
+                <dt>Model</dt>
+                <dd>{selectedAgentTemplate?.modelId ?? "model pending"}</dd>
+              </div>
+              <div>
+                <dt>Policy</dt>
+                <dd>{selectedHarnessProfile?.name ?? (selectedHarnessProfileId || "None")}</dd>
+              </div>
+            </dl>
+          </header>
+
+          <form
+            aria-label="Start run"
+            className="run-composer"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const task = runTask.trim();
+              if (task.length > 0) {
+                setSelectedRunId(null);
+                onRunStart(
+                  task,
+                  selectedMissionSkillRoutes.filter((route) => availableMissionSkillRouteSet.has(route)),
+                  runReasoningEffort
+                );
+              }
+            }}
+          >
+            <label className="task-input-field" htmlFor="run-task">
+              <span>Task</span>
               <textarea
                 id="run-task"
                 onChange={(event) => {
                   setRunTask(event.target.value);
                 }}
+                placeholder="Describe what the agent should do in this workspace."
                 value={runTask}
               />
+            </label>
+            <div className="run-composer-controls">
               <label>
                 <span>Thinking</span>
                 <select
@@ -1213,13 +1227,22 @@ function Cockpit({
                 <Play aria-hidden="true" size={15} />
                 <span>Start run</span>
               </button>
-            </form>
+            </div>
+          </form>
+        </article>
+
+        <article className="run-detail-panel" aria-labelledby="run-detail-title">
+          <header>
+            <div>
+              <p className="eyebrow">Run details</p>
+              <h3 id="run-detail-title">{activeRun === undefined ? "No active run" : activeRun.id}</h3>
+            </div>
+            <span className={`run-state-badge run-state-${activeRun?.status ?? "idle"}`}>
+              {activeRun?.status ?? "idle"}
+            </span>
           </header>
 
           <div className="terminal-stream" aria-label="Run event log">
-            <div className="terminal-caption">
-              {activeRun === undefined ? "Run event log" : `${activeRun.id} / ${activeRun.status}`}
-            </div>
             {activeRun === undefined ? (
               <p>
                 <span aria-hidden="true">&gt;</span>

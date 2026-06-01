@@ -220,8 +220,8 @@ describe("App", () => {
     expect(window.location.pathname).toBe("/workspace/fullstack-app/cockpit");
     expect(screen.getByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
     expect(screen.getAllByText("fullstack-app").length).toBeGreaterThan(0);
-    expect(screen.getByText("Run event log")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Developer Agent" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "No active run" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Selected run loadout")).toHaveTextContent("Developer Agent");
     expect(screen.getByRole("form", { name: "Start run" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start run" })).toBeEnabled();
     expect(screen.getByLabelText("Run status")).not.toHaveTextContent("engine: langgraph");
@@ -373,7 +373,7 @@ describe("App", () => {
 
     expect(screen.getByRole("heading", { name: "Stabilize device smoke" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workspace/mobile-qa/cockpit");
-    expect(screen.getByText("Policy: Pi Execution Discipline")).toBeInTheDocument();
+    expect(screen.getByLabelText("Selected run loadout")).toHaveTextContent("Pi Execution Discipline");
     expect(screen.queryByRole("heading", { name: "Build UI shell" })).not.toBeInTheDocument();
   });
 
@@ -617,14 +617,14 @@ describe("App", () => {
     await openDefaultWorkspace();
     fireEvent.change(await screen.findByLabelText("Agent template"), { target: { value: "release-agent" } });
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Release Agent" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Selected run loadout")).toHaveTextContent("Release Agent");
     });
     fireEvent.change(screen.getByLabelText("Harness profile"), { target: { value: "release-harness" } });
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Release Agent" })).toBeInTheDocument();
-      expect(screen.getByText("release / gpt-5.1")).toBeInTheDocument();
-      expect(screen.getByText("Policy: Release Harness")).toBeInTheDocument();
+      expect(screen.getByLabelText("Selected run loadout")).toHaveTextContent("Release Agent");
+      expect(screen.getByLabelText("Selected run loadout")).toHaveTextContent("gpt-5.1");
+      expect(screen.getByLabelText("Selected run loadout")).toHaveTextContent("Release Harness");
     });
   });
 
@@ -642,8 +642,9 @@ describe("App", () => {
     await openDefaultWorkspace();
 
     expect(await screen.findByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
-    expect(screen.getByText("developer / model pending")).toBeInTheDocument();
-    expect(screen.getByText("Policy: None")).toBeInTheDocument();
+    expect(screen.getByLabelText("Selected run loadout")).toHaveTextContent("Agent profile");
+    expect(screen.getByLabelText("Selected run loadout")).toHaveTextContent("model pending");
+    expect(screen.getByLabelText("Selected run loadout")).toHaveTextContent("None");
     expect(screen.getByRole("form", { name: "Start run" })).toBeInTheDocument();
   });
 
