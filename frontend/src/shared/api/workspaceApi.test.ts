@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createWorkspace,
+  loadCommitPreview,
   loadWorkspaceSnapshot,
   refreshWorkspaceGitStatus,
   updateWorkspaceGitContext,
@@ -56,5 +57,35 @@ describe("workspaceApi", () => {
       ["refresh_workspace_git_status", { request: { workspaceId: "api" } }],
       ["update_workspace_loadout", { request: loadoutRequest }]
     ]);
+  });
+
+  it("loads commit previews through the backend command", async () => {
+    const preview = {
+      commitHash: "abc1234",
+      files: [],
+      metadata: {
+        authoredAt: "2026-05-29T12:00:00Z",
+        authorEmail: "codex@example.com",
+        authorName: "Codex",
+        body: "",
+        hash: "abc1234",
+        shortHash: "abc1234",
+        subject: "feat(git): preview"
+      },
+      workspaceId: "api"
+    };
+    const invoke = (command: "commit_preview", args?: Record<string, unknown>) => {
+      expect(command).toBe("commit_preview");
+      expect(args).toEqual({
+        request: {
+          commitHash: "abc1234",
+          workspaceId: "api"
+        }
+      });
+
+      return Promise.resolve(preview);
+    };
+
+    await expect(loadCommitPreview(invoke, { commitHash: "abc1234", workspaceId: "api" })).resolves.toBe(preview);
   });
 });

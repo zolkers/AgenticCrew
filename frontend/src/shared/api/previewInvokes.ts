@@ -1,5 +1,6 @@
 import type {
   AgentStudioSnapshot,
+  CommitPreviewResponse,
   HarnessStudioSnapshot,
   MissionControlSnapshot,
   RunsSnapshot,
@@ -15,7 +16,7 @@ import type { InvokeMissionControl } from "./missionControlApi";
 import type { InvokeRuns } from "./runsApi";
 import type { InvokeSettings } from "./settingsApi";
 import type { InvokeSkillSources, SkillSourcesCommand } from "./skillSourcesApi";
-import type { InvokeWorkspace } from "./workspaceApi";
+import type { InvokeCommitPreview, InvokeWorkspace } from "./workspaceApi";
 
 const previewMissionControlSnapshot: MissionControlSnapshot = {
   activeModel: {
@@ -432,6 +433,80 @@ export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
   }
 
   return Promise.resolve(previewWorkspaceSnapshot);
+};
+
+export const previewCommitPreviewInvoke: InvokeCommitPreview = (_command, args) => {
+  const request = args?.request as { commitHash?: string; workspaceId?: string } | undefined;
+  const workspace = previewWorkspaceSnapshot.workspaces.find(
+    (candidate) => candidate.id === request?.workspaceId
+  );
+  const commit = workspace?.gitHistory?.find((entry) => entry.hash === request?.commitHash);
+  const commitHash = request?.commitHash ?? commit?.hash ?? "preview";
+  const subject = commit?.message ?? "preview: generated browser commit";
+  const response: CommitPreviewResponse = {
+    commitHash,
+    files: [
+      {
+        additions: 42,
+        category: "source",
+        deletions: 9,
+        diffLines: [
+          { content: "@@ browser preview", kind: "hunk" },
+          { content: "+ render backend commit preview", kind: "addition" },
+          { content: "- static history row", kind: "deletion" },
+          { content: "+ wire selected commit data", kind: "addition" }
+        ],
+        path: "frontend/src/features/git/GitPanel.tsx",
+        status: "modified"
+      },
+      {
+        additions: 18,
+        category: "test",
+        deletions: 2,
+        diffLines: [
+          { content: "@@ tests", kind: "hunk" },
+          { content: "+ loads commit preview through the API", kind: "addition" },
+          { content: "- leaves history inert", kind: "deletion" }
+        ],
+        path: "frontend/src/features/git/GitPanel.test.tsx",
+        status: "modified"
+      },
+      {
+        additions: 7,
+        category: "docs",
+        deletions: 1,
+        diffLines: [
+          { content: "@@ docs", kind: "hunk" },
+          { content: "+ document backend-backed Git preview", kind: "addition" }
+        ],
+        path: "docs/roadmap.md",
+        status: "modified"
+      },
+      {
+        additions: 4,
+        category: "config",
+        deletions: 0,
+        diffLines: [
+          { content: "@@ config", kind: "hunk" },
+          { content: "+ expose commit_preview command", kind: "addition" }
+        ],
+        path: "package.json",
+        status: "modified"
+      }
+    ],
+    metadata: {
+      authoredAt: commit?.relativeTime ?? "preview",
+      authorEmail: "preview@agenticcrew.local",
+      authorName: commit?.author ?? "Browser Preview",
+      body: "",
+      hash: commitHash,
+      shortHash: commitHash.slice(0, 7),
+      subject
+    },
+    workspaceId: request?.workspaceId ?? workspace?.id ?? "preview-workspace"
+  };
+
+  return Promise.resolve(response);
 };
 
 export const previewRunsInvoke: InvokeRuns = (command, args) => {

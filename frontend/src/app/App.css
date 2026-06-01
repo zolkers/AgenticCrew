@@ -2898,6 +2898,16 @@ section[aria-label="Settings"] {
   font-weight: 850;
 }
 
+.git-preview-status {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.git-preview-status-error {
+  color: var(--color-coral);
+}
+
 .git-preview-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 0.38fr);

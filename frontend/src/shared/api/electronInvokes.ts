@@ -5,7 +5,7 @@ import type { InvokeMissionControl } from "./missionControlApi";
 import type { InvokeRuns } from "./runsApi";
 import type { InvokeSettings } from "./settingsApi";
 import type { InvokeSkillSources } from "./skillSourcesApi";
-import type { InvokeWorkspace } from "./workspaceApi";
+import type { InvokeCommitPreview, InvokeWorkspace } from "./workspaceApi";
 
 function invokeElectron<Command extends keyof ElectronCommandMap>(
   command: Command,
@@ -28,6 +28,9 @@ export const electronMissionControlInvoke: InvokeMissionControl = (command, args
   invokeElectron(command, args);
 
 export const electronWorkspaceInvoke: InvokeWorkspace = (command, args) =>
+  invokeElectron(command, args);
+
+export const electronCommitPreviewInvoke: InvokeCommitPreview = (command, args) =>
   invokeElectron(command, args);
 
 export const electronRunsInvoke: InvokeRuns = (command, args) =>

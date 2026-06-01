@@ -1,5 +1,7 @@
 import type {
   CreateWorkspaceRequest,
+  CommitPreviewRequest,
+  CommitPreviewResponse,
   RefreshWorkspaceGitStatusRequest,
   UpdateWorkspaceGitContextRequest,
   UpdateWorkspaceLoadoutRequest,
@@ -17,6 +19,11 @@ export type InvokeWorkspace = (
   command: WorkspaceCommand,
   args?: Record<string, unknown>
 ) => Promise<WorkspaceSnapshot>;
+
+export type InvokeCommitPreview = (
+  command: "commit_preview",
+  args?: Record<string, unknown>
+) => Promise<CommitPreviewResponse>;
 
 export async function loadWorkspaceSnapshot(invoke: InvokeWorkspace): Promise<WorkspaceSnapshot> {
   return invoke("workspace_snapshot");
@@ -41,6 +48,13 @@ export async function refreshWorkspaceGitStatus(
   request: RefreshWorkspaceGitStatusRequest
 ): Promise<WorkspaceSnapshot> {
   return invoke("refresh_workspace_git_status", { request });
+}
+
+export async function loadCommitPreview(
+  invoke: InvokeCommitPreview,
+  request: CommitPreviewRequest
+): Promise<CommitPreviewResponse> {
+  return invoke("commit_preview", { request });
 }
 
 export async function updateWorkspaceLoadout(

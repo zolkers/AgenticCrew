@@ -17,6 +17,7 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - Workspace launcher, manual Git metadata editing, Rust-owned workspace records, OpenAI provider model sync, model pickers, Skill Sources workflow, Harness Studio PI extensions, Agent Studio evaluation runs, and live Mission Control metrics.
 - Command Palette v1 for workspace navigation, including Ctrl/Cmd+K, filtered actions, accessible close behavior, and Git/Settings/Launchpad routing.
 - Mission-level skill selection in the Workbench: active downloaded skills can be selected per run and are persisted on the durable run record.
+- Backend-backed Git commit previews: the Git panel now loads selected commit metadata, changed files, stats, and patch lines through the Electron/Rust sidecar instead of generating UI-only diffs.
 
 **Next focus:**
 - Runtime execution: replace preview-only browser data with sidecar-backed runtime manifests, live agent event streams, pause/resume/kill controls, and audited command execution.
@@ -185,7 +186,7 @@ Completed on `dev`:
 9. Replace Mission Control preview values with live durable/runtime state.
 10. Add mission-level skill selection to queued runs.
 
-Next tranche: backend-real run manifests, controlled command execution, event streaming, and progressive removal of preview-only data from desktop runtime paths.
+Next tranche: backend-real run manifests, controlled command execution, event streaming, and progressive removal of preview-only data from desktop runtime paths. Git commit preview is the first completed slice of this runtime-backed replacement work.
 
 ## Task Roadmap
 

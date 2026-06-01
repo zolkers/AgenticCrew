@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./app/App";
 import {
   electronAgentStudioInvoke,
+  electronCommitPreviewInvoke,
   electronHarnessStudioInvoke,
   electronMissionControlInvoke,
   electronRunsInvoke,
@@ -12,6 +13,7 @@ import {
 } from "./shared/api/electronInvokes";
 import {
   previewAgentStudioInvoke,
+  previewCommitPreviewInvoke,
   previewHarnessStudioInvoke,
   previewMissionControlInvoke,
   previewRunsInvoke,
@@ -24,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   app: vi.fn(() => null),
   createRoot: vi.fn(),
   electronAgentStudioInvoke: vi.fn(),
+  electronCommitPreviewInvoke: vi.fn(),
   electronHarnessStudioInvoke: vi.fn(),
   electronMissionControlInvoke: vi.fn(),
   electronRunsInvoke: vi.fn(),
@@ -31,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   electronSkillSourcesInvoke: vi.fn(),
   electronWorkspaceInvoke: vi.fn(),
   previewAgentStudioInvoke: vi.fn(),
+  previewCommitPreviewInvoke: vi.fn(),
   previewHarnessStudioInvoke: vi.fn(),
   previewMissionControlInvoke: vi.fn(),
   previewRunsInvoke: vi.fn(),
@@ -50,6 +54,7 @@ vi.mock("./app/App", () => ({
 
 vi.mock("./shared/api/electronInvokes", () => ({
   electronAgentStudioInvoke: mocks.electronAgentStudioInvoke,
+  electronCommitPreviewInvoke: mocks.electronCommitPreviewInvoke,
   electronHarnessStudioInvoke: mocks.electronHarnessStudioInvoke,
   electronMissionControlInvoke: mocks.electronMissionControlInvoke,
   electronRunsInvoke: mocks.electronRunsInvoke,
@@ -60,6 +65,7 @@ vi.mock("./shared/api/electronInvokes", () => ({
 
 vi.mock("./shared/api/previewInvokes", () => ({
   previewAgentStudioInvoke: mocks.previewAgentStudioInvoke,
+  previewCommitPreviewInvoke: mocks.previewCommitPreviewInvoke,
   previewHarnessStudioInvoke: mocks.previewHarnessStudioInvoke,
   previewMissionControlInvoke: mocks.previewMissionControlInvoke,
   previewRunsInvoke: mocks.previewRunsInvoke,
@@ -92,6 +98,7 @@ describe("main", () => {
     const renderedElement = mocks.render.mock.calls[0]?.[0] as ReactElement<{
       children: ReactElement<{
         agentStudioInvoke: unknown;
+        commitPreviewInvoke: unknown;
         harnessStudioInvoke: unknown;
         missionControlInvoke: unknown;
         runsInvoke: unknown;
@@ -103,6 +110,7 @@ describe("main", () => {
     expect(renderedElement.type).toBe(StrictMode);
     expect(renderedElement.props.children.type).toBe(App);
     expect(renderedElement.props.children.props.agentStudioInvoke).toBe(previewAgentStudioInvoke);
+    expect(renderedElement.props.children.props.commitPreviewInvoke).toBe(previewCommitPreviewInvoke);
     expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(previewHarnessStudioInvoke);
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(previewMissionControlInvoke);
     expect(renderedElement.props.children.props.runsInvoke).toBe(previewRunsInvoke);
@@ -123,6 +131,7 @@ describe("main", () => {
     const renderedElement = mocks.render.mock.calls[0]?.[0] as ReactElement<{
       children: ReactElement<{
         agentStudioInvoke: unknown;
+        commitPreviewInvoke: unknown;
         harnessStudioInvoke: unknown;
         missionControlInvoke: unknown;
         runsInvoke: unknown;
@@ -133,6 +142,7 @@ describe("main", () => {
     }>;
 
     expect(renderedElement.props.children.props.agentStudioInvoke).toBe(electronAgentStudioInvoke);
+    expect(renderedElement.props.children.props.commitPreviewInvoke).toBe(electronCommitPreviewInvoke);
     expect(renderedElement.props.children.props.harnessStudioInvoke).toBe(electronHarnessStudioInvoke);
     expect(renderedElement.props.children.props.missionControlInvoke).toBe(electronMissionControlInvoke);
     expect(renderedElement.props.children.props.runsInvoke).toBe(electronRunsInvoke);

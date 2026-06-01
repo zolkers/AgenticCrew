@@ -7,7 +7,7 @@ use std::{
 
 use agenticcrew_core::{
     activate_skill_source_at_path, agent_studio_snapshot_at_path,
-    approve_skill_source_permissions_at_path,
+    approve_skill_source_permissions_at_path, commit_preview_at_path,
     core::agents::{
         CreateAgentTemplateRequest, PromoteAgentTrainingRunRequest, SetAgentTemplateActiveRequest,
         UpdateAgentTemplateRequest,
@@ -25,8 +25,8 @@ use agenticcrew_core::{
     },
     core::skills::RegisterGitHubSkillSourceRequest,
     core::workspaces::{
-        CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest, UpdateWorkspaceGitContextRequest,
-        UpdateWorkspaceLoadoutRequest,
+        CommitPreviewRequest, CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest,
+        UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
     },
     create_agent_template_at_path, create_harness_profile_at_path, create_workspace_at_path,
     harness_studio_snapshot_at_path, import_pi_extension_at_path,
@@ -246,6 +246,12 @@ struct RefreshWorkspaceGitStatusArgs {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct CommitPreviewArgs {
+    request: CommitPreviewRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct UpdateWorkspaceLoadoutArgs {
     request: UpdateWorkspaceLoadoutRequest,
 }
@@ -337,6 +343,11 @@ fn run() -> Result<(), DesktopCommandError> {
                 state_path,
                 args.request,
             )?)
+        }
+        "commit_preview" => {
+            let args = parse_args::<CommitPreviewArgs>(&args_json)?;
+
+            print_json(&commit_preview_at_path(state_path, args.request)?)
         }
         "update_workspace_loadout" => {
             let args = parse_args::<UpdateWorkspaceLoadoutArgs>(&args_json)?;

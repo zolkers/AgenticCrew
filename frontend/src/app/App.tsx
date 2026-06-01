@@ -31,7 +31,7 @@ import { SkillSources } from "../features/skill-sources/SkillSources";
 import { loadAgentStudioSnapshot, type InvokeAgentStudio } from "../shared/api/agentStudioApi";
 import { loadHarnessStudioSnapshot, type InvokeHarnessStudio } from "../shared/api/harnessStudioApi";
 import { loadMissionControlSnapshot, type InvokeMissionControl } from "../shared/api/missionControlApi";
-import { previewRunsInvoke, previewWorkspaceInvoke } from "../shared/api/previewInvokes";
+import { previewCommitPreviewInvoke, previewRunsInvoke, previewWorkspaceInvoke } from "../shared/api/previewInvokes";
 import { loadRunsSnapshot, startRun, type InvokeRuns } from "../shared/api/runsApi";
 import { loadSettingsSnapshot, type InvokeSettings } from "../shared/api/settingsApi";
 import { loadSkillSourcesSnapshot, type InvokeSkillSources } from "../shared/api/skillSourcesApi";
@@ -41,6 +41,7 @@ import {
   refreshWorkspaceGitStatus,
   updateWorkspaceGitContext,
   updateWorkspaceLoadout,
+  type InvokeCommitPreview,
   type InvokeWorkspace
 } from "../shared/api/workspaceApi";
 import type { CockpitWorkspace } from "../shared/preview/cockpitData";
@@ -65,6 +66,7 @@ import "./App.css";
 
 type AppProps = Readonly<{
   agentStudioInvoke: InvokeAgentStudio;
+  commitPreviewInvoke?: InvokeCommitPreview;
   harnessStudioInvoke: InvokeHarnessStudio;
   missionControlInvoke: InvokeMissionControl;
   runsInvoke?: InvokeRuns;
@@ -133,6 +135,7 @@ function formatCompactNumber(value: number) {
 
 export function App({
   agentStudioInvoke,
+  commitPreviewInvoke = previewCommitPreviewInvoke,
   harnessStudioInvoke,
   missionControlInvoke,
   runsInvoke = previewRunsInvoke,
@@ -649,6 +652,7 @@ export function App({
         {activeView === "gitPanel" ? (
           <GitPanel
             branchOptions={branchOptions}
+            commitPreviewInvoke={commitPreviewInvoke}
             onRefreshGitStatus={() => {
               void refreshActiveGitStatus();
             }}

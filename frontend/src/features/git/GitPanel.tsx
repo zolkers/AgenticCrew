@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Copy,
   FileCode,
@@ -13,17 +13,35 @@ import {
   ShieldCheck
 } from "lucide-react";
 import type { CockpitWorkspace } from "../../shared/preview/cockpitData";
-import type { WorkspaceGitHistoryEntry } from "../../shared/types/core";
+import { loadCommitPreview, type InvokeCommitPreview } from "../../shared/api/workspaceApi";
+import type {
+  CommitPreviewFile,
+  CommitPreviewLineKind,
+  CommitPreviewResponse,
+  WorkspaceGitHistoryEntry
+} from "../../shared/types/core";
 import { uniqueStrings } from "../../shared/strings";
 
 type GitPanelProps = Readonly<{
   branchOptions: readonly string[];
+  commitPreviewInvoke: InvokeCommitPreview;
   onRefreshGitStatus: () => void;
   onWorkspaceChange: (changes: Pick<CockpitWorkspace, "branch" | "path">) => void;
   workspace: CockpitWorkspace;
 }>;
 
-export function GitPanel({ branchOptions, onRefreshGitStatus, onWorkspaceChange, workspace }: GitPanelProps) {
+type CommitPreviewState =
+  | Readonly<{ commitHash: string; status: "error"; message: string; workspaceId: string }>
+  | Readonly<{ status: "idle" }>
+  | Readonly<{ preview: CommitPreviewResponse; status: "ready" }>;
+
+export function GitPanel({
+  branchOptions,
+  commitPreviewInvoke,
+  onRefreshGitStatus,
+  onWorkspaceChange,
+  workspace
+}: GitPanelProps) {
   const gitStatus = workspace.gitStatus;
   const aheadCount = gitStatus?.aheadCount ?? 0;
   const behindCount = gitStatus?.behindCount ?? 0;
@@ -42,6 +60,39 @@ export function GitPanel({ branchOptions, onRefreshGitStatus, onWorkspaceChange,
   const historyEntries = workspace.gitHistory ?? [];
   const [selectedCommitHash, setSelectedCommitHash] = useState<string | null>(null);
   const selectedCommit = historyEntries.find((entry) => entry.hash === selectedCommitHash) ?? historyEntries.at(0) ?? null;
+  const [commitPreviewState, setCommitPreviewState] = useState<CommitPreviewState>({ status: "idle" });
+
+  useEffect(() => {
+    if (selectedCommit === null) {
+      return;
+    }
+
+    let isCurrent = true;
+    const requestedCommitHash = selectedCommit.hash;
+    void loadCommitPreview(commitPreviewInvoke, {
+      commitHash: requestedCommitHash,
+      workspaceId: workspace.id
+    })
+      .then((preview) => {
+        if (isCurrent) {
+          setCommitPreviewState({ preview, status: "ready" });
+        }
+      })
+      .catch((error: unknown) => {
+        if (isCurrent) {
+          setCommitPreviewState({
+            commitHash: requestedCommitHash,
+            message: error instanceof Error ? error.message : "Commit preview unavailable",
+            status: "error",
+            workspaceId: workspace.id
+          });
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [commitPreviewInvoke, selectedCommit, workspace.id]);
 
   return (
     <section aria-label="Git Panel">
@@ -145,7 +196,7 @@ export function GitPanel({ branchOptions, onRefreshGitStatus, onWorkspaceChange,
                 </li>
               ))}
             </ol>
-            <CommitPreview commit={selectedCommit} />
+            <CommitPreview commit={selectedCommit} previewState={commitPreviewState} workspaceId={workspace.id} />
           </div>
         )}
       </section>
@@ -153,29 +204,26 @@ export function GitPanel({ branchOptions, onRefreshGitStatus, onWorkspaceChange,
   );
 }
 
-type CommitFileCategory = "code" | "config" | "docs" | "tests";
-type CommitFileStatus = "added" | "deleted" | "modified";
-
-type CommitFilePreview = Readonly<{
-  additions: number;
-  category: CommitFileCategory;
-  deletions: number;
-  diffLines: readonly string[];
-  path: string;
-  status: CommitFileStatus;
-}>;
-
-type CommitFileFilter = "all" | CommitFileCategory;
+type CommitFileFilter = "all" | CommitPreviewFile["category"];
 
 const commitFileFilters: readonly { label: string; value: CommitFileFilter }[] = [
   { label: "All", value: "all" },
-  { label: "Code", value: "code" },
+  { label: "Code", value: "source" },
   { label: "Docs", value: "docs" },
-  { label: "Tests", value: "tests" },
-  { label: "Config", value: "config" }
+  { label: "Tests", value: "test" },
+  { label: "Config", value: "config" },
+  { label: "Generated", value: "generated" }
 ];
 
-function CommitPreview({ commit }: Readonly<{ commit: WorkspaceGitHistoryEntry | null }>) {
+function CommitPreview({
+  commit,
+  previewState,
+  workspaceId
+}: Readonly<{
+  commit: WorkspaceGitHistoryEntry | null;
+  previewState: CommitPreviewState;
+  workspaceId: string;
+}>) {
   const [activeFilter, setActiveFilter] = useState<CommitFileFilter>("all");
   const [fileQuery, setFileQuery] = useState("");
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
@@ -184,7 +232,14 @@ function CommitPreview({ commit }: Readonly<{ commit: WorkspaceGitHistoryEntry |
     return <p className="empty-state">Select a commit to inspect files, stats, and a diff preview.</p>;
   }
 
-  const files = buildCommitFilePreviews(commit);
+  const preview =
+    previewState.status === "ready" &&
+    previewState.preview.commitHash === commit.hash &&
+    previewState.preview.workspaceId === workspaceId
+      ? previewState.preview
+      : null;
+  const currentPreviewStatus = commitPreviewStatus(previewState, commit.hash, workspaceId, preview);
+  const files = preview?.files ?? [];
   const normalizedQuery = fileQuery.trim().toLowerCase();
   const filteredFiles = files.filter(
     (file) =>
@@ -197,6 +252,10 @@ function CommitPreview({ commit }: Readonly<{ commit: WorkspaceGitHistoryEntry |
     null;
   const totalAdditions = files.reduce((total, file) => total + file.additions, 0);
   const totalDeletions = files.reduce((total, file) => total + file.deletions, 0);
+  const commitSubject = preview?.metadata.subject ?? commit.message;
+  const commitAuthor = preview?.metadata.authorName ?? commit.author;
+  const commitTime = preview?.metadata.authoredAt ?? commit.relativeTime;
+  const commitHash = preview?.metadata.shortHash ?? commit.hash;
 
   return (
     <article className="git-commit-preview" aria-labelledby="commit-preview-title">
@@ -204,8 +263,8 @@ function CommitPreview({ commit }: Readonly<{ commit: WorkspaceGitHistoryEntry |
         <div>
           <p className="eyebrow">Selected commit</p>
           <h3 id="commit-preview-title">Commit preview</h3>
-          <strong>{commit.message}</strong>
-          <span>{commit.hash} · {commit.author} · {commit.relativeTime}</span>
+          <strong>{commitSubject}</strong>
+          <span>{commitHash} · {commitAuthor} · {commitTime}</span>
         </div>
         <div className="git-preview-actions">
           <button type="button">
@@ -222,6 +281,11 @@ function CommitPreview({ commit }: Readonly<{ commit: WorkspaceGitHistoryEntry |
           </button>
         </div>
       </header>
+
+      {currentPreviewStatus === "loading" ? <p className="git-preview-status">Loading diff preview...</p> : null}
+      {currentPreviewStatus === "error" && previewState.status === "error" ? (
+        <p className="git-preview-status git-preview-status-error">{previewState.message}</p>
+      ) : null}
 
       <dl className="git-preview-stats" aria-label="Commit file statistics">
         <div>
@@ -275,7 +339,7 @@ function CommitPreview({ commit }: Readonly<{ commit: WorkspaceGitHistoryEntry |
       <div className="git-preview-layout">
         <div className="git-preview-files" aria-label="Files changed">
           {filteredFiles.length === 0 ? (
-            <p>No files match the current filters</p>
+            <p>{currentPreviewStatus === "ready" ? "No files match the current filters" : "No backend diff loaded yet"}</p>
           ) : (
             filteredFiles.map((file) => (
               <button
@@ -306,9 +370,9 @@ function CommitPreview({ commit }: Readonly<{ commit: WorkspaceGitHistoryEntry |
                 <span>{selectedFile.status} · +{selectedFile.additions} -{selectedFile.deletions}</span>
               </header>
               <pre>
-                {selectedFile.diffLines.map((line) => (
-                  <code className={diffLineClassName(line)} key={line}>
-                    {line}
+                {selectedFile.diffLines.map((line, index) => (
+                  <code className={diffLineClassName(line.kind)} key={`${selectedFile.path}:${String(index)}:${line.kind}`}>
+                    {line.content}
                   </code>
                 ))}
               </pre>
@@ -320,67 +384,37 @@ function CommitPreview({ commit }: Readonly<{ commit: WorkspaceGitHistoryEntry |
   );
 }
 
-function buildCommitFilePreviews(commit: WorkspaceGitHistoryEntry): CommitFilePreview[] {
-  const scope = commitScope(commit.message) ?? "app";
-  const codePath = scope === "settings" ? "src/features/settings/SettingsPanel.tsx" : "src/app/App.tsx";
-
-  return [
-    {
-      additions: 42,
-      category: "code",
-      deletions: 9,
-      diffLines: [`@@ ${commit.hash} ${codePath}`, "+ render selected commit details", "- static history row", "+ wire preview selection"],
-      path: codePath,
-      status: "modified"
-    },
-    {
-      additions: 18,
-      category: "tests",
-      deletions: 2,
-      diffLines: ["@@ tests", "+ opens commit preview", "+ filters changed files", "- leaves history inert"],
-      path: "frontend/src/app/App.test.tsx",
-      status: "modified"
-    },
-    {
-      additions: 7,
-      category: "docs",
-      deletions: 1,
-      diffLines: ["@@ docs", "+ document Git preview flow", "- placeholder note"],
-      path: "docs/roadmap.md",
-      status: "modified"
-    },
-    {
-      additions: 4,
-      category: "config",
-      deletions: 0,
-      diffLines: ["@@ config", "+ keep lint and coverage gates visible"],
-      path: "package.json",
-      status: "modified"
-    }
-  ];
-}
-
-function commitScope(message: string): string | null {
-  const openIndex = message.indexOf("(");
-  const closeIndex = message.indexOf(")", openIndex + 1);
-
-  if (openIndex < 0 || closeIndex <= openIndex + 1) {
-    return null;
-  }
-
-  return message.slice(openIndex + 1, closeIndex);
-}
-
-function diffLineClassName(line: string) {
-  if (line.startsWith("+")) {
+function diffLineClassName(kind: CommitPreviewLineKind) {
+  if (kind === "addition") {
     return "diff-line-added";
   }
 
-  if (line.startsWith("-")) {
+  if (kind === "deletion") {
     return "diff-line-deleted";
   }
 
   return "diff-line-context";
+}
+
+function commitPreviewStatus(
+  previewState: CommitPreviewState,
+  commitHash: string,
+  workspaceId: string,
+  preview: CommitPreviewResponse | null
+) {
+  if (
+    previewState.status === "error" &&
+    previewState.commitHash === commitHash &&
+    previewState.workspaceId === workspaceId
+  ) {
+    return "error";
+  }
+
+  if (preview === null) {
+    return "loading";
+  }
+
+  return "ready";
 }
 
 type CommitComposerProps = Readonly<{

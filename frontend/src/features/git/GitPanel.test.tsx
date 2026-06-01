@@ -1,13 +1,79 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GitPanel } from "./GitPanel";
 import type { CockpitWorkspace } from "../../shared/preview/cockpitData";
+import type { CommitPreviewResponse } from "../../shared/types/core";
 
 afterEach(() => {
   cleanup();
 });
 
 describe("GitPanel", () => {
+  const commitPreview: CommitPreviewResponse = {
+    commitHash: "abc1234",
+    files: [
+      {
+        additions: 42,
+        category: "source",
+        deletions: 9,
+        diffLines: [
+          { content: "@@ src/features/settings/SettingsPanel.tsx", kind: "hunk" },
+          { content: "+ render selected commit details", kind: "addition" },
+          { content: "- static history row", kind: "deletion" }
+        ],
+        path: "src/features/settings/SettingsPanel.tsx",
+        status: "modified"
+      },
+      {
+        additions: 18,
+        category: "test",
+        deletions: 2,
+        diffLines: [
+          { content: "@@ tests", kind: "hunk" },
+          { content: "+ opens commit preview", kind: "addition" }
+        ],
+        path: "frontend/src/app/App.test.tsx",
+        status: "modified"
+      },
+      {
+        additions: 7,
+        category: "docs",
+        deletions: 1,
+        diffLines: [
+          { content: "@@ docs", kind: "hunk" },
+          { content: "+ document Git preview flow", kind: "addition" }
+        ],
+        path: "docs/roadmap.md",
+        status: "modified"
+      }
+    ],
+    metadata: {
+      authoredAt: "2026-05-29T12:00:00Z",
+      authorEmail: "codex@example.com",
+      authorName: "Codex",
+      body: "",
+      hash: "abc1234",
+      shortHash: "abc1234",
+      subject: "feat(settings): wire provider panel"
+    },
+    workspaceId: "settings-workspace"
+  };
+
+  const renderGitPanel = (
+    workspace: CockpitWorkspace,
+    options: Partial<Parameters<typeof GitPanel>[0]> = {}
+  ) =>
+    render(
+      <GitPanel
+        branchOptions={["main", workspace.branch]}
+        commitPreviewInvoke={vi.fn(() => Promise.resolve(commitPreview))}
+        onRefreshGitStatus={vi.fn()}
+        onWorkspaceChange={vi.fn()}
+        workspace={workspace}
+        {...options}
+      />
+    );
+
   it("renders workspace git context", () => {
     const workspace: CockpitWorkspace = {
       activeAgentId: "dev",
@@ -44,7 +110,7 @@ describe("GitPanel", () => {
       status: "running"
     };
 
-    render(<GitPanel branchOptions={["main", "codex/settings"]} onRefreshGitStatus={vi.fn()} onWorkspaceChange={vi.fn()} workspace={workspace} />);
+    renderGitPanel(workspace, { branchOptions: ["main", "codex/settings"] });
 
     expect(screen.getByRole("heading", { name: "Git Panel" })).toBeInTheDocument();
     expect(screen.getAllByText("codex/settings").length).toBeGreaterThan(0);
@@ -62,7 +128,7 @@ describe("GitPanel", () => {
     expect(screen.getAllByText("abc1234 · Codex · 5 minutes ago").length).toBeGreaterThan(0);
   });
 
-  it("opens an interactive history preview with filters and file details", () => {
+  it("opens an interactive backend history preview with filters and file details", async () => {
     const workspace: CockpitWorkspace = {
       activeAgentId: "dev",
       agents: [],
@@ -88,19 +154,29 @@ describe("GitPanel", () => {
       status: "running"
     };
 
-    render(<GitPanel branchOptions={["main", "codex/settings"]} onRefreshGitStatus={vi.fn()} onWorkspaceChange={vi.fn()} workspace={workspace} />);
+    const commitPreviewInvoke = vi.fn(() => Promise.resolve(commitPreview));
+
+    renderGitPanel(workspace, { branchOptions: ["main", "codex/settings"], commitPreviewInvoke });
     fireEvent.click(screen.getByRole("button", { name: /Preview feat\(settings\): wire provider panel/u }));
 
     expect(screen.getByRole("heading", { name: "Commit preview" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(commitPreviewInvoke).toHaveBeenCalledWith("commit_preview", {
+        request: {
+          commitHash: "abc1234",
+          workspaceId: "settings-workspace"
+        }
+      });
+    });
     expect(screen.getByLabelText("Commit file statistics")).toHaveTextContent("codex/settings");
     expect(screen.getByRole("button", { name: "Copy hash" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create branch from here" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "frontend/src/app/App.test.tsx" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "frontend/src/app/App.test.tsx" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Tests" }));
 
     expect(screen.getByRole("button", { name: "frontend/src/app/App.test.tsx" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "src/app/App.tsx" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "src/features/settings/SettingsPanel.tsx" })).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Search changed files"), { target: { value: "roadmap" } });
 
@@ -131,14 +207,10 @@ describe("GitPanel", () => {
     };
     const onWorkspaceChange = vi.fn();
 
-    render(
-      <GitPanel
-        branchOptions={["main", "codex/settings", "feature/new-shell"]}
-        onRefreshGitStatus={vi.fn()}
-        onWorkspaceChange={onWorkspaceChange}
-        workspace={workspace}
-      />
-    );
+    renderGitPanel(workspace, {
+      branchOptions: ["main", "codex/settings", "feature/new-shell"],
+      onWorkspaceChange
+    });
 
     fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "feature/new-shell" } });
     expect(screen.queryByLabelText("Workspace path")).not.toBeInTheDocument();
@@ -168,7 +240,7 @@ describe("GitPanel", () => {
     };
     const onRefreshGitStatus = vi.fn();
 
-    render(<GitPanel branchOptions={["main", "dev"]} onRefreshGitStatus={onRefreshGitStatus} onWorkspaceChange={vi.fn()} workspace={workspace} />);
+    renderGitPanel(workspace, { branchOptions: ["main", "dev"], onRefreshGitStatus });
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
 
     expect(onRefreshGitStatus).toHaveBeenCalledOnce();
@@ -201,7 +273,7 @@ describe("GitPanel", () => {
       status: "running"
     };
 
-    render(<GitPanel branchOptions={["main", "dev"]} onRefreshGitStatus={vi.fn()} onWorkspaceChange={vi.fn()} workspace={workspace} />);
+    renderGitPanel(workspace, { branchOptions: ["main", "dev"] });
     expect(screen.getByRole("button", { name: "Commit" })).toBeDisabled();
 
     fireEvent.change(screen.getByLabelText("Commit message"), {
@@ -239,7 +311,7 @@ describe("GitPanel", () => {
       status: "running"
     };
 
-    render(<GitPanel branchOptions={["main", "dev"]} onRefreshGitStatus={vi.fn()} onWorkspaceChange={vi.fn()} workspace={workspace} />);
+    renderGitPanel(workspace, { branchOptions: ["main", "dev"] });
     fireEvent.change(screen.getByLabelText("Commit message"), {
       target: { value: "style(git): add commit composer" }
     });
@@ -274,6 +346,7 @@ describe("GitPanel", () => {
     const { rerender } = render(
       <GitPanel
         branchOptions={["dev", "release"]}
+        commitPreviewInvoke={vi.fn(() => Promise.resolve(commitPreview))}
         onRefreshGitStatus={vi.fn()}
         onWorkspaceChange={onWorkspaceChange}
         workspace={firstWorkspace}
@@ -283,6 +356,7 @@ describe("GitPanel", () => {
     rerender(
       <GitPanel
         branchOptions={["dev", "release"]}
+        commitPreviewInvoke={vi.fn(() => Promise.resolve(commitPreview))}
         onRefreshGitStatus={vi.fn()}
         onWorkspaceChange={onWorkspaceChange}
         workspace={secondWorkspace}

@@ -5,6 +5,7 @@ import { App } from "./app/App";
 import {
   electronAgentStudioInvoke,
   electronHarnessStudioInvoke,
+  electronCommitPreviewInvoke,
   electronMissionControlInvoke,
   electronRunsInvoke,
   electronSettingsInvoke,
@@ -14,6 +15,7 @@ import {
 import {
   previewAgentStudioInvoke,
   previewHarnessStudioInvoke,
+  previewCommitPreviewInvoke,
   previewMissionControlInvoke,
   previewRunsInvoke,
   previewSettingsInvoke,
@@ -49,6 +51,10 @@ if (rootElement !== null) {
     electronWorkspaceInvoke,
     previewWorkspaceInvoke
   );
+  const commitPreviewInvoke = selectDesktopInvoke(
+    electronCommitPreviewInvoke,
+    previewCommitPreviewInvoke
+  );
   const runsInvoke = selectDesktopInvoke(electronRunsInvoke, previewRunsInvoke);
   const settingsInvoke = selectDesktopInvoke(
     electronSettingsInvoke,
@@ -61,6 +67,7 @@ if (rootElement !== null) {
         agentStudioInvoke={agentStudioInvoke}
         harnessStudioInvoke={harnessStudioInvoke}
         missionControlInvoke={missionControlInvoke}
+        commitPreviewInvoke={commitPreviewInvoke}
         settingsInvoke={settingsInvoke}
         runsInvoke={runsInvoke}
         skillSourcesInvoke={skillSourcesInvoke}

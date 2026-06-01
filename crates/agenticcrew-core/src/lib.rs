@@ -35,7 +35,8 @@ use core::{
         RecordCommandEvidenceRequest, StateMutationError, StateStoreError,
     },
     workspaces::{
-        workspace_snapshot_from_state, CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest,
+        read_commit_preview, workspace_snapshot_from_state, CommitPreviewRequest,
+        CommitPreviewResponse, CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest,
         UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest, WorkspaceSnapshot,
     },
 };
@@ -181,6 +182,25 @@ pub fn refresh_workspace_git_status_at_path(
     })?;
 
     Ok(workspace_snapshot_from_state(&state))
+}
+
+pub fn commit_preview_at_path(
+    path: impl Into<PathBuf>,
+    request: CommitPreviewRequest,
+) -> Result<CommitPreviewResponse, DesktopCommandError> {
+    let state = durable_state_snapshot_at_path(path)?;
+    let workspace = state
+        .workspaces
+        .iter()
+        .find(|workspace| workspace.id == request.workspace_id)
+        .ok_or_else(|| {
+            DesktopCommandError::public(format!(
+                "workspace '{}' was not found",
+                request.workspace_id
+            ))
+        })?;
+
+    read_commit_preview(workspace, &request).map_err(DesktopCommandError::public)
 }
 
 pub fn update_workspace_loadout_at_path(

@@ -109,6 +109,44 @@ export type WorkspaceGitHistoryEntry = {
   relativeTime: string;
 };
 
+export type CommitPreviewLineKind = "addition" | "context" | "deletion" | "header" | "hunk";
+
+export type CommitPreviewDiffLine = {
+  content: string;
+  kind: CommitPreviewLineKind;
+};
+
+export type CommitPreviewFile = {
+  additions: number;
+  category: "config" | "docs" | "generated" | "source" | "test";
+  deletions: number;
+  diffLines: CommitPreviewDiffLine[];
+  path: string;
+  status: "added" | "deleted" | "modified" | "renamed";
+};
+
+export type CommitPreviewMetadata = {
+  authoredAt: string;
+  authorEmail: string;
+  authorName: string;
+  body: string;
+  hash: string;
+  shortHash: string;
+  subject: string;
+};
+
+export type CommitPreviewRequest = {
+  commitHash: string;
+  workspaceId: string;
+};
+
+export type CommitPreviewResponse = {
+  commitHash: string;
+  files: CommitPreviewFile[];
+  metadata: CommitPreviewMetadata;
+  workspaceId: string;
+};
+
 export type WorkspaceRecord = {
   activeAgentId: string;
   agents: WorkspaceAgent[];
@@ -550,6 +588,7 @@ export type ElectronCommandMap = {
   create_agent_template: AgentStudioSnapshot;
   create_harness_profile: HarnessStudioSnapshot;
   create_workspace: WorkspaceSnapshot;
+  commit_preview: CommitPreviewResponse;
   harness_studio_snapshot: HarnessStudioSnapshot;
   import_pi_extension: HarnessStudioSnapshot;
   inspect_cached_skill_source: unknown;
