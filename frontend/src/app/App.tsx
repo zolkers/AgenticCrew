@@ -504,12 +504,6 @@ export function App({
             ) : null}
           </div>
         </div>
-        <div className="topbar-tokens" aria-label="Token usage">
-          <span>Tokens</span>
-          <strong>
-            {formatCompactNumber(tokenSummary.totalTokens)} / {formatCompactNumber(tokenSummary.tokenLimit)}
-          </strong>
-        </div>
         <button
           aria-label="Open command palette"
           className="topbar-icon"

@@ -68,7 +68,7 @@ button {
 .topbar {
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(180px, 0.9fr) minmax(160px, 0.8fr) minmax(140px, 0.7fr) auto auto;
+  grid-template-columns: minmax(180px, 0.9fr) minmax(180px, 1fr) auto auto;
   gap: 0;
   align-items: center;
   min-height: 3.25rem;
@@ -105,15 +105,12 @@ button {
 .brand-button strong,
 .brand-button small,
 .topbar-workspace span,
-.topbar-workspace strong,
-.topbar-tokens span,
-.topbar-tokens strong {
+.topbar-workspace strong {
   display: block;
 }
 
 .brand-button small,
 .topbar-workspace span,
-.topbar-tokens span,
 .eyebrow,
 .agent-header p,
 .agent-list small,
@@ -136,8 +133,7 @@ button {
   background: linear-gradient(135deg, var(--color-teal), var(--color-codex));
 }
 
-.topbar-workspace,
-.topbar-tokens {
+.topbar-workspace {
   min-width: 0;
   height: 100%;
   padding: 0.5rem 0.8rem;
@@ -2830,8 +2826,7 @@ section[aria-label="Settings"] {
     flex: 0 0 4.5rem;
   }
 
-  .topbar-workspace,
-  .topbar-tokens {
+  .topbar-workspace {
     border-left: 0;
     border-top: 1px solid var(--color-border-soft);
   }

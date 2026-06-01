@@ -241,7 +241,8 @@ describe("App", () => {
     );
 
     await openDefaultWorkspace();
-    expect(screen.getByLabelText("Token usage")).toHaveTextContent("42.5K / 1M");
+    expect(screen.getByLabelText("Workspace token usage and status")).toHaveTextContent("42.5K / 1M");
+    expect(screen.queryByLabelText("Token usage")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Active branch" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "codex/mobile-smoke" }));
