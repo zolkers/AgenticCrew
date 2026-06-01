@@ -80,7 +80,6 @@ button {
 .brand-button,
 .topbar-tab,
 .topbar-icon,
-.workspace-card,
 .plugins-panel button,
 .command-bar button {
   border: 1px solid var(--color-border-soft);
@@ -738,10 +737,6 @@ button {
   border-bottom: 1px solid var(--color-border);
 }
 
-.cockpit-sidebar > section:first-child {
-  background: linear-gradient(180deg, rgba(106, 169, 255, 0.05), transparent);
-}
-
 .cockpit-sidebar > section:last-child {
   border-bottom: 0;
 }
@@ -755,7 +750,6 @@ button {
   text-transform: uppercase;
 }
 
-.workspace-list,
 .agent-list,
 .checkpoint-list,
 .run-list,
@@ -766,32 +760,6 @@ button {
   padding: 0;
   margin: 0;
   list-style: none;
-}
-
-.workspace-card {
-  display: grid;
-  width: 100%;
-  gap: 0.15rem;
-  padding: 0.5rem 0.6rem;
-  border-color: transparent;
-  text-align: left;
-  background: transparent;
-}
-
-.workspace-card strong {
-  color: var(--color-teal);
-  font-size: 0.76rem;
-}
-
-.workspace-card:hover {
-  background: #303338;
-}
-
-.workspace-card[aria-pressed="true"] {
-  border-color: #4b5360;
-  background:
-    linear-gradient(90deg, rgba(106, 169, 255, 0.16), transparent 70%),
-    #353b45;
 }
 
 .agent-list li {
@@ -1077,8 +1045,9 @@ button {
 
 .cockpit-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 260px) minmax(260px, 420px);
   gap: 0.75rem;
+  align-items: end;
   padding: 0.45rem 0.75rem;
   border-bottom: 1px solid var(--color-border);
   background:
@@ -1109,6 +1078,30 @@ button {
   margin-top: 0.1rem;
   color: var(--color-codex);
   font-size: 0.82rem;
+}
+
+.workspace-switcher {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.workspace-switcher span {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.workspace-switcher select {
+  width: 100%;
+  min-width: 0;
+  height: 2.35rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  background: var(--color-terminal);
 }
 
 .metric-strip {

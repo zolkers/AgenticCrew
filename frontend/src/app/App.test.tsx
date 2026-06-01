@@ -313,7 +313,7 @@ describe("App", () => {
     expect(screen.getByText(/Run queued for workspace/u)).toBeInTheDocument();
   });
 
-  it("switches workspace and updates visible agent context", async () => {
+  it("switches workspace from the cockpit dropdown and updates visible agent context", async () => {
     render(
       <App
         agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
@@ -327,7 +327,7 @@ describe("App", () => {
     await openDefaultWorkspace();
     expect(await screen.findByRole("heading", { name: "Build UI shell" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Mobile QA/ }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Workspace" }), { target: { value: "mobile-qa" } });
 
     expect(screen.getByRole("heading", { name: "Stabilize device smoke" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workspace/mobile-qa/cockpit");

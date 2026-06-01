@@ -995,26 +995,6 @@ function Cockpit({
   return (
     <div className="cockpit-grid">
       <aside className="cockpit-sidebar" aria-label="Workbench controls">
-        <section aria-labelledby="workspace-selector-title">
-          <h2 id="workspace-selector-title">Workspaces</h2>
-          <div className="workspace-list">
-            {workspaces.map((workspace) => (
-              <button
-                aria-pressed={workspace.id === activeWorkspace.id}
-                className="workspace-card"
-                key={workspace.id}
-                onClick={() => {
-                  onWorkspaceChange(workspace.id);
-                }}
-                type="button"
-              >
-                <span>{workspace.name}</span>
-                <strong>{workspace.id}</strong>
-              </button>
-            ))}
-          </div>
-        </section>
-
         <section aria-labelledby="loadout-title" className="loadout-panel">
           <h2 id="loadout-title">
             <SlidersHorizontal aria-hidden="true" size={16} />
@@ -1082,6 +1062,22 @@ function Cockpit({
             <h1 id="cockpit-title">AgenticCrew Workbench</h1>
             <h2>{activeWorkspace.mission}</h2>
           </div>
+          <label className="workspace-switcher">
+            <span>Workspace</span>
+            <select
+              aria-label="Workspace"
+              onChange={(event) => {
+                onWorkspaceChange(event.target.value);
+              }}
+              value={activeWorkspace.id}
+            >
+              {workspaces.map((workspace) => (
+                <option key={workspace.id} value={workspace.id}>
+                  {workspace.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <dl className="metric-strip" aria-label="Workspace token usage and status">
             <div>
               <dt>Status</dt>
