@@ -946,16 +946,6 @@ button {
   text-transform: uppercase;
 }
 
-.loadout-panel select {
-  min-width: 0;
-  min-height: 2.05rem;
-  padding: 0 0.65rem;
-  border: 1px solid var(--color-border-soft);
-  border-radius: 4px;
-  color: var(--color-text);
-  background: var(--color-terminal);
-}
-
 .agent-overview-card {
   display: grid;
   gap: 0.25rem;
@@ -1107,17 +1097,6 @@ button {
   text-transform: uppercase;
 }
 
-.workspace-switcher select {
-  width: 100%;
-  min-width: 0;
-  height: 2.35rem;
-  padding: 0 0.55rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  color: var(--color-text);
-  background: var(--color-terminal);
-}
-
 .metric-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1255,14 +1234,33 @@ button {
   align-items: end;
 }
 
+.loadout-panel select,
+.workspace-switcher select,
 .run-composer-controls select {
+  appearance: none;
   width: 100%;
   min-height: 2.35rem;
-  padding: 0 0.6rem;
-  border: 1px solid var(--color-border);
+  min-width: 0;
+  padding: 0 2rem 0 0.7rem;
+  border: 1px solid var(--color-border-soft);
   border-radius: 4px;
   color: var(--color-text);
-  background: var(--color-terminal);
+  font-weight: 750;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--color-muted) 50%) calc(100% - 1rem) 50% / 0.4rem 0.4rem no-repeat,
+    linear-gradient(135deg, var(--color-muted) 50%, transparent 50%) calc(100% - 0.75rem) 50% / 0.4rem 0.4rem no-repeat,
+    var(--color-terminal);
+}
+
+.loadout-panel select {
+  min-height: 2.05rem;
+}
+
+.loadout-panel select:focus,
+.workspace-switcher select:focus,
+.run-composer-controls select:focus {
+  border-color: rgba(106, 169, 255, 0.62);
+  outline: 2px solid rgba(106, 169, 255, 0.18);
 }
 
 .mission-skill-picker {
