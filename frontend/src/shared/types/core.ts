@@ -276,6 +276,13 @@ export type RecordRunCommandRequest = {
   stdout: string;
 };
 
+export type RecordRunEventRequest = {
+  level: RunEventLevel;
+  message: string;
+  participantId?: string | null;
+  runId: string;
+};
+
 export type ExecuteRunCommandRequest = {
   args: string[];
   cwd?: string | null;
@@ -700,6 +707,7 @@ export type ElectronCommandMap = {
   mission_control_snapshot: MissionControlSnapshot;
   promote_agent_training_run: AgentStudioSnapshot;
   record_run_command: RunsSnapshot;
+  record_run_event: RunsSnapshot;
   pause_run: RunsSnapshot;
   record_model_call_estimate: MissionControlSnapshot;
   refresh_workspace_git_status: WorkspaceSnapshot;

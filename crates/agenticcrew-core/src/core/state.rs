@@ -21,8 +21,8 @@ use super::{
         ImportPiExtensionRequest, PiExtension, PiExtensionError, SetPiExtensionActiveRequest,
     },
     runs::{
-        RecordRunCommandRequest, RunCommandRecord, RunError, RunEvent, RunEventLevel,
-        RunParticipantStatus, RunRecord, RunStatus, StartRunRequest,
+        RecordRunCommandRequest, RecordRunEventRequest, RunCommandRecord, RunError, RunEvent,
+        RunEventLevel, RunParticipantStatus, RunRecord, RunStatus, StartRunRequest,
     },
     sessions::{
         Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
@@ -967,6 +967,40 @@ impl AgentOsState {
         Ok(())
     }
 
+    pub fn record_run_event(
+        &mut self,
+        request: RecordRunEventRequest,
+        created_at: String,
+    ) -> Result<(), StateMutationError> {
+        let event_index = self.run_events.len() + 1;
+        let event_id = format!("{}-event-{event_index}", request.run_id);
+        let event = RunEvent::recorded(event_id, request, created_at)
+            .map_err(StateMutationError::InvalidRun)?;
+        let run = self
+            .runs
+            .iter()
+            .find(|run| run.id == event.run_id)
+            .ok_or_else(|| StateMutationError::MissingRun {
+                run_id: event.run_id.clone(),
+            })?;
+        if let Some(participant_id) = event.participant_id.as_deref() {
+            if !run
+                .participants
+                .iter()
+                .any(|participant| participant.id == participant_id)
+            {
+                return Err(StateMutationError::MissingRunParticipant {
+                    participant_id: participant_id.to_owned(),
+                    run_id: event.run_id,
+                });
+            }
+        }
+
+        self.run_events.push(event);
+
+        Ok(())
+    }
+
     fn transition_run(
         &mut self,
         run_id: &str,
@@ -1443,9 +1477,9 @@ mod tests {
         },
         pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
         runs::{
-            RecordRunCommandRequest, RunCommandStatus, RunParticipantExecutionMode,
-            RunParticipantRequest, RunParticipantRole, RunParticipantStatus, RunStatus,
-            StartRunRequest,
+            RecordRunCommandRequest, RecordRunEventRequest, RunCommandStatus, RunEventLevel,
+            RunParticipantExecutionMode, RunParticipantRequest, RunParticipantRole,
+            RunParticipantStatus, RunStatus, StartRunRequest,
         },
         sessions::{
             Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
@@ -2225,6 +2259,89 @@ mod tests {
                     run_id: "crew-run".to_owned(),
                     stderr: String::new(),
                     stdout: "ok".to_owned(),
+                },
+                "124".to_owned(),
+            )
+            .expect_err("unknown participant should fail");
+
+        assert_eq!(
+            error,
+            StateMutationError::MissingRunParticipant {
+                participant_id: "reviewer".to_owned(),
+                run_id: "crew-run".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn record_run_event_stores_participant_scoped_signal() {
+        let mut state = AgentOsState::empty();
+        state
+            .start_run(
+                StartRunRequest {
+                    agent_template_id: Some("developer-pi".to_owned()),
+                    harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                    id: "crew-run".to_owned(),
+                    model_id: None,
+                    participants: Vec::new(),
+                    provider_id: None,
+                    reasoning_effort: None,
+                    skill_routes: Vec::new(),
+                    task: "Build with event evidence".to_owned(),
+                    workspace_id: "fullstack-app".to_owned(),
+                },
+                "123".to_owned(),
+            )
+            .expect("run should queue");
+
+        state
+            .record_run_event(
+                RecordRunEventRequest {
+                    level: RunEventLevel::Warning,
+                    message: "Waiting on reviewer".to_owned(),
+                    participant_id: Some("developer".to_owned()),
+                    run_id: "crew-run".to_owned(),
+                },
+                "124".to_owned(),
+            )
+            .expect("event should record");
+
+        assert!(state.run_events.iter().any(|event| {
+            event.level == RunEventLevel::Warning
+                && event.message == "Waiting on reviewer"
+                && event.participant_id.as_deref() == Some("developer")
+                && event.run_id == "crew-run"
+        }));
+    }
+
+    #[test]
+    fn record_run_event_rejects_unknown_participant() {
+        let mut state = AgentOsState::empty();
+        state
+            .start_run(
+                StartRunRequest {
+                    agent_template_id: Some("developer-pi".to_owned()),
+                    harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                    id: "crew-run".to_owned(),
+                    model_id: None,
+                    participants: Vec::new(),
+                    provider_id: None,
+                    reasoning_effort: None,
+                    skill_routes: Vec::new(),
+                    task: "Build with event evidence".to_owned(),
+                    workspace_id: "fullstack-app".to_owned(),
+                },
+                "123".to_owned(),
+            )
+            .expect("run should queue");
+
+        let error = state
+            .record_run_event(
+                RecordRunEventRequest {
+                    level: RunEventLevel::Info,
+                    message: "Reviewer checkpoint".to_owned(),
+                    participant_id: Some("reviewer".to_owned()),
+                    run_id: "crew-run".to_owned(),
                 },
                 "124".to_owned(),
             )

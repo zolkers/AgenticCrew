@@ -29,6 +29,7 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - Runtime control commands: runs can now be paused, resumed, and killed through Rust-owned lifecycle commands exposed in the cockpit and preview runtime.
 - Workspace runtime policies: each workspace now owns its allowed runtime command list, the cockpit can edit it, and controlled command execution enforces the workspace policy instead of a hardcoded global allowlist.
 - Participant runtime policies: each run participant can carry an effective command allowlist, with crew launches giving developers the workspace policy and reviewers a read-focused `git` policy by default.
+- Participant event ingestion: Rust/Electron now accepts audited run events scoped to a participant, so future workers can stream agent progress into the same timelines as command evidence.
 - Coverage ratchet: frontend coverage has been raised above 99% globally with additional App, Agent Studio, Harness Studio, Git preview, Skill Sources, and Electron bridge regression tests while keeping the 100% target explicit.
 
 **Next focus:**
@@ -201,7 +202,7 @@ Completed on `dev`:
 10. Add mission-level skill selection to queued runs.
 11. Add OpenAI/Gemini provider selection and persisted thinking effort across settings, agents, and run launch.
 
-Next tranche: per-agent event streaming, progressive removal of preview-only data from desktop runtime paths, and continued coverage ratcheting toward the 100% target. Git commit preview, durable run manifests, lifecycle controls, audited command records, controlled command execution, the first command allowlist gate, the surfaced runtime policy contract, participant timelines, pause/resume/kill runtime controls, workspace runtime policies, and participant runtime policies are completed slices of this runtime-backed replacement work.
+Next tranche: worker-backed event streaming/subscriptions, progressive removal of preview-only data from desktop runtime paths, and continued coverage ratcheting toward the 100% target. Git commit preview, durable run manifests, lifecycle controls, audited command records, controlled command execution, the first command allowlist gate, the surfaced runtime policy contract, participant timelines, pause/resume/kill runtime controls, workspace runtime policies, participant runtime policies, and participant event ingestion are completed slices of this runtime-backed replacement work.
 
 ## Task Roadmap
 

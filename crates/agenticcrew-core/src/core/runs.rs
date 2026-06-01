@@ -87,6 +87,16 @@ pub struct RecordRunCommandRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RecordRunEventRequest {
+    pub run_id: String,
+    #[serde(default)]
+    pub participant_id: Option<String>,
+    pub level: RunEventLevel,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExecuteRunCommandRequest {
     pub run_id: String,
     pub participant_id: String,
@@ -547,6 +557,24 @@ impl RunEvent {
             participant_id: None,
             run_id: run_id.to_owned(),
         }
+    }
+
+    pub fn recorded(
+        id: String,
+        request: RecordRunEventRequest,
+        created_at: String,
+    ) -> Result<Self, RunError> {
+        Ok(Self {
+            created_at,
+            id,
+            level: request.level,
+            message: validate_required("run event message", request.message)?,
+            participant_id: request
+                .participant_id
+                .map(|participant_id| validate_identifier("run participant id", participant_id))
+                .transpose()?,
+            run_id: validate_identifier("run id", request.run_id)?,
+        })
     }
 }
 

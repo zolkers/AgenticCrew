@@ -22,8 +22,8 @@ use core::{
     permissions::ApprovedPermissionPolicy,
     pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
     runs::{
-        runs_snapshot_from_state, ExecuteRunCommandRequest, RecordRunCommandRequest, RunRecord,
-        RunsSnapshot, StartRunRequest,
+        runs_snapshot_from_state, ExecuteRunCommandRequest, RecordRunCommandRequest,
+        RecordRunEventRequest, RunRecord, RunsSnapshot, StartRunRequest,
     },
     settings::{
         settings_snapshot_from_state, sync_provider_models_with_catalog, ProviderModelCatalog,
@@ -308,6 +308,16 @@ pub fn record_run_command_at_path(
 ) -> Result<RunsSnapshot, DesktopCommandError> {
     let created_at = current_unix_timestamp_string()?;
     let state = mutate_state_at_path(path, |state| state.record_run_command(request, created_at))?;
+
+    Ok(runs_snapshot_from_state(&state))
+}
+
+pub fn record_run_event_at_path(
+    path: impl AsRef<Path>,
+    request: RecordRunEventRequest,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    let created_at = current_unix_timestamp_string()?;
+    let state = mutate_state_at_path(path, |state| state.record_run_event(request, created_at))?;
 
     Ok(runs_snapshot_from_state(&state))
 }
@@ -765,7 +775,7 @@ mod tests {
         execute_run_command_at_path, harness_studio_snapshot_at_path,
         inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
         promote_agent_training_run_at_path, record_command_evidence_at_path,
-        record_model_call_estimate_at_path, record_run_command_at_path,
+        record_model_call_estimate_at_path, record_run_command_at_path, record_run_event_at_path,
         record_skill_source_sync_success_at_path, refresh_workspace_git_status_at_path,
         register_github_skill_source_at_path, runs_snapshot_at_path,
         set_agent_template_active_at_path, set_harness_profile_active_at_path,
@@ -791,7 +801,8 @@ mod tests {
             NetworkPermissionScope,
         },
         runs::{
-            ExecuteRunCommandRequest, RecordRunCommandRequest, RunCommandStatus, StartRunRequest,
+            ExecuteRunCommandRequest, RecordRunCommandRequest, RecordRunEventRequest,
+            RunCommandStatus, RunEventLevel, StartRunRequest,
         },
         sessions::GoalObject,
         settings::ReasoningEffort,
@@ -1128,6 +1139,26 @@ mod tests {
         assert_eq!(
             command_snapshot,
             runs_snapshot_at_path(&path).expect("runs snapshot should include commands")
+        );
+
+        let event_snapshot = record_run_event_at_path(
+            &path,
+            RecordRunEventRequest {
+                level: RunEventLevel::Warning,
+                message: "Waiting on reviewer".to_owned(),
+                participant_id: Some("developer".to_owned()),
+                run_id: "run-1".to_owned(),
+            },
+        )
+        .expect("run event should record");
+        assert!(event_snapshot.events.iter().any(|event| {
+            event.level == RunEventLevel::Warning
+                && event.message == "Waiting on reviewer"
+                && event.participant_id.as_deref() == Some("developer")
+        }));
+        assert_eq!(
+            event_snapshot,
+            runs_snapshot_at_path(&path).expect("runs snapshot should include run event")
         );
 
         let executed_snapshot = execute_run_command_at_path(

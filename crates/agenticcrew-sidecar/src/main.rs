@@ -18,7 +18,9 @@ use agenticcrew_core::{
     },
     core::permissions::ApprovedPermissionPolicy,
     core::pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
-    core::runs::{ExecuteRunCommandRequest, RecordRunCommandRequest, StartRunRequest},
+    core::runs::{
+        ExecuteRunCommandRequest, RecordRunCommandRequest, RecordRunEventRequest, StartRunRequest,
+    },
     core::settings::{
         AiModelRecord, ProviderModelCatalog, ProviderModelCatalogError, SyncProviderModelsRequest,
         UpdateAiProviderSettingsRequest,
@@ -34,7 +36,7 @@ use agenticcrew_core::{
     import_pi_extension_at_path, inspect_cached_skill_source_at_path, kill_run_at_path,
     mission_control_snapshot_at_path, pause_run_at_path, prepare_run_at_path,
     promote_agent_training_run_at_path, record_model_call_estimate_at_path,
-    record_run_command_at_path, refresh_workspace_git_status_at_path,
+    record_run_command_at_path, record_run_event_at_path, refresh_workspace_git_status_at_path,
     register_github_skill_source_at_path, resume_run_at_path, runs_snapshot_at_path,
     set_agent_template_active_at_path, set_harness_profile_active_at_path,
     set_pi_extension_active_at_path, settings_snapshot_at_path, skill_sources_snapshot_at_path,
@@ -286,6 +288,12 @@ struct RecordRunCommandArgs {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct RecordRunEventArgs {
+    request: RecordRunEventRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ExecuteRunCommandArgs {
     request: ExecuteRunCommandRequest,
 }
@@ -435,6 +443,11 @@ fn run() -> Result<(), DesktopCommandError> {
             let args = parse_args::<RecordRunCommandArgs>(&args_json)?;
 
             print_json(&record_run_command_at_path(state_path, args.request)?)
+        }
+        "record_run_event" => {
+            let args = parse_args::<RecordRunEventArgs>(&args_json)?;
+
+            print_json(&record_run_event_at_path(state_path, args.request)?)
         }
         "execute_run_command" => {
             let args = parse_args::<ExecuteRunCommandArgs>(&args_json)?;

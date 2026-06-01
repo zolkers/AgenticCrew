@@ -800,8 +800,49 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
     });
   }
 
+  if (command === "record_run_event") {
+    const request = args?.request as
+      | {
+          level?: "error" | "info" | "warning";
+          message?: string;
+          participantId?: null | string;
+          runId?: string;
+        }
+      | undefined;
+    const runId = request?.runId ?? currentPreviewRunsSnapshot.activeRunId ?? "preview-run";
+    currentPreviewRunsSnapshot = appendPreviewRunEvent({
+      level: request?.level ?? "info",
+      message: request?.message ?? "Participant event",
+      participantId: request?.participantId ?? "developer",
+      runId
+    });
+  }
+
   return Promise.resolve(currentPreviewRunsSnapshot);
 };
+
+function appendPreviewRunEvent(request: {
+  level: "error" | "info" | "warning";
+  message: string;
+  participantId?: null | string;
+  runId: string;
+}): RunsSnapshot {
+  return withPreviewParticipantTimelines({
+    ...currentPreviewRunsSnapshot,
+    activeRunId: request.runId,
+    events: [
+      ...currentPreviewRunsSnapshot.events,
+      {
+        createdAt: "preview",
+        id: `${request.runId}-event-${String(currentPreviewRunsSnapshot.events.length + 1)}`,
+        level: request.level,
+        message: request.message,
+        participantId: request.participantId,
+        runId: request.runId
+      }
+    ]
+  });
+}
 
 function appendPreviewRunCommand(request: {
   command: string;

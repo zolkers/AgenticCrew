@@ -8,6 +8,7 @@ import {
   pauseRun,
   prepareRun,
   recordRunCommand,
+  recordRunEvent,
   resumeRun,
   startPreparedRun,
   startRun,
@@ -119,6 +120,31 @@ describe("runsApi", () => {
         runId: "run-1",
         stderr: "",
         stdout: "ok"
+      }
+    });
+  });
+
+  it("records audited run event evidence", async () => {
+    const invoke = vi.fn<InvokeRuns>().mockResolvedValue({
+      activeRunId: "run-1",
+      commands: [],
+      events: [],
+      runs: []
+    });
+
+    await recordRunEvent(invoke, {
+      level: "warning",
+      message: "Waiting on reviewer",
+      participantId: "developer",
+      runId: "run-1"
+    });
+
+    expect(invoke).toHaveBeenCalledWith("record_run_event", {
+      request: {
+        level: "warning",
+        message: "Waiting on reviewer",
+        participantId: "developer",
+        runId: "run-1"
       }
     });
   });

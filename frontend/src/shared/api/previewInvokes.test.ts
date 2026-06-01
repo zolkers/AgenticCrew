@@ -370,6 +370,42 @@ describe("previewInvokes", () => {
     );
   });
 
+  it("records preview participant event evidence", async () => {
+    await previewRunsInvoke("start_run", {
+      request: {
+        id: "event-preview",
+        task: "Exercise event evidence",
+        workspaceId: "fullstack-app"
+      }
+    });
+
+    const snapshot = await previewRunsInvoke("record_run_event", {
+      request: {
+        level: "warning",
+        message: "Waiting on reviewer",
+        participantId: "developer",
+        runId: "event-preview"
+      }
+    });
+
+    expect(snapshot.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          level: "warning",
+          message: "Waiting on reviewer",
+          participantId: "developer",
+          runId: "event-preview"
+        })
+      ])
+    );
+    const timeline = snapshot.participantTimelines?.find(
+      (candidate) => candidate.runId === "event-preview" && candidate.participantId === "developer"
+    );
+    expect(timeline?.events).toEqual(
+      expect.arrayContaining([expect.objectContaining({ message: "Waiting on reviewer" })])
+    );
+  });
+
   it("records preview command evidence with default args", async () => {
     const snapshot = await previewRunsInvoke("record_run_command");
 

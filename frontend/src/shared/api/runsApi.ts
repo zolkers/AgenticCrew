@@ -1,6 +1,7 @@
 import type {
   ExecuteRunCommandRequest,
   RecordRunCommandRequest,
+  RecordRunEventRequest,
   RunsSnapshot,
   StartRunRequest
 } from "../types/core";
@@ -13,6 +14,7 @@ export type RunsCommand =
   | "pause_run"
   | "prepare_run"
   | "record_run_command"
+  | "record_run_event"
   | "resume_run"
   | "runs_snapshot"
   | "start_prepared_run"
@@ -67,6 +69,13 @@ export async function recordRunCommand(
   request: RecordRunCommandRequest
 ): Promise<RunsSnapshot> {
   return invoke("record_run_command", { request });
+}
+
+export async function recordRunEvent(
+  invoke: InvokeRuns,
+  request: RecordRunEventRequest
+): Promise<RunsSnapshot> {
+  return invoke("record_run_event", { request });
 }
 
 export async function executeRunCommand(
