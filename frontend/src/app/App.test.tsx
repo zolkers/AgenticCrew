@@ -944,7 +944,7 @@ describe("App", () => {
     expect(screen.getAllByText("1 ahead / 0 behind").length).toBeGreaterThan(0);
     expect(screen.queryByText("C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
-    expect(screen.getByText("feat(cockpit): expose branch picker and token usage")).toBeInTheDocument();
+    expect(screen.getAllByText("feat(cockpit): expose branch picker and token usage").length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "codex/mobile-smoke" } });
     fireEvent.click(screen.getByRole("button", { name: "Save branch" }));
     await waitFor(() => {

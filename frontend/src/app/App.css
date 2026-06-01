@@ -2717,6 +2717,14 @@ section[aria-label="Settings"] {
   align-items: center;
 }
 
+.git-history-workbench {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.46fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  min-width: 0;
+}
+
 .git-history-list {
   display: grid;
   gap: 0;
@@ -2737,6 +2745,23 @@ section[aria-label="Settings"] {
   border-top: 1px solid var(--color-border-soft);
 }
 
+.git-history-list button {
+  display: grid;
+  min-width: 0;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--color-text);
+  text-align: left;
+  background: transparent;
+}
+
+.git-history-list button:hover,
+.git-history-list button[aria-pressed="true"] {
+  border-color: rgba(106, 169, 255, 0.42);
+  background: rgba(106, 169, 255, 0.1);
+}
+
 .git-history-list li:first-child {
   border-top: 0;
 }
@@ -2749,20 +2774,20 @@ section[aria-label="Settings"] {
   background: var(--color-terminal);
 }
 
-.git-history-list div {
+.git-history-list button > span {
   display: grid;
   gap: 0.2rem;
   min-width: 0;
 }
 
 .git-history-list strong,
-.git-history-list span {
+.git-history-list small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.git-history-list span {
+.git-history-list small {
   color: var(--color-muted);
   font-size: 0.82rem;
 }
@@ -2777,6 +2802,242 @@ section[aria-label="Settings"] {
   text-overflow: ellipsis;
   white-space: nowrap;
   background: var(--color-panel);
+}
+
+.git-commit-preview {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid var(--color-border);
+  background:
+    linear-gradient(90deg, rgba(106, 169, 255, 0.08), transparent 52%),
+    var(--color-terminal);
+}
+
+.git-commit-preview > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.git-commit-preview h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+}
+
+.git-commit-preview header strong,
+.git-commit-preview header span {
+  display: block;
+  max-width: 46rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-commit-preview header span {
+  color: var(--color-muted);
+}
+
+.git-preview-actions,
+.git-preview-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.git-preview-actions button,
+.git-preview-filter-group button {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
+  color: var(--color-text);
+  background: var(--color-panel);
+}
+
+.git-preview-actions button:hover,
+.git-preview-filter-group button:hover,
+.git-preview-filter-group button[aria-pressed="true"] {
+  border-color: rgba(125, 211, 199, 0.42);
+  background: rgba(125, 211, 199, 0.1);
+}
+
+.git-preview-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  margin: 0;
+  border: 1px solid var(--color-border-soft);
+}
+
+.git-preview-stats div {
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  border-left: 1px solid var(--color-border-soft);
+}
+
+.git-preview-stats div:first-child {
+  border-left: 0;
+}
+
+.git-preview-stats dt {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.git-preview-stats dd {
+  margin: 0.18rem 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 850;
+}
+
+.git-preview-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.38fr);
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.git-preview-toolbar label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.35rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.git-preview-toolbar label span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.git-preview-toolbar input {
+  min-width: 0;
+  padding: 0.48rem 0.55rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
+  color: var(--color-text);
+  background: #1c2025;
+}
+
+.git-preview-layout {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.38fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.git-preview-files {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  max-height: 24rem;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel);
+}
+
+.git-preview-files button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+  min-width: 0;
+  padding: 0.55rem;
+  border: 0;
+  border-top: 1px solid var(--color-border-soft);
+  color: var(--color-text);
+  text-align: left;
+  background: transparent;
+}
+
+.git-preview-files button:first-of-type {
+  border-top: 0;
+}
+
+.git-preview-files button:hover,
+.git-preview-files button[aria-pressed="true"] {
+  background: #303746;
+}
+
+.git-preview-files button > span {
+  display: grid;
+  min-width: 0;
+}
+
+.git-preview-files strong,
+.git-preview-files small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-preview-files small,
+.git-preview-files p {
+  color: var(--color-muted);
+}
+
+.git-preview-files code {
+  color: var(--color-teal);
+  white-space: nowrap;
+}
+
+.git-preview-diff {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  background: #171b20;
+}
+
+.git-preview-diff header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.git-preview-diff header span {
+  color: var(--color-muted);
+}
+
+.git-preview-diff pre {
+  display: grid;
+  gap: 0;
+  min-height: 12rem;
+  max-height: 24rem;
+  margin: 0;
+  overflow: auto;
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, ui-monospace, monospace;
+}
+
+.git-preview-diff code {
+  padding: 0.24rem 0.65rem;
+  overflow-wrap: anywhere;
+}
+
+.diff-line-added {
+  color: #bff4cf;
+  background: rgba(72, 187, 120, 0.12);
+}
+
+.diff-line-deleted {
+  color: #ffc9c1;
+  background: rgba(220, 125, 115, 0.12);
+}
+
+.diff-line-context {
+  color: #dbe5f0;
 }
 
 .git-status-strip {
@@ -2913,6 +3174,12 @@ section[aria-label="Settings"] {
 
   .terminal-panel {
     grid-template-rows: auto auto auto;
+  }
+
+  .git-history-workbench,
+  .git-preview-layout,
+  .git-preview-toolbar {
+    grid-template-columns: 1fr;
   }
 
   .run-status-bar {

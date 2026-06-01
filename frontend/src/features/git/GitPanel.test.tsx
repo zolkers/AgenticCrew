@@ -58,8 +58,59 @@ describe("GitPanel", () => {
     expect(screen.getByText("Modified")).toBeInTheDocument();
     expect(screen.getByText("Present")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
-    expect(screen.getByText("feat(settings): wire provider panel")).toBeInTheDocument();
-    expect(screen.getByText("abc1234 · Codex · 5 minutes ago")).toBeInTheDocument();
+    expect(screen.getAllByText("feat(settings): wire provider panel").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("abc1234 · Codex · 5 minutes ago").length).toBeGreaterThan(0);
+  });
+
+  it("opens an interactive history preview with filters and file details", () => {
+    const workspace: CockpitWorkspace = {
+      activeAgentId: "dev",
+      agents: [],
+      branch: "codex/settings",
+      budgetLimitUsd: 10,
+      budgetUsedUsd: 1,
+      checkpoints: [],
+      gitHistory: [
+        {
+          author: "Codex",
+          branch: "codex/settings",
+          hash: "abc1234",
+          message: "feat(settings): wire provider panel",
+          relativeTime: "5 minutes ago"
+        }
+      ],
+      id: "settings-workspace",
+      logs: [],
+      mission: "Wire settings",
+      name: "Settings Workspace",
+      path: "C:\\repo\\AgenticCrew",
+      skills: [],
+      status: "running"
+    };
+
+    render(<GitPanel branchOptions={["main", "codex/settings"]} onRefreshGitStatus={vi.fn()} onWorkspaceChange={vi.fn()} workspace={workspace} />);
+    fireEvent.click(screen.getByRole("button", { name: /Preview feat\(settings\): wire provider panel/u }));
+
+    expect(screen.getByRole("heading", { name: "Commit preview" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Commit file statistics")).toHaveTextContent("codex/settings");
+    expect(screen.getByRole("button", { name: "Copy hash" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create branch from here" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "frontend/src/app/App.test.tsx" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tests" }));
+
+    expect(screen.getByRole("button", { name: "frontend/src/app/App.test.tsx" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "src/app/App.tsx" })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Search changed files"), { target: { value: "roadmap" } });
+
+    expect(screen.getByText("No files match the current filters")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+
+    expect(screen.getByRole("button", { name: "docs/roadmap.md" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "docs/roadmap.md" }));
+    expect(screen.getByLabelText("Selected file diff")).toHaveTextContent("docs/roadmap.md");
   });
 
   it("submits selected branch while preserving the internal workspace path", () => {
