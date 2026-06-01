@@ -11,7 +11,8 @@ import type {
   AgentTemplate,
   AiModelRecord,
   DiscoveredSkillManifest,
-  HarnessStudioSnapshot
+  HarnessStudioSnapshot,
+  ReasoningEffort
 } from "../../shared/types/core";
 
 type AgentStudioProps = Readonly<{
@@ -39,16 +40,21 @@ export function AgentStudio({
   const [isEditorOpen, setIsEditorOpen] = useState(snapshot.templates.length === 0);
   const [selectedTemplateId, setSelectedTemplateId] = useState(snapshot.templates[0]?.id ?? "");
   const defaultModelId = firstAvailableModelId(modelOptions, snapshot);
+  const defaultProviderId = firstAvailableProviderId(modelOptions, snapshot);
   const [modelId, setModelId] = useState(defaultModelId);
   const [name, setName] = useState("Review Agent");
+  const [providerId, setProviderId] = useState(defaultProviderId);
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>("medium");
   const [role, setRole] = useState("reviewer");
   const [saving, setSaving] = useState(false);
   const [skillRoutesText, setSkillRoutesText] = useState("agenticcrew://skills/superpowers/subagent-driven-development");
   const availableModels = modelOptions ?? [];
+  const providerOptions = uniqueProviders(availableModels, snapshot);
+  const modelsForProvider = availableModels.filter((model) => model.providerId === providerId);
   const modelSelectOptions =
-    availableModels.some((model) => model.id === modelId) || modelId.length === 0
-      ? availableModels
-      : [{ id: modelId, label: modelId, providerId: "openai" }, ...availableModels];
+    modelsForProvider.some((model) => model.id === modelId) || modelId.length === 0
+      ? modelsForProvider
+      : [{ id: modelId, label: modelId, providerId }, ...modelsForProvider];
   const selectedSkillRoutes = splitSkillRoutes(skillRoutesText);
   const generatedId = useMemo(() => slugify(name), [name]);
   const selectedTemplate = snapshot.templates.find((template) => template.id === selectedTemplateId) ?? snapshot.templates[0];
@@ -65,7 +71,8 @@ export function AgentStudio({
         harnessProfileId: harnessProfileId.length > 0 ? harnessProfileId : null,
         modelId,
         name,
-        providerId: "openai",
+        providerId,
+        reasoningEffort,
         role,
         skillRoutes: splitSkillRoutes(skillRoutesText)
       };
@@ -96,6 +103,8 @@ export function AgentStudio({
     setRole(template.role);
     setDescription(template.description);
     setModelId(template.modelId);
+    setProviderId(template.providerId);
+    setReasoningEffort(template.reasoningEffort ?? "medium");
     setHarnessProfileId(template.harnessProfileId ?? "");
     setBudgetDollars((template.budgetCents / 100).toFixed(2));
     setSkillRoutesText(template.skillRoutes.join("\n"));
@@ -109,6 +118,8 @@ export function AgentStudio({
     setRole("reviewer");
     setDescription("Custom workspace agent.");
     setModelId(defaultModelId);
+    setProviderId(defaultProviderId);
+    setReasoningEffort("medium");
     setHarnessProfileId(harnessSnapshot.profiles[0]?.id ?? "");
     setBudgetDollars("2.00");
     setSkillRoutesText("agenticcrew://skills/superpowers/subagent-driven-development");
@@ -218,9 +229,18 @@ export function AgentStudio({
           onHarnessChange={setHarnessProfileId}
           onModelChange={setModelId}
           onNameChange={setName}
+          onProviderChange={(nextProviderId) => {
+            const nextModelId = availableModels.find((model) => model.providerId === nextProviderId)?.id ?? "";
+            setProviderId(nextProviderId);
+            setModelId(nextModelId);
+          }}
+          onReasoningEffortChange={setReasoningEffort}
           onRoleChange={setRole}
           onSkillRoutesChange={setSkillRoutesText}
           onSubmit={submitAgentTemplate}
+          providerId={providerId}
+          providerOptions={providerOptions}
+          reasoningEffort={reasoningEffort}
           role={role}
           saving={saving}
           selectedSkillRoutes={selectedSkillRoutes}
@@ -252,9 +272,14 @@ type AgentEditorPanelProps = Readonly<{
   onHarnessChange: (value: string) => void;
   onModelChange: (value: string) => void;
   onNameChange: (value: string) => void;
+  onProviderChange: (value: string) => void;
+  onReasoningEffortChange: (value: ReasoningEffort) => void;
   onRoleChange: (value: string) => void;
   onSkillRoutesChange: (value: string) => void;
   onSubmit: () => Promise<void>;
+  providerId: string;
+  providerOptions: readonly ProviderOption[];
+  reasoningEffort: ReasoningEffort;
   role: string;
   saving: boolean;
   selectedSkillRoutes: readonly string[];
@@ -262,6 +287,11 @@ type AgentEditorPanelProps = Readonly<{
   skillRoutesText: string;
   submitLabel: string;
   toggleSkillRoute: (route: string) => void;
+}>;
+
+type ProviderOption = Readonly<{
+  displayName: string;
+  providerId: string;
 }>;
 
 function AgentEditorPanel({
@@ -282,9 +312,14 @@ function AgentEditorPanel({
   onHarnessChange,
   onModelChange,
   onNameChange,
+  onProviderChange,
+  onReasoningEffortChange,
   onRoleChange,
   onSkillRoutesChange,
   onSubmit,
+  providerId,
+  providerOptions,
+  reasoningEffort,
   role,
   saving,
   selectedSkillRoutes,
@@ -312,7 +347,11 @@ function AgentEditorPanel({
       <dl className="studio-editor-summary">
         <div>
           <dt>Model</dt>
-          <dd>{modelId || "No model"}</dd>
+          <dd>{providerId} / {modelId || "No model"}</dd>
+        </div>
+        <div>
+          <dt>Thinking</dt>
+          <dd>{formatReasoningEffort(reasoningEffort)}</dd>
         </div>
         <div>
           <dt>Harness</dt>
@@ -347,6 +386,16 @@ function AgentEditorPanel({
           <input disabled={saving} onChange={(event) => { onRoleChange(event.target.value); }} value={role} />
         </label>
         <label>
+          <span>Provider</span>
+          <select disabled={saving} onChange={(event) => { onProviderChange(event.target.value); }} value={providerId}>
+            {providerOptions.map((provider) => (
+              <option key={provider.providerId} value={provider.providerId}>
+                {provider.displayName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
           <span>Model</span>
           <select disabled={saving} onChange={(event) => { onModelChange(event.target.value); }} value={modelId}>
             {modelSelectOptions.map((model) => (
@@ -354,6 +403,18 @@ function AgentEditorPanel({
                 {model.label}
               </option>
             ))}
+          </select>
+        </label>
+        <label>
+          <span>Thinking</span>
+          <select
+            disabled={saving}
+            onChange={(event) => { onReasoningEffortChange(event.target.value as ReasoningEffort); }}
+            value={reasoningEffort}
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
           </select>
         </label>
         <label>
@@ -536,6 +597,10 @@ function AgentTemplateBrowser({
             </dd>
           </div>
           <div>
+            <dt>Thinking</dt>
+            <dd>{formatReasoningEffort(selectedTemplate.reasoningEffort ?? "medium")}</dd>
+          </div>
+          <div>
             <dt>Harness</dt>
             <dd>{selectedTemplate.harnessProfileId ?? "None"}</dd>
           </div>
@@ -578,6 +643,46 @@ function firstAvailableModelId(modelOptions: readonly AiModelRecord[] | undefine
   }
 
   return snapshot.templates[0]?.modelId ?? "";
+}
+
+function firstAvailableProviderId(modelOptions: readonly AiModelRecord[] | undefined, snapshot: AgentStudioSnapshot): string {
+  if (modelOptions !== undefined && modelOptions.length > 0) {
+    return modelOptions[0].providerId;
+  }
+
+  return snapshot.templates[0]?.providerId ?? "openai";
+}
+
+function uniqueProviders(
+  modelOptions: readonly AiModelRecord[],
+  snapshot: AgentStudioSnapshot
+): ProviderOption[] {
+  const providerIds = [
+    ...modelOptions.map((model) => model.providerId),
+    ...snapshot.templates.map((template) => template.providerId)
+  ];
+  const uniqueProviderIds = [...new Set(providerIds.length > 0 ? providerIds : ["openai"])];
+
+  return uniqueProviderIds.map((providerId) => ({
+    displayName: providerDisplayName(providerId),
+    providerId
+  }));
+}
+
+function providerDisplayName(providerId: string): string {
+  if (providerId === "openai") {
+    return "OpenAI";
+  }
+
+  if (providerId === "gemini") {
+    return "Gemini";
+  }
+
+  return providerId;
+}
+
+function formatReasoningEffort(reasoningEffort: ReasoningEffort): string {
+  return reasoningEffort[0].toUpperCase() + reasoningEffort.slice(1);
 }
 
 function slugify(value: string): string {

@@ -54,6 +54,7 @@ import type {
   HarnessProfile,
   MissionCostSummary,
   MissionControlSnapshot,
+  ReasoningEffort,
   RunRecord,
   RunsSnapshot,
   SettingsSnapshot,
@@ -394,15 +395,19 @@ export function App({
     });
     replaceWorkspaceSnapshot(workspaceSnapshot);
   };
-  const startWorkspaceRun = async (task: string, skillRoutes: readonly string[]) => {
+  const startWorkspaceRun = async (task: string, skillRoutes: readonly string[], reasoningEffort: ReasoningEffort) => {
     runSequenceRef.current += 1;
     const runId = slugify(`run-${activeWorkspace.id}-${runSequenceRef.current.toString()}`);
+    const selectedAgentTemplate = loadState.agentStudioSnapshot.templates.find(
+      (template) => template.id === activeWorkspace.selectedAgentTemplateId
+    );
     const runsSnapshot = await startRun(runsInvoke, {
       agentTemplateId: activeWorkspace.selectedAgentTemplateId ?? null,
       harnessProfileId: activeWorkspace.selectedHarnessProfileId ?? null,
       id: runId,
-      modelId: loadState.settingsSnapshot.aiProvider.selectedModelId,
-      providerId: loadState.settingsSnapshot.aiProvider.providerId,
+      modelId: selectedAgentTemplate?.modelId ?? loadState.settingsSnapshot.aiProvider.selectedModelId,
+      providerId: selectedAgentTemplate?.providerId ?? loadState.settingsSnapshot.aiProvider.providerId,
+      reasoningEffort,
       skillRoutes: [...skillRoutes],
       task,
       workspaceId: activeWorkspace.id
@@ -593,12 +598,13 @@ export function App({
             activeWorkspace={activeWorkspace}
             agentStudioSnapshot={loadState.agentStudioSnapshot}
             availableSkillRoutes={activeSkillRoutes}
+            defaultReasoningEffort={loadState.settingsSnapshot.aiProvider.reasoningEffort ?? "medium"}
             harnessStudioSnapshot={loadState.harnessStudioSnapshot}
             onLoadoutChange={(loadout) => {
               void updateActiveLoadout(loadout);
             }}
-            onRunStart={(task, skillRoutes) => {
-              void startWorkspaceRun(task, skillRoutes);
+            onRunStart={(task, skillRoutes, reasoningEffort) => {
+              void startWorkspaceRun(task, skillRoutes, reasoningEffort);
             }}
             runsSnapshot={loadState.runsSnapshot}
             tokenSummary={tokenSummary}
@@ -639,7 +645,7 @@ export function App({
             availableSkillRoutes={loadState.skillSourcesSnapshot.sources.flatMap((source) => source.discoveredSkills ?? [])}
             harnessSnapshot={loadState.harnessStudioSnapshot}
             invoke={agentStudioInvoke}
-            modelOptions={loadState.settingsSnapshot.aiProvider.availableModels}
+            modelOptions={loadState.settingsSnapshot.aiProvider.providerOptions?.flatMap((provider) => provider.models) ?? loadState.settingsSnapshot.aiProvider.availableModels}
             onSnapshotChange={(agentStudioSnapshot) => {
               setLoadState({
                 ...loadState,
@@ -950,9 +956,10 @@ type CockpitProps = Readonly<{
   activeWorkspace: CockpitWorkspace;
   agentStudioSnapshot: AgentStudioSnapshot;
   availableSkillRoutes: readonly DiscoveredSkillManifest[];
+  defaultReasoningEffort: ReasoningEffort;
   harnessStudioSnapshot: HarnessStudioSnapshot;
   onLoadoutChange: (loadout: WorkspaceLoadout) => void;
-  onRunStart: (task: string, skillRoutes: readonly string[]) => void;
+  onRunStart: (task: string, skillRoutes: readonly string[], reasoningEffort: ReasoningEffort) => void;
   onWorkspaceChange: (workspaceId: string) => void;
   runsSnapshot: RunsSnapshot;
   tokenSummary: MissionCostSummary;
@@ -968,6 +975,7 @@ function Cockpit({
   activeWorkspace,
   agentStudioSnapshot,
   availableSkillRoutes,
+  defaultReasoningEffort,
   harnessStudioSnapshot,
   onLoadoutChange,
   onRunStart,
@@ -977,6 +985,7 @@ function Cockpit({
   workspaces
 }: CockpitProps) {
   const [runTask, setRunTask] = useState(activeWorkspace.mission);
+  const [runReasoningEffort, setRunReasoningEffort] = useState<ReasoningEffort>(defaultReasoningEffort);
   const [selectedRunId, setSelectedRunId] = useState<null | string>(runsSnapshot.activeRunId ?? null);
   const [selectedMissionSkillRoutes, setSelectedMissionSkillRoutes] = useState<string[]>([]);
   const agentTemplates = preferredActiveItems(agentStudioSnapshot.templates);
@@ -1149,7 +1158,8 @@ function Cockpit({
                   setSelectedRunId(null);
                   onRunStart(
                     task,
-                    selectedMissionSkillRoutes.filter((route) => availableMissionSkillRouteSet.has(route))
+                    selectedMissionSkillRoutes.filter((route) => availableMissionSkillRouteSet.has(route)),
+                    runReasoningEffort
                   );
                 }
               }}
@@ -1162,6 +1172,20 @@ function Cockpit({
                 }}
                 value={runTask}
               />
+              <label>
+                <span>Thinking</span>
+                <select
+                  aria-label="Thinking"
+                  onChange={(event) => {
+                    setRunReasoningEffort(event.target.value as ReasoningEffort);
+                  }}
+                  value={runReasoningEffort}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
               <fieldset aria-label="Mission skills" className="mission-skill-picker">
                 <legend>Mission skills</legend>
                 {availableMissionSkillRoutes.length === 0 ? (
@@ -1223,6 +1247,10 @@ function Cockpit({
                     <code>skills: {activeRun.skillRoutes.join(", ")}</code>
                   </p>
                 ) : null}
+                <p>
+                  <span aria-hidden="true">&gt;</span>
+                  <code>thinking: {activeRun.reasoningEffort ?? "medium"}</code>
+                </p>
                 {activeRunEvents.map((event) => (
                   <p key={event.id}>
                     <span aria-hidden="true">&gt;</span>

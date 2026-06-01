@@ -279,9 +279,16 @@ describe("App", () => {
     };
     const runsInvoke = (command: "runs_snapshot" | "start_run", args?: Record<string, unknown>) => {
       if (command === "start_run") {
-        const request = args?.request as { id: string; skillRoutes: string[]; task: string; workspaceId: string };
+        const request = args?.request as {
+          id: string;
+          reasoningEffort: "high" | "low" | "medium";
+          skillRoutes: string[];
+          task: string;
+          workspaceId: string;
+        };
 
         expect(request.skillRoutes).toEqual(requestedSkillRoutes);
+        expect(request.reasoningEffort).toBe("high");
 
         return Promise.resolve({
           activeRunId: request.id,
@@ -303,6 +310,7 @@ describe("App", () => {
               id: request.id,
               modelId: "gpt-5",
               providerId: "openai",
+              reasoningEffort: request.reasoningEffort,
               runBranch: `codex/run-${request.id}`,
               skillRoutes: request.skillRoutes,
               startedAt: null,
@@ -336,11 +344,13 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("Task"), {
       target: { value: "Prioritize layout regressions before handoff." }
     });
+    fireEvent.change(screen.getByLabelText("Thinking"), { target: { value: "high" } });
     fireEvent.click(screen.getByRole("checkbox", { name: "Use subagent-driven-development" }));
     fireEvent.click(screen.getByRole("button", { name: "Start run" }));
 
     expect(await screen.findByRole("button", { name: "Open run run-fullstack-app-1" })).toBeInTheDocument();
     expect(screen.getByLabelText("Run event log")).toHaveTextContent("Prioritize layout regressions before handoff.");
+    expect(screen.getByLabelText("Run event log")).toHaveTextContent("thinking: high");
     expect(screen.getByLabelText("Run event log")).toHaveTextContent(requestedSkillRoutes[0]);
     expect(screen.getByText(/Run queued for workspace/u)).toBeInTheDocument();
   });

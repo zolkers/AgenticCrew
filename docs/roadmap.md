@@ -18,6 +18,7 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - Command Palette v1 for workspace navigation, including Ctrl/Cmd+K, filtered actions, accessible close behavior, and Git/Settings/Launchpad routing.
 - Mission-level skill selection in the Workbench: active downloaded skills can be selected per run and are persisted on the durable run record.
 - Backend-backed Git commit previews: the Git panel now loads selected commit metadata, changed files, stats, and patch lines through the Electron/Rust sidecar instead of generating UI-only diffs.
+- Multi-provider AI configuration: OpenAI and Gemini are exposed through a shared provider registry, model pickers are provider-aware, and settings/agents/runs persist `low`, `medium`, or `high` thinking effort.
 
 **Next focus:**
 - Runtime execution: replace preview-only browser data with sidecar-backed runtime manifests, live agent event streams, pause/resume/kill controls, and audited command execution.
@@ -64,21 +65,23 @@ This section is the current product roadmap for the AgenticCrew app experience. 
 
 ### Phase C - Provider And Model Registry
 
-**Goal:** n8n-style credentials and dynamic model lists, OpenAI first.
+**Goal:** n8n-style credentials and dynamic model lists, OpenAI and Gemini first.
 
 **Scope:**
 - Replace hardcoded model dropdowns with provider-owned model records.
-- Add an AI provider registry with `openai` as the only enabled provider initially.
+- Add an AI provider registry with `openai` and `gemini` enabled through the same command contracts.
 - Store API key metadata securely; never expose full keys back to React.
 - Add `sync_provider_models` for OpenAI model discovery.
 - Cache model list, last sync timestamp, provider status, and errors.
 - UI: provider credentials page, sync button, available model picker, default model, per-agent model picker.
-- Architecture: provider interface ready for Anthropic, Gemini, Mistral, Ollama, and custom endpoints, but hidden until implemented.
+- Architecture: provider interface ready for Anthropic, Mistral, Ollama, and custom endpoints, but hidden until implemented.
+- Add a first-class thinking-effort setting for default provider config, agent templates, and mission launches.
 
 **Acceptance:**
-- OpenAI credentials can be configured.
+- OpenAI and Gemini credentials can be configured.
 - Models are listed from provider data, not hardcoded UI options.
 - Agent Studio and cockpit loadout use synced models.
+- Users can choose low, medium, or high thinking effort before saving settings, agent templates, or starting a run.
 - Missing/invalid key produces a recoverable UI state.
 
 ### Phase D - Skill Marketplace And Routes
@@ -185,6 +188,7 @@ Completed on `dev`:
 8. Add Agent Studio versioning/training/evaluation.
 9. Replace Mission Control preview values with live durable/runtime state.
 10. Add mission-level skill selection to queued runs.
+11. Add OpenAI/Gemini provider selection and persisted thinking effort across settings, agents, and run launch.
 
 Next tranche: backend-real run manifests, controlled command execution, event streaming, and progressive removal of preview-only data from desktop runtime paths. Git commit preview is the first completed slice of this runtime-backed replacement work.
 

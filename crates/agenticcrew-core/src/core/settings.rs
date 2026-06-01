@@ -22,8 +22,12 @@ pub struct AiProviderSettings {
     pub provider_id: String,
     pub display_name: String,
     pub selected_model_id: String,
+    #[serde(default = "default_reasoning_effort")]
+    pub reasoning_effort: ReasoningEffort,
     #[serde(default = "openai_model_registry")]
     pub available_models: Vec<AiModelRecord>,
+    #[serde(default = "provider_options_registry")]
+    pub provider_options: Vec<AiProviderOption>,
     #[serde(default = "default_model_sync_status")]
     pub model_sync_status: ProviderModelSyncStatus,
     #[serde(default)]
@@ -42,6 +46,23 @@ pub struct AiModelRecord {
     pub provider_id: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReasoningEffort {
+    Low,
+    Medium,
+    High,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiProviderOption {
+    pub provider_id: String,
+    pub display_name: String,
+    pub default_model_id: String,
+    pub models: Vec<AiModelRecord>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProviderModelSyncStatus {
@@ -56,7 +77,9 @@ impl AiProviderSettings {
             provider_id: "openai".to_owned(),
             display_name: "OpenAI".to_owned(),
             selected_model_id: "gpt-5".to_owned(),
+            reasoning_effort: ReasoningEffort::Medium,
             available_models: openai_model_registry(),
+            provider_options: provider_options_registry(),
             model_sync_status: ProviderModelSyncStatus::NeverSynced,
             models_last_synced_at: None,
             model_sync_error: None,
@@ -83,6 +106,8 @@ pub fn settings_snapshot_from_state(state: &AgentOsState) -> SettingsSnapshot {
 pub struct UpdateAiProviderSettingsRequest {
     pub provider_id: String,
     pub selected_model_id: String,
+    #[serde(default = "default_reasoning_effort")]
+    pub reasoning_effort: ReasoningEffort,
     pub api_key: Option<String>,
 }
 
@@ -91,13 +116,15 @@ impl UpdateAiProviderSettingsRequest {
         self,
         previous: &AiProviderSettings,
     ) -> Result<AiProviderSettings, SettingsValidationError> {
-        if self.provider_id != "openai" {
-            return Err(SettingsValidationError::UnsupportedProvider {
-                provider_id: self.provider_id,
-            });
-        }
+        let provider_id = self.provider_id.trim().to_owned();
+        let selected_model_id = self.selected_model_id.trim().to_owned();
 
-        let selected_model_id = self.selected_model_id.trim();
+        let provider = provider_option(&provider_id).ok_or_else(|| {
+            SettingsValidationError::UnsupportedProvider {
+                provider_id: provider_id.clone(),
+            }
+        })?;
+
         if selected_model_id.is_empty() {
             return Err(SettingsValidationError::EmptyModel);
         }
@@ -119,14 +146,18 @@ impl UpdateAiProviderSettingsRequest {
         };
 
         Ok(AiProviderSettings {
-            provider_id: "openai".to_owned(),
-            display_name: "OpenAI".to_owned(),
-            selected_model_id: selected_model_id.to_owned(),
-            available_models: if previous.available_models.is_empty() {
-                openai_model_registry()
-            } else {
+            provider_id: provider.provider_id,
+            display_name: provider.display_name,
+            selected_model_id,
+            reasoning_effort: self.reasoning_effort,
+            available_models: if previous.provider_id == provider_id
+                && !previous.available_models.is_empty()
+            {
                 previous.available_models.clone()
+            } else {
+                provider.models
             },
+            provider_options: provider_options_registry(),
             model_sync_status: previous.model_sync_status.clone(),
             models_last_synced_at: previous.models_last_synced_at.clone(),
             model_sync_error: previous.model_sync_error.clone(),
@@ -243,6 +274,10 @@ fn default_model_sync_status() -> ProviderModelSyncStatus {
     ProviderModelSyncStatus::NeverSynced
 }
 
+fn default_reasoning_effort() -> ReasoningEffort {
+    ReasoningEffort::Medium
+}
+
 pub fn openai_model_registry() -> Vec<AiModelRecord> {
     [
         ("gpt-5.2", "GPT-5.2"),
@@ -258,6 +293,45 @@ pub fn openai_model_registry() -> Vec<AiModelRecord> {
         provider_id: "openai".to_owned(),
     })
     .collect()
+}
+
+pub fn gemini_model_registry() -> Vec<AiModelRecord> {
+    [
+        ("gemini-3-pro", "Gemini 3 Pro"),
+        ("gemini-3-flash", "Gemini 3 Flash"),
+        ("gemini-2.5-pro", "Gemini 2.5 Pro"),
+        ("gemini-2.5-flash", "Gemini 2.5 Flash"),
+    ]
+    .into_iter()
+    .map(|(id, label)| AiModelRecord {
+        id: id.to_owned(),
+        label: label.to_owned(),
+        provider_id: "gemini".to_owned(),
+    })
+    .collect()
+}
+
+pub fn provider_options_registry() -> Vec<AiProviderOption> {
+    vec![
+        AiProviderOption {
+            provider_id: "openai".to_owned(),
+            display_name: "OpenAI".to_owned(),
+            default_model_id: "gpt-5".to_owned(),
+            models: openai_model_registry(),
+        },
+        AiProviderOption {
+            provider_id: "gemini".to_owned(),
+            display_name: "Gemini".to_owned(),
+            default_model_id: "gemini-3-pro".to_owned(),
+            models: gemini_model_registry(),
+        },
+    ]
+}
+
+fn provider_option(provider_id: &str) -> Option<AiProviderOption> {
+    provider_options_registry()
+        .into_iter()
+        .find(|provider| provider.provider_id == provider_id)
 }
 
 pub fn sync_provider_models(
@@ -279,15 +353,29 @@ pub fn sync_provider_models_with_catalog(
     synced_at: String,
     catalog: &impl ProviderModelCatalog,
 ) -> Result<AiProviderSettings, SettingsValidationError> {
-    if request.provider_id != "openai" {
+    let Some(provider) = provider_option(&request.provider_id) else {
         return Err(SettingsValidationError::UnsupportedProvider {
             provider_id: request.provider_id,
         });
+    };
+
+    if request.provider_id == "gemini" {
+        let mut next = previous.clone();
+        next.provider_id = provider.provider_id;
+        next.display_name = provider.display_name;
+        next.available_models = provider.models;
+        next.selected_model_id = provider.default_model_id;
+        next.model_sync_status = ProviderModelSyncStatus::Synced;
+        next.models_last_synced_at = Some(synced_at);
+        next.model_sync_error = None;
+        next.provider_options = provider_options_registry();
+        return Ok(next);
     }
 
     let mut next = previous.clone();
     next.provider_id = "openai".to_owned();
     next.display_name = "OpenAI".to_owned();
+    next.provider_options = provider_options_registry();
 
     let available_models = match catalog.load_models(&request) {
         Ok(models) => normalize_openai_models(models),
@@ -361,11 +449,20 @@ mod tests {
 
         assert_eq!(snapshot.ai_provider.provider_id, "openai");
         assert_eq!(snapshot.ai_provider.selected_model_id, "gpt-5");
+        assert_eq!(
+            snapshot.ai_provider.reasoning_effort,
+            ReasoningEffort::Medium
+        );
         assert!(snapshot
             .ai_provider
             .available_models
             .iter()
             .any(|model| model.id == "gpt-5.2"));
+        assert!(snapshot
+            .ai_provider
+            .provider_options
+            .iter()
+            .any(|provider| provider.provider_id == "gemini"));
         assert_eq!(
             snapshot.ai_provider.model_sync_status,
             ProviderModelSyncStatus::NeverSynced
@@ -378,6 +475,7 @@ mod tests {
     fn update_request_keeps_only_api_key_metadata() {
         let settings = UpdateAiProviderSettingsRequest {
             provider_id: "openai".to_owned(),
+            reasoning_effort: ReasoningEffort::High,
             selected_model_id: "gpt-5.1".to_owned(),
             api_key: Some("sk-proj-secret1234".to_owned()),
         }
@@ -386,6 +484,29 @@ mod tests {
 
         assert!(settings.api_key_configured);
         assert_eq!(settings.api_key_last_four, Some("1234".to_owned()));
+        assert_eq!(settings.reasoning_effort, ReasoningEffort::High);
+    }
+
+    #[test]
+    fn update_request_can_switch_to_gemini_defaults() {
+        let settings = UpdateAiProviderSettingsRequest {
+            api_key: Some("AIza-secret9999".to_owned()),
+            provider_id: "gemini".to_owned(),
+            reasoning_effort: ReasoningEffort::Low,
+            selected_model_id: "gemini-3-pro".to_owned(),
+        }
+        .into_settings(&AiProviderSettings::openai_default())
+        .expect("Gemini should be supported");
+
+        assert_eq!(settings.provider_id, "gemini");
+        assert_eq!(settings.display_name, "Gemini");
+        assert_eq!(settings.selected_model_id, "gemini-3-pro");
+        assert_eq!(settings.reasoning_effort, ReasoningEffort::Low);
+        assert_eq!(settings.api_key_last_four, Some("9999".to_owned()));
+        assert!(settings
+            .available_models
+            .iter()
+            .any(|model| model.id == "gemini-3-pro"));
     }
 
     #[test]
@@ -394,16 +515,19 @@ mod tests {
             api_key_configured: true,
             api_key_last_four: Some("5678".to_owned()),
             available_models: openai_model_registry(),
+            provider_options: provider_options_registry(),
             model_sync_status: ProviderModelSyncStatus::Synced,
             models_last_synced_at: Some("123".to_owned()),
             model_sync_error: None,
             display_name: "OpenAI".to_owned(),
             provider_id: "openai".to_owned(),
+            reasoning_effort: ReasoningEffort::Medium,
             selected_model_id: "gpt-5".to_owned(),
         };
 
         let settings = UpdateAiProviderSettingsRequest {
             provider_id: "openai".to_owned(),
+            reasoning_effort: ReasoningEffort::Medium,
             selected_model_id: "gpt-5.2".to_owned(),
             api_key: None,
         }
@@ -423,16 +547,19 @@ mod tests {
             api_key_configured: true,
             api_key_last_four: Some("5678".to_owned()),
             available_models: openai_model_registry(),
+            provider_options: provider_options_registry(),
             model_sync_status: ProviderModelSyncStatus::NeverSynced,
             models_last_synced_at: None,
             model_sync_error: None,
             display_name: "OpenAI".to_owned(),
             provider_id: "openai".to_owned(),
+            reasoning_effort: ReasoningEffort::Medium,
             selected_model_id: "gpt-5".to_owned(),
         };
 
         let settings = UpdateAiProviderSettingsRequest {
             provider_id: "openai".to_owned(),
+            reasoning_effort: ReasoningEffort::Medium,
             selected_model_id: "gpt-5.2".to_owned(),
             api_key: Some(" ".to_owned()),
         }
@@ -469,11 +596,13 @@ mod tests {
             api_key_configured: true,
             api_key_last_four: Some("1234".to_owned()),
             available_models: Vec::new(),
+            provider_options: provider_options_registry(),
             model_sync_status: ProviderModelSyncStatus::NeverSynced,
             models_last_synced_at: None,
             model_sync_error: Some("old failure".to_owned()),
             display_name: "OpenAI".to_owned(),
             provider_id: "openai".to_owned(),
+            reasoning_effort: ReasoningEffort::Medium,
             selected_model_id: "gpt-5.2".to_owned(),
         };
 
@@ -502,11 +631,13 @@ mod tests {
             api_key_configured: false,
             api_key_last_four: None,
             available_models: openai_model_registry(),
+            provider_options: provider_options_registry(),
             model_sync_status: ProviderModelSyncStatus::NeverSynced,
             models_last_synced_at: None,
             model_sync_error: None,
             display_name: "OpenAI".to_owned(),
             provider_id: "openai".to_owned(),
+            reasoning_effort: ReasoningEffort::Medium,
             selected_model_id: "gpt-old".to_owned(),
         };
         let catalog = StaticOpenAiModelCatalog::new(vec![AiModelRecord {

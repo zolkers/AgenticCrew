@@ -9,6 +9,24 @@ const openAiModels: AiModelRecord[] = [
   { id: "gpt-5", label: "GPT-5", providerId: "openai" }
 ];
 
+const providerOptions = [
+  {
+    defaultModelId: "gpt-5",
+    displayName: "OpenAI",
+    models: openAiModels,
+    providerId: "openai"
+  },
+  {
+    defaultModelId: "gemini-3-pro",
+    displayName: "Gemini",
+    models: [
+      { id: "gemini-3-pro", label: "Gemini 3 Pro", providerId: "gemini" },
+      { id: "gemini-3-flash", label: "Gemini 3 Flash", providerId: "gemini" }
+    ],
+    providerId: "gemini"
+  }
+];
+
 describe("SettingsPanel", () => {
   afterEach(() => {
     cleanup();
@@ -21,6 +39,8 @@ describe("SettingsPanel", () => {
         apiKeyLastFour: "1234",
         availableModels: openAiModels,
         displayName: "OpenAI",
+        reasoningEffort: "medium",
+        providerOptions,
         providerId: "openai",
         selectedModelId: "gpt-5.1"
       }
@@ -32,6 +52,60 @@ describe("SettingsPanel", () => {
     expect(screen.getByText("ChatGPT provider selected")).toBeInTheDocument();
     expect(screen.getAllByText("gpt-5.1").length).toBeGreaterThan(0);
     expect(screen.getByText("Configured ending in 1234")).toBeInTheDocument();
+    expect(screen.getByLabelText("Thinking")).toHaveValue("medium");
+  });
+
+  it("switches provider and thinking effort", async () => {
+    const nextSnapshot: SettingsSnapshot = {
+      aiProvider: {
+        apiKeyConfigured: true,
+        apiKeyLastFour: "9999",
+        availableModels: providerOptions[1].models,
+        displayName: "Gemini",
+        providerOptions,
+        providerId: "gemini",
+        reasoningEffort: "high",
+        selectedModelId: "gemini-3-pro"
+      }
+    };
+    const invoke = vi.fn().mockResolvedValue(nextSnapshot);
+    const onSnapshotChange = vi.fn();
+
+    render(
+      <SettingsPanel
+        invoke={invoke}
+        onSnapshotChange={onSnapshotChange}
+        snapshot={{
+          aiProvider: {
+            apiKeyConfigured: false,
+            apiKeyLastFour: null,
+            availableModels: openAiModels,
+            displayName: "OpenAI",
+            providerOptions,
+            providerId: "openai",
+            reasoningEffort: "medium",
+            selectedModelId: "gpt-5"
+          }
+        }}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("Provider"), { target: { value: "gemini" } });
+    fireEvent.change(screen.getByLabelText("Thinking"), { target: { value: "high" } });
+    fireEvent.change(screen.getByLabelText("API key"), { target: { value: "AIza-secret9999" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(onSnapshotChange).toHaveBeenCalledWith(nextSnapshot);
+    });
+    expect(invoke).toHaveBeenCalledWith("update_ai_provider_settings", {
+      request: {
+        apiKey: "AIza-secret9999",
+        providerId: "gemini",
+        reasoningEffort: "high",
+        selectedModelId: "gemini-3-pro"
+      }
+    });
   });
 
   it("renders missing key and non-openai provider metadata", () => {
@@ -144,11 +218,12 @@ describe("SettingsPanel", () => {
       expect(onSnapshotChange).toHaveBeenCalledWith(nextSnapshot);
     });
     expect(invoke).toHaveBeenCalledWith("update_ai_provider_settings", {
-      request: {
-        apiKey: undefined,
-        providerId: "openai",
-        selectedModelId: "gpt-5.2"
-      }
+        request: {
+          apiKey: undefined,
+          providerId: "openai",
+          reasoningEffort: "medium",
+          selectedModelId: "gpt-5.2"
+        }
     });
     expect(screen.getByText("Saved")).toBeInTheDocument();
   });
@@ -195,6 +270,7 @@ describe("SettingsPanel", () => {
         request: {
           apiKey: "sk-proj-secret9999",
           providerId: "openai",
+          reasoningEffort: "medium",
           selectedModelId: "gpt-5"
         }
       });
@@ -207,6 +283,7 @@ describe("SettingsPanel", () => {
         request: {
           apiKey: "",
           providerId: "openai",
+          reasoningEffort: "medium",
           selectedModelId: "gpt-5"
         }
       });

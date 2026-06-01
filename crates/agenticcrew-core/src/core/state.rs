@@ -1156,7 +1156,7 @@ mod tests {
             Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
             SessionTransitionError,
         },
-        settings::{DesktopSettings, UpdateAiProviderSettingsRequest},
+        settings::{DesktopSettings, ReasoningEffort, UpdateAiProviderSettingsRequest},
         skills::RegisterGitHubSkillSourceRequest,
         workspaces::{CreateWorkspaceRequest, UpdateWorkspaceLoadoutRequest, WorkspaceRecord},
     };
@@ -1263,6 +1263,7 @@ mod tests {
         state
             .update_ai_provider_settings(UpdateAiProviderSettingsRequest {
                 provider_id: "openai".to_owned(),
+                reasoning_effort: ReasoningEffort::Medium,
                 selected_model_id: "gpt-5.1".to_owned(),
                 api_key: Some("sk-proj-secret5678".to_owned()),
             })
@@ -1470,6 +1471,7 @@ mod tests {
                 model_id: "gpt-5.2".to_owned(),
                 name: "Review Agent".to_owned(),
                 provider_id: "openai".to_owned(),
+                reasoning_effort: ReasoningEffort::Medium,
                 role: "reviewer".to_owned(),
                 skill_routes: vec!["agenticcrew://skills/review".to_owned()],
             })
@@ -1501,6 +1503,7 @@ mod tests {
                 model_id: "gpt-5.2".to_owned(),
                 name: "Review Agent".to_owned(),
                 provider_id: "openai".to_owned(),
+                reasoning_effort: ReasoningEffort::Medium,
                 role: "reviewer".to_owned(),
                 skill_routes: Vec::new(),
             })
@@ -1540,6 +1543,7 @@ mod tests {
                 model_id: "gpt-5.2".to_owned(),
                 name: "Reviewer".to_owned(),
                 provider_id: "openai".to_owned(),
+                reasoning_effort: ReasoningEffort::Medium,
                 role: "reviewer".to_owned(),
                 skill_routes: vec!["agenticcrew://skills/review".to_owned()],
                 template_id: "developer-pi".to_owned(),
@@ -1569,6 +1573,7 @@ mod tests {
                 model_id: "gpt-5.2".to_owned(),
                 name: "Reviewer".to_owned(),
                 provider_id: "openai".to_owned(),
+                reasoning_effort: ReasoningEffort::Medium,
                 role: "reviewer".to_owned(),
                 skill_routes: vec!["agenticcrew://skills/review".to_owned()],
                 template_id: "developer-pi".to_owned(),
@@ -1727,6 +1732,7 @@ mod tests {
         state
             .update_ai_provider_settings(UpdateAiProviderSettingsRequest {
                 provider_id: "openai".to_owned(),
+                reasoning_effort: ReasoningEffort::Medium,
                 selected_model_id: "gpt-5.1".to_owned(),
                 api_key: Some("sk-proj-secret5678".to_owned()),
             })
@@ -1734,6 +1740,7 @@ mod tests {
         state
             .update_ai_provider_settings(UpdateAiProviderSettingsRequest {
                 provider_id: "openai".to_owned(),
+                reasoning_effort: ReasoningEffort::Medium,
                 selected_model_id: "gpt-5.2".to_owned(),
                 api_key: None,
             })

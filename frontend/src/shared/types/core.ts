@@ -215,6 +215,8 @@ export type RunStatus =
   | "stopped"
   | "stopping";
 
+export type ReasoningEffort = "high" | "low" | "medium";
+
 export type RunRecord = {
   agentTemplateId?: string | null;
   baseBranch: string;
@@ -223,6 +225,7 @@ export type RunRecord = {
   id: string;
   modelId?: string | null;
   providerId?: string | null;
+  reasoningEffort?: ReasoningEffort;
   runBranch: string;
   skillRoutes: string[];
   startedAt?: string | null;
@@ -256,6 +259,7 @@ export type StartRunRequest = {
   id: string;
   modelId?: string | null;
   providerId?: string | null;
+  reasoningEffort?: ReasoningEffort;
   skillRoutes: string[];
   task: string;
   workspaceId: string;
@@ -465,6 +469,7 @@ export type AgentTemplate = {
   modelId: string;
   name: string;
   providerId: string;
+  reasoningEffort?: ReasoningEffort;
   role: string;
   skillRoutes: string[];
   version: number;
@@ -522,6 +527,7 @@ export type CreateAgentTemplateRequest = {
   modelId: string;
   name: string;
   providerId: string;
+  reasoningEffort?: ReasoningEffort;
   role: string;
   skillRoutes: string[];
 };
@@ -542,6 +548,7 @@ export type UpdateAgentTemplateRequest = {
   modelId: string;
   name: string;
   providerId: string;
+  reasoningEffort?: ReasoningEffort;
   role: string;
   skillRoutes: string[];
   templateId: string;
@@ -555,7 +562,9 @@ export type AiProviderSettings = {
   modelSyncError?: string | null;
   modelSyncStatus?: ProviderModelSyncStatus;
   modelsLastSyncedAt?: string | null;
+  providerOptions?: AiProviderOption[];
   providerId: string;
+  reasoningEffort?: ReasoningEffort;
   selectedModelId: string;
 };
 
@@ -567,6 +576,13 @@ export type AiModelRecord = {
   providerId: string;
 };
 
+export type AiProviderOption = {
+  defaultModelId: string;
+  displayName: string;
+  models: AiModelRecord[];
+  providerId: string;
+};
+
 export type SettingsSnapshot = {
   aiProvider: AiProviderSettings;
 };
@@ -574,6 +590,7 @@ export type SettingsSnapshot = {
 export type UpdateAiProviderSettingsRequest = {
   apiKey?: string | null;
   providerId: string;
+  reasoningEffort?: ReasoningEffort;
   selectedModelId: string;
 };
 

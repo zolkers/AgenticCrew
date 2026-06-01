@@ -33,7 +33,8 @@ const emptySnapshot: AgentStudioSnapshot = {
 const modelOptions: AiModelRecord[] = [
   { id: "gpt-5.2", label: "GPT-5.2", providerId: "openai" },
   { id: "gpt-5.1", label: "GPT-5.1", providerId: "openai" },
-  { id: "gpt-5", label: "GPT-5", providerId: "openai" }
+  { id: "gpt-5", label: "GPT-5", providerId: "openai" },
+  { id: "gemini-3-pro", label: "Gemini 3 Pro", providerId: "gemini" }
 ];
 
 const availableSkillRoutes: DiscoveredSkillManifest[] = [
@@ -64,6 +65,7 @@ const templateSnapshot: AgentStudioSnapshot = {
       modelId: "gpt-5",
       name: "Loose Agent",
       providerId: "openai",
+      reasoningEffort: "medium",
       role: "researcher",
       skillRoutes: [],
       version: 2
@@ -185,9 +187,10 @@ describe("AgentStudio", () => {
           description: "Reviews pull requests.",
           harnessProfileId: null,
           id: "review_1-agent",
-          modelId: "gpt-5.2",
+          modelId: "gemini-3-pro",
           name: "Review_1 Agent",
-          providerId: "openai",
+          providerId: "gemini",
+          reasoningEffort: "high",
           role: "reviewer",
           skillRoutes: ["agenticcrew://skills/a", "agenticcrew://skills/b"],
           version: 1
@@ -211,7 +214,9 @@ describe("AgentStudio", () => {
     fireEvent.click(screen.getByRole("button", { name: "New agent" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Review_1 Agent" } });
     fireEvent.change(screen.getByLabelText("Role"), { target: { value: "qa" } });
-    fireEvent.change(screen.getByLabelText("Model"), { target: { value: "gpt-5.1" } });
+    fireEvent.change(screen.getByLabelText("Provider"), { target: { value: "gemini" } });
+    fireEvent.change(screen.getByLabelText("Model"), { target: { value: "gemini-3-pro" } });
+    fireEvent.change(screen.getByLabelText("Thinking"), { target: { value: "high" } });
     fireEvent.change(screen.getByLabelText("Harness"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Budget"), { target: { value: "2.50" } });
     fireEvent.change(screen.getByLabelText("Prompt"), { target: { value: "Reviews pull requests." } });
@@ -230,9 +235,10 @@ describe("AgentStudio", () => {
         description: "Reviews pull requests.",
         harnessProfileId: null,
         id: "review_1-agent",
-        modelId: "gpt-5.1",
+        modelId: "gemini-3-pro",
         name: "Review_1 Agent",
-        providerId: "openai",
+        providerId: "gemini",
+        reasoningEffort: "high",
         role: "qa",
         skillRoutes: ["agenticcrew://skills/a", "agenticcrew://skills/b"]
       }
@@ -266,6 +272,7 @@ describe("AgentStudio", () => {
           modelId: "gpt-5.2",
           name: "Review Agent",
           providerId: "openai",
+          reasoningEffort: "medium",
           role: "reviewer",
           skillRoutes: []
         }
@@ -311,6 +318,7 @@ describe("AgentStudio", () => {
           modelId: "gpt-5.2",
           name: "Review Agent",
           providerId: "openai",
+          reasoningEffort: "medium",
           role: "reviewer",
           skillRoutes: ["agenticcrew://skills/superpowers/planning"]
         }
@@ -345,6 +353,7 @@ describe("AgentStudio", () => {
           harnessProfileId: "pi-execution-discipline",
           modelId: "gpt-5.1",
           name: "Updated Agent",
+          reasoningEffort: "low",
           role: "lead",
           skillRoutes: ["agenticcrew://skills/review"],
           version: 3
@@ -370,6 +379,7 @@ describe("AgentStudio", () => {
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Updated Agent" } });
     fireEvent.change(screen.getByLabelText("Role"), { target: { value: "lead" } });
     fireEvent.change(screen.getByLabelText("Model"), { target: { value: "gpt-5.1" } });
+    fireEvent.change(screen.getByLabelText("Thinking"), { target: { value: "low" } });
     fireEvent.change(screen.getByLabelText("Harness"), { target: { value: "pi-execution-discipline" } });
     fireEvent.change(screen.getByLabelText("Budget"), { target: { value: "3.25" } });
     fireEvent.change(screen.getByLabelText("Prompt"), { target: { value: "Updated guidance" } });
@@ -389,6 +399,7 @@ describe("AgentStudio", () => {
         modelId: "gpt-5.1",
         name: "Updated Agent",
         providerId: "openai",
+        reasoningEffort: "low",
         role: "lead",
         skillRoutes: ["agenticcrew://skills/review"],
         templateId: "loose-agent"

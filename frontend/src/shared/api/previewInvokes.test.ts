@@ -170,6 +170,7 @@ describe("previewInvokes", () => {
         id: "run-preview",
         modelId: "gpt-5",
         providerId: "openai",
+        reasoningEffort: "high",
         skillRoutes: ["agenticcrew://skills/superpowers/subagent-driven-development"],
         task: " Validate browser preview run ",
         workspaceId: "fullstack-app"
@@ -188,6 +189,7 @@ describe("previewInvokes", () => {
         expect.objectContaining({
           baseBranch: "codex/cockpit-prototype",
           id: "run-preview",
+          reasoningEffort: "high",
           skillRoutes: ["agenticcrew://skills/superpowers/subagent-driven-development"],
           task: "Validate browser preview run",
           workspaceId: "fullstack-app"
@@ -636,6 +638,42 @@ describe("previewInvokes", () => {
         modelSyncStatus: "failed"
       }
     });
+  });
+
+  it("switches preview settings to Gemini with thinking effort", async () => {
+    await expect(
+      previewSettingsInvoke("update_ai_provider_settings", {
+        request: {
+          apiKey: "AIza-preview9999",
+          providerId: "gemini",
+          reasoningEffort: "high",
+          selectedModelId: "gemini-3-pro"
+        }
+      })
+    ).resolves.toMatchObject({
+      aiProvider: {
+        apiKeyConfigured: true,
+        apiKeyLastFour: "9999",
+        displayName: "Gemini",
+        providerId: "gemini",
+        reasoningEffort: "high",
+        selectedModelId: "gemini-3-pro"
+      }
+    });
+
+    const syncedSnapshot = await previewSettingsInvoke("sync_provider_models", {
+      request: {
+        providerId: "gemini"
+      }
+    });
+    expect(syncedSnapshot.aiProvider).toMatchObject({
+      modelSyncStatus: "synced",
+      providerId: "gemini",
+      selectedModelId: "gemini-3-pro"
+    });
+    expect(syncedSnapshot.aiProvider.availableModels).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "gemini-3-pro" })])
+    );
   });
 
   it("returns synced preview models with a transient api key", async () => {

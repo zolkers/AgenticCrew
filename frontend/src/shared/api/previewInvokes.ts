@@ -140,6 +140,32 @@ let currentPreviewHarnessStudioSnapshot = previewHarnessStudioSnapshot;
 
 let currentPreviewRunsSnapshot = previewRunsSnapshot;
 
+type PreviewStartRunRequest = {
+  agentTemplateId?: null | string;
+  harnessProfileId?: null | string;
+  id?: string;
+  modelId?: null | string;
+  providerId?: null | string;
+  reasoningEffort?: "high" | "low" | "medium";
+  skillRoutes?: string[];
+  task?: string;
+  workspaceId?: string;
+};
+
+type PreviewCreateAgentTemplateRequest = {
+  active?: boolean;
+  budgetCents?: number;
+  description?: string;
+  harnessProfileId?: null | string;
+  id?: string;
+  modelId?: string;
+  name?: string;
+  providerId?: string;
+  reasoningEffort?: "high" | "low" | "medium";
+  role?: string;
+  skillRoutes?: string[];
+};
+
 export function resetPreviewInvokesForTests() {
   currentPreviewHarnessStudioSnapshot = previewHarnessStudioSnapshot;
   currentPreviewRunsSnapshot = previewRunsSnapshot;
@@ -193,6 +219,7 @@ const previewAgentStudioSnapshot: AgentStudioSnapshot = {
       modelId: "gpt-5.4",
       name: "Developer Agent",
       providerId: "openai",
+      reasoningEffort: "medium",
       role: "developer",
       skillRoutes: [
         "agenticcrew://skills/superpowers/subagent-driven-development",
@@ -243,22 +270,44 @@ const previewAgentStudioSnapshot: AgentStudioSnapshot = {
   ]
 };
 
-const previewSettingsSnapshot: SettingsSnapshot = {
-  aiProvider: {
-    apiKeyConfigured: false,
-    apiKeyLastFour: null,
-    availableModels: [
+const previewProviderOptions = [
+  {
+    defaultModelId: "gpt-5",
+    displayName: "OpenAI",
+    models: [
       { id: "gpt-5.2", label: "GPT-5.2", providerId: "openai" },
       { id: "gpt-5.1", label: "GPT-5.1", providerId: "openai" },
       { id: "gpt-5", label: "GPT-5", providerId: "openai" },
       { id: "gpt-5-mini", label: "GPT-5 mini", providerId: "openai" },
       { id: "gpt-5-nano", label: "GPT-5 nano", providerId: "openai" }
     ],
+    providerId: "openai"
+  },
+  {
+    defaultModelId: "gemini-3-pro",
+    displayName: "Gemini",
+    models: [
+      { id: "gemini-3-pro", label: "Gemini 3 Pro", providerId: "gemini" },
+      { id: "gemini-3-flash", label: "Gemini 3 Flash", providerId: "gemini" },
+      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", providerId: "gemini" },
+      { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", providerId: "gemini" }
+    ],
+    providerId: "gemini"
+  }
+];
+
+const previewSettingsSnapshot: SettingsSnapshot = {
+  aiProvider: {
+    apiKeyConfigured: false,
+    apiKeyLastFour: null,
+    availableModels: previewProviderOptions[0].models,
     displayName: "OpenAI",
     modelSyncError: null,
     modelSyncStatus: "never_synced",
     modelsLastSyncedAt: null,
+    providerOptions: previewProviderOptions,
     providerId: "openai",
+    reasoningEffort: "medium",
     selectedModelId: "gpt-5"
   }
 };
@@ -511,18 +560,7 @@ export const previewCommitPreviewInvoke: InvokeCommitPreview = (_command, args) 
 
 export const previewRunsInvoke: InvokeRuns = (command, args) => {
   if (command === "start_run") {
-    const request = args?.request as
-      | {
-          agentTemplateId?: null | string;
-          harnessProfileId?: null | string;
-          id?: string;
-          modelId?: null | string;
-          providerId?: null | string;
-          skillRoutes?: string[];
-          task?: string;
-          workspaceId?: string;
-        }
-      | undefined;
+    const request = args?.request as PreviewStartRunRequest | undefined;
     const workspace = previewWorkspaceSnapshot.workspaces.find(
       (candidate) => candidate.id === request?.workspaceId
     );
@@ -536,6 +574,7 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
       id: runId,
       modelId: request?.modelId ?? null,
       providerId: request?.providerId ?? null,
+      reasoningEffort: request?.reasoningEffort ?? "medium",
       runBranch: `codex/run-${runId}`,
       skillRoutes: request?.skillRoutes ?? [],
       startedAt: null,
@@ -731,20 +770,7 @@ export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) =
 
 export const previewAgentStudioInvoke: InvokeAgentStudio = (command, args) => {
   if (command === "create_agent_template") {
-    const request = args?.request as
-      | {
-          active?: boolean;
-          budgetCents?: number;
-          description?: string;
-          harnessProfileId?: null | string;
-          id?: string;
-          modelId?: string;
-          name?: string;
-          providerId?: string;
-          role?: string;
-          skillRoutes?: string[];
-        }
-      | undefined;
+    const request = args?.request as PreviewCreateAgentTemplateRequest | undefined;
     const id = request?.id ?? "preview-agent";
 
     return Promise.resolve({
@@ -761,6 +787,7 @@ export const previewAgentStudioInvoke: InvokeAgentStudio = (command, args) => {
           modelId: request?.modelId ?? "gpt-5.2",
           name: request?.name ?? "Preview Agent",
           providerId: request?.providerId ?? "openai",
+          reasoningEffort: request?.reasoningEffort ?? "medium",
           role: request?.role ?? "developer",
           skillRoutes: request?.skillRoutes ?? [],
           version: 1
@@ -793,6 +820,7 @@ export const previewAgentStudioInvoke: InvokeAgentStudio = (command, args) => {
           modelId: string;
           name: string;
           providerId: string;
+          reasoningEffort?: "high" | "low" | "medium";
           role: string;
           skillRoutes: string[];
           templateId: string;
@@ -812,6 +840,7 @@ export const previewAgentStudioInvoke: InvokeAgentStudio = (command, args) => {
             modelId: request.modelId,
             name: request.name,
             providerId: request.providerId,
+            reasoningEffort: request.reasoningEffort ?? template.reasoningEffort,
             role: request.role,
             skillRoutes: request.skillRoutes,
             version: template.version + 1
@@ -1000,8 +1029,24 @@ function updatePreviewSkillSources(update: (source: SkillSource) => SkillSource)
 
 export const previewSettingsInvoke: InvokeSettings = (command, args) => {
   if (command === "sync_provider_models") {
-    const request = args?.request as { apiKey?: string | null } | undefined;
+    const request = args?.request as { apiKey?: string | null; providerId?: string } | undefined;
     const apiKey = request?.apiKey?.trim();
+    const provider = providerOption(request?.providerId ?? previewSettingsSnapshot.aiProvider.providerId);
+    if (provider.providerId === "gemini") {
+      return Promise.resolve({
+        aiProvider: {
+          ...previewSettingsSnapshot.aiProvider,
+          availableModels: provider.models,
+          displayName: provider.displayName,
+          modelSyncError: null,
+          modelSyncStatus: "synced",
+          modelsLastSyncedAt: "preview",
+          providerId: provider.providerId,
+          selectedModelId: provider.defaultModelId
+        }
+      });
+    }
+
     if (apiKey !== undefined && apiKey.length > 0) {
       return Promise.resolve({
         aiProvider: {
@@ -1012,9 +1057,11 @@ export const previewSettingsInvoke: InvokeSettings = (command, args) => {
             { id: "gpt-preview-live", label: "gpt-preview-live", providerId: "openai" },
             ...(previewSettingsSnapshot.aiProvider.availableModels ?? [])
           ],
+          displayName: provider.displayName,
           modelSyncError: null,
           modelSyncStatus: "synced",
           modelsLastSyncedAt: "preview",
+          providerId: provider.providerId,
           selectedModelId: "gpt-preview-live"
         }
       });
@@ -1030,8 +1077,16 @@ export const previewSettingsInvoke: InvokeSettings = (command, args) => {
   }
 
   if (command === "update_ai_provider_settings") {
-    const request = args?.request as { apiKey?: string | null; selectedModelId?: string } | undefined;
+    const request = args?.request as
+      | {
+          apiKey?: string | null;
+          providerId?: string;
+          reasoningEffort?: "high" | "low" | "medium";
+          selectedModelId?: string;
+        }
+      | undefined;
     const apiKey = request?.apiKey?.trim();
+    const provider = providerOption(request?.providerId ?? previewSettingsSnapshot.aiProvider.providerId);
     const apiKeyConfigured =
       apiKey === undefined ? previewSettingsSnapshot.aiProvider.apiKeyConfigured : apiKey.length > 0;
     let apiKeyLastFour = previewSettingsSnapshot.aiProvider.apiKeyLastFour;
@@ -1045,6 +1100,10 @@ export const previewSettingsInvoke: InvokeSettings = (command, args) => {
         ...previewSettingsSnapshot.aiProvider,
         apiKeyConfigured,
         apiKeyLastFour,
+        availableModels: provider.models,
+        displayName: provider.displayName,
+        providerId: provider.providerId,
+        reasoningEffort: request?.reasoningEffort ?? previewSettingsSnapshot.aiProvider.reasoningEffort,
         selectedModelId: request?.selectedModelId ?? previewSettingsSnapshot.aiProvider.selectedModelId
       }
     });
@@ -1052,3 +1111,7 @@ export const previewSettingsInvoke: InvokeSettings = (command, args) => {
 
   return Promise.resolve(previewSettingsSnapshot);
 };
+
+function providerOption(providerId: string) {
+  return previewProviderOptions.find((provider) => provider.providerId === providerId) ?? previewProviderOptions[0];
+}

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use super::settings::ReasoningEffort;
 use super::state::AgentOsState;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -11,6 +12,8 @@ pub struct AgentTemplate {
     pub description: String,
     pub provider_id: String,
     pub model_id: String,
+    #[serde(default = "default_reasoning_effort")]
+    pub reasoning_effort: ReasoningEffort,
     pub harness_profile_id: Option<String>,
     #[serde(default)]
     pub skill_routes: Vec<String>,
@@ -102,6 +105,8 @@ pub struct CreateAgentTemplateRequest {
     pub description: String,
     pub provider_id: String,
     pub model_id: String,
+    #[serde(default = "default_reasoning_effort")]
+    pub reasoning_effort: ReasoningEffort,
     pub harness_profile_id: Option<String>,
     #[serde(default)]
     pub skill_routes: Vec<String>,
@@ -131,6 +136,8 @@ pub struct UpdateAgentTemplateRequest {
     pub description: String,
     pub provider_id: String,
     pub model_id: String,
+    #[serde(default = "default_reasoning_effort")]
+    pub reasoning_effort: ReasoningEffort,
     pub harness_profile_id: Option<String>,
     #[serde(default)]
     pub skill_routes: Vec<String>,
@@ -190,6 +197,7 @@ impl AgentTemplate {
             description: "General implementation agent bound to the built-in Pi execution discipline harness.".to_owned(),
             provider_id: "openai".to_owned(),
             model_id: "gpt-5.4".to_owned(),
+            reasoning_effort: ReasoningEffort::Medium,
             harness_profile_id: Some("pi-execution-discipline".to_owned()),
             skill_routes: vec![
                 "agenticcrew://skills/superpowers/subagent-driven-development".to_owned(),
@@ -221,6 +229,7 @@ impl AgentTemplate {
             description,
             provider_id,
             model_id,
+            reasoning_effort: request.reasoning_effort,
             harness_profile_id: request.harness_profile_id.and_then(|profile_id| {
                 let trimmed = profile_id.trim().to_owned();
                 (!trimmed.is_empty()).then_some(trimmed)
@@ -241,6 +250,7 @@ impl AgentTemplate {
         self.description = validate_required("agent description", request.description)?;
         self.provider_id = validate_identifier("provider id", request.provider_id)?;
         self.model_id = validate_required("model id", request.model_id)?;
+        self.reasoning_effort = request.reasoning_effort;
         self.harness_profile_id = request.harness_profile_id.and_then(|profile_id| {
             let trimmed = profile_id.trim().to_owned();
             (!trimmed.is_empty()).then_some(trimmed)
@@ -255,6 +265,10 @@ impl AgentTemplate {
 
         Ok(())
     }
+}
+
+fn default_reasoning_effort() -> ReasoningEffort {
+    ReasoningEffort::Medium
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -312,6 +326,7 @@ mod tests {
         AgentTrainingRun, AgentTrainingStatus, CreateAgentTemplateRequest,
         UpdateAgentTemplateRequest,
     };
+    use crate::core::settings::ReasoningEffort;
     use crate::core::state::AgentOsState;
 
     #[test]
@@ -325,6 +340,7 @@ mod tests {
         assert!(template
             .skill_routes
             .contains(&"agenticcrew://skills/superpowers/subagent-driven-development".to_owned()));
+        assert_eq!(template.reasoning_effort, ReasoningEffort::Medium);
     }
 
     #[test]
@@ -375,6 +391,7 @@ mod tests {
             model_id: " gpt-5.2 ".to_owned(),
             name: " UI Agent ".to_owned(),
             provider_id: "openai".to_owned(),
+            reasoning_effort: ReasoningEffort::High,
             role: "developer".to_owned(),
             skill_routes: vec![" agenticcrew://skills/ui ".to_owned()],
         })
@@ -383,6 +400,7 @@ mod tests {
         assert_eq!(template.id, "ui-agent");
         assert_eq!(template.name, "UI Agent");
         assert_eq!(template.model_id, "gpt-5.2");
+        assert_eq!(template.reasoning_effort, ReasoningEffort::High);
         assert_eq!(
             template.harness_profile_id.as_deref(),
             Some("pi-execution-discipline")
@@ -401,6 +419,7 @@ mod tests {
             model_id: "gpt-5.2".to_owned(),
             name: "UI Agent".to_owned(),
             provider_id: "openai".to_owned(),
+            reasoning_effort: ReasoningEffort::Medium,
             role: "developer".to_owned(),
             skill_routes: vec!["agenticcrew://skills/ui".to_owned()],
         })
@@ -414,6 +433,7 @@ mod tests {
                 model_id: " gpt-5.1 ".to_owned(),
                 name: " Review Agent ".to_owned(),
                 provider_id: "openai".to_owned(),
+                reasoning_effort: ReasoningEffort::Low,
                 role: "reviewer".to_owned(),
                 skill_routes: vec![" agenticcrew://skills/review ".to_owned()],
                 template_id: "ui-agent".to_owned(),
@@ -424,6 +444,7 @@ mod tests {
         assert_eq!(template.role, "reviewer");
         assert_eq!(template.description, "Reviews UI diffs");
         assert_eq!(template.model_id, "gpt-5.1");
+        assert_eq!(template.reasoning_effort, ReasoningEffort::Low);
         assert_eq!(template.harness_profile_id, None);
         assert_eq!(template.skill_routes, vec!["agenticcrew://skills/review"]);
         assert_eq!(template.budget_cents, 500);

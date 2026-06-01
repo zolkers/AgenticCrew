@@ -30,6 +30,7 @@ describe("runsApi", () => {
       id: "run-1",
       modelId: "gpt-5",
       providerId: "openai",
+      reasoningEffort: "high",
       skillRoutes: ["agenticcrew://skills/superpowers/planning"],
       task: "Build the Workbench",
       workspaceId: "fullstack-app"
@@ -42,6 +43,7 @@ describe("runsApi", () => {
         id: "run-1",
         modelId: "gpt-5",
         providerId: "openai",
+        reasoningEffort: "high",
         skillRoutes: ["agenticcrew://skills/superpowers/planning"],
         task: "Build the Workbench",
         workspaceId: "fullstack-app"

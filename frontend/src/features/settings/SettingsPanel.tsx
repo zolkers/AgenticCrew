@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
-import { Check, KeyRound, LockKeyhole, RadioTower, RefreshCw, Save, SlidersHorizontal, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Brain, Check, KeyRound, RadioTower, RefreshCw, Save, SlidersHorizontal, Trash2 } from "lucide-react";
 import { syncProviderModels, updateAiProviderSettings, type InvokeSettings } from "../../shared/api/settingsApi";
-import type { SettingsSnapshot } from "../../shared/types/core";
+import type { AiProviderOption, ReasoningEffort, SettingsSnapshot } from "../../shared/types/core";
 
 type SettingsPanelProps = Readonly<{
   invoke: InvokeSettings;
@@ -14,27 +14,26 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState<null | string>(null);
   const [modelId, setModelId] = useState(provider.selectedModelId);
+  const [providerId, setProviderId] = useState(provider.providerId);
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(provider.reasoningEffort ?? "medium");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const modelOptions = useMemo(() => {
-    const availableModels = provider.availableModels ?? [
-      { id: provider.selectedModelId, label: provider.selectedModelId, providerId: provider.providerId }
-    ];
-
-    if (availableModels.some((option) => option.id === provider.selectedModelId)) {
-      return availableModels;
-    }
-
-    return [
-      { id: provider.selectedModelId, label: provider.selectedModelId, providerId: provider.providerId },
-      ...availableModels
-    ];
-  }, [provider.availableModels, provider.providerId, provider.selectedModelId]);
+  const providerOptions = provider.providerOptions ?? defaultProviderOptions(provider);
+  const selectedProviderOption =
+    providerOptions.find((option) => option.providerId === providerId) ?? providerOptions[0];
+  const availableModels = selectedProviderOption.models;
+  const modelOptions = availableModels.some((option) => option.id === modelId)
+    ? availableModels
+    : [{ id: modelId, label: modelId, providerId }, ...availableModels];
   const keyStatus = provider.apiKeyConfigured
     ? `Configured ending in ${provider.apiKeyLastFour ?? "****"}`
     : "Not configured";
-  const hasPendingChange = modelId !== provider.selectedModelId || apiKey.trim().length > 0;
+  const hasPendingChange =
+    modelId !== provider.selectedModelId ||
+    providerId !== provider.providerId ||
+    reasoningEffort !== (provider.reasoningEffort ?? "medium") ||
+    apiKey.trim().length > 0;
   const syncStatus = getModelSyncStatus(provider);
 
   async function saveProviderSettings() {
@@ -45,11 +44,14 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
     try {
       const nextSnapshot = await updateAiProviderSettings(invoke, {
         apiKey: apiKey.trim().length > 0 ? apiKey : undefined,
-        providerId: provider.providerId,
+        providerId,
+        reasoningEffort,
         selectedModelId: modelId
       });
       onSnapshotChange?.(nextSnapshot);
       setModelId(nextSnapshot.aiProvider.selectedModelId);
+      setProviderId(nextSnapshot.aiProvider.providerId);
+      setReasoningEffort(nextSnapshot.aiProvider.reasoningEffort ?? "medium");
       setApiKey("");
       setSaved(true);
     } catch {
@@ -67,11 +69,14 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
     try {
       const nextSnapshot = await updateAiProviderSettings(invoke, {
         apiKey: "",
-        providerId: provider.providerId,
+        providerId,
+        reasoningEffort,
         selectedModelId: modelId
       });
       onSnapshotChange?.(nextSnapshot);
       setModelId(nextSnapshot.aiProvider.selectedModelId);
+      setProviderId(nextSnapshot.aiProvider.providerId);
+      setReasoningEffort(nextSnapshot.aiProvider.reasoningEffort ?? "medium");
       setApiKey("");
       setSaved(true);
     } catch {
@@ -89,10 +94,12 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
     try {
       const nextSnapshot = await syncProviderModels(invoke, {
         apiKey: apiKey.trim().length > 0 ? apiKey : undefined,
-        providerId: provider.providerId
+        providerId
       });
       onSnapshotChange?.(nextSnapshot);
       setModelId(nextSnapshot.aiProvider.selectedModelId);
+      setProviderId(nextSnapshot.aiProvider.providerId);
+      setReasoningEffort(nextSnapshot.aiProvider.reasoningEffort ?? "medium");
       setApiKey("");
       setSaved(nextSnapshot.aiProvider.modelSyncStatus === "synced");
       if (nextSnapshot.aiProvider.modelSyncStatus === "failed") {
@@ -125,6 +132,7 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
           <SlidersHorizontal aria-hidden="true" size={20} />
           <strong>Model</strong>
           <span>{provider.selectedModelId}</span>
+          <small>{formatReasoningEffort(provider.reasoningEffort ?? "medium")}</small>
           <small>{syncStatus}</small>
         </article>
         <article className="surface-card">
@@ -133,9 +141,9 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
           <span>{keyStatus}</span>
         </article>
         <article className="surface-card">
-          <LockKeyhole aria-hidden="true" size={20} />
-          <strong>Harness</strong>
-          <span>Workspace binding required</span>
+          <Brain aria-hidden="true" size={20} />
+          <strong>Thinking</strong>
+          <span>{formatReasoningEffort(provider.reasoningEffort ?? "medium")}</span>
         </article>
       </div>
 
@@ -146,6 +154,26 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
           void saveProviderSettings();
         }}
       >
+        <label>
+          <span>Provider</span>
+          <select
+            disabled={saving}
+            onChange={(event) => {
+              const nextProviderId = event.target.value;
+              const nextProvider = providerOptions.find((option) => option.providerId === nextProviderId);
+              setProviderId(nextProviderId);
+              setModelId(nextProvider?.defaultModelId ?? nextProvider?.models[0]?.id ?? "");
+              setSaved(false);
+            }}
+            value={providerId}
+          >
+            {providerOptions.map((option) => (
+              <option key={option.providerId} value={option.providerId}>
+                {option.displayName}
+              </option>
+            ))}
+          </select>
+        </label>
         <label>
           <span>Model</span>
           <select
@@ -164,6 +192,21 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
           </select>
         </label>
         <label>
+          <span>Thinking</span>
+          <select
+            disabled={saving}
+            onChange={(event) => {
+              setReasoningEffort(event.target.value as ReasoningEffort);
+              setSaved(false);
+            }}
+            value={reasoningEffort}
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </label>
+        <label>
           <span>API key</span>
           <input
             autoComplete="off"
@@ -172,7 +215,7 @@ export function SettingsPanel({ invoke, onSnapshotChange, snapshot }: SettingsPa
               setApiKey(event.target.value);
               setSaved(false);
             }}
-            placeholder={provider.apiKeyConfigured ? "Leave empty to keep current key" : "sk-..."}
+            placeholder={provider.apiKeyConfigured ? "Leave empty to keep current key" : getApiKeyPlaceholder(providerId)}
             type="password"
             value={apiKey}
           />
@@ -229,4 +272,25 @@ function getModelSyncStatus(provider: SettingsSnapshot["aiProvider"]): string {
   }
 
   return "Not synced";
+}
+
+function defaultProviderOptions(provider: SettingsSnapshot["aiProvider"]): AiProviderOption[] {
+  return [
+    {
+      defaultModelId: provider.selectedModelId,
+      displayName: provider.displayName,
+      models: provider.availableModels ?? [
+        { id: provider.selectedModelId, label: provider.selectedModelId, providerId: provider.providerId }
+      ],
+      providerId: provider.providerId
+    }
+  ];
+}
+
+function formatReasoningEffort(reasoningEffort: ReasoningEffort): string {
+  return reasoningEffort[0].toUpperCase() + reasoningEffort.slice(1);
+}
+
+function getApiKeyPlaceholder(providerId: string): string {
+  return providerId === "gemini" ? "AIza..." : "sk-...";
 }

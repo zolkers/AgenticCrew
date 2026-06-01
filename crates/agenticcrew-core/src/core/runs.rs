@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    agents::AgentTemplate, harnesses::HarnessProfile, state::AgentOsState,
-    workspaces::WorkspaceRecord,
+    agents::AgentTemplate, harnesses::HarnessProfile, settings::ReasoningEffort,
+    state::AgentOsState, workspaces::WorkspaceRecord,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -31,6 +31,8 @@ pub struct RunRecord {
     pub harness_profile_id: Option<String>,
     pub provider_id: Option<String>,
     pub model_id: Option<String>,
+    #[serde(default = "default_reasoning_effort")]
+    pub reasoning_effort: ReasoningEffort,
     #[serde(default)]
     pub skill_routes: Vec<String>,
     pub created_at: String,
@@ -67,6 +69,8 @@ pub struct StartRunRequest {
     pub harness_profile_id: Option<String>,
     pub provider_id: Option<String>,
     pub model_id: Option<String>,
+    #[serde(default)]
+    pub reasoning_effort: Option<ReasoningEffort>,
     #[serde(default)]
     pub skill_routes: Vec<String>,
 }
@@ -116,6 +120,10 @@ impl RunRecord {
             provider_id: request
                 .provider_id
                 .or_else(|| agent_template.map(|template| template.provider_id.clone())),
+            reasoning_effort: request
+                .reasoning_effort
+                .or_else(|| agent_template.map(|template| template.reasoning_effort))
+                .unwrap_or(ReasoningEffort::Medium),
             run_branch,
             skill_routes,
             started_at: None,
@@ -127,6 +135,10 @@ impl RunRecord {
             worktree_path,
         })
     }
+}
+
+fn default_reasoning_effort() -> ReasoningEffort {
+    ReasoningEffort::Medium
 }
 
 fn normalize_skill_routes(skill_routes: Vec<String>) -> Vec<String> {
@@ -205,6 +217,7 @@ fn validate_identifier(field: &'static str, value: String) -> Result<String, Run
 #[cfg(test)]
 mod tests {
     use super::{runs_snapshot_from_state, RunRecord, RunStatus, StartRunRequest};
+    use crate::core::settings::ReasoningEffort;
     use crate::core::state::AgentOsState;
 
     #[test]
@@ -231,6 +244,7 @@ mod tests {
                 id: "run-1".to_owned(),
                 model_id: None,
                 provider_id: None,
+                reasoning_effort: Some(ReasoningEffort::High),
                 skill_routes: vec![
                     "agenticcrew://skills/superpowers/subagent-driven-development".to_owned(),
                     " agenticcrew://skills/superpowers/subagent-driven-development ".to_owned(),
@@ -252,6 +266,7 @@ mod tests {
         assert!(run.worktree_path.ends_with("\\.agenticcrew\\runs\\run-1"));
         assert_eq!(run.provider_id, Some("openai".to_owned()));
         assert_eq!(run.model_id, Some("gpt-5.4".to_owned()));
+        assert_eq!(run.reasoning_effort, ReasoningEffort::High);
         assert_eq!(
             run.skill_routes,
             vec!["agenticcrew://skills/superpowers/subagent-driven-development".to_owned()]
@@ -268,6 +283,7 @@ mod tests {
                 id: "run-1".to_owned(),
                 model_id: None,
                 provider_id: None,
+                reasoning_effort: None,
                 skill_routes: Vec::new(),
                 task: "Task".to_owned(),
                 workspace_id: "fullstack-app".to_owned(),
