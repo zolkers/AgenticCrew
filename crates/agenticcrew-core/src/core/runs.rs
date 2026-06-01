@@ -220,10 +220,21 @@ pub struct RuntimeCommandPolicy {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RunParticipantTimeline {
+    pub run_id: String,
+    pub participant_id: String,
+    pub events: Vec<RunEvent>,
+    pub commands: Vec<RunCommandRecord>,
+    pub last_activity_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RunsSnapshot {
     pub active_run_id: Option<String>,
     pub commands: Vec<RunCommandRecord>,
     pub events: Vec<RunEvent>,
+    pub participant_timelines: Vec<RunParticipantTimeline>,
     pub runs: Vec<RunRecord>,
     pub runtime_policy: RuntimeCommandPolicy,
 }
@@ -236,6 +247,7 @@ pub fn runs_snapshot_from_state(
         active_run_id: state.runs.last().map(|run| run.id.clone()),
         commands: state.run_commands.clone(),
         events: state.run_events.clone(),
+        participant_timelines: participant_timelines_from_state(state),
         runs: state.runs.clone(),
         runtime_policy: RuntimeCommandPolicy {
             allowed_programs: allowed_runtime_programs
@@ -244,6 +256,48 @@ pub fn runs_snapshot_from_state(
                 .collect(),
         },
     }
+}
+
+fn participant_timelines_from_state(state: &AgentOsState) -> Vec<RunParticipantTimeline> {
+    state
+        .runs
+        .iter()
+        .flat_map(|run| {
+            run.participants.iter().map(|participant| {
+                let events = state
+                    .run_events
+                    .iter()
+                    .filter(|event| {
+                        event.run_id == run.id
+                            && event.participant_id.as_deref() == Some(participant.id.as_str())
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let commands = state
+                    .run_commands
+                    .iter()
+                    .filter(|command| {
+                        command.run_id == run.id && command.participant_id == participant.id
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let last_activity_at = events
+                    .iter()
+                    .map(|event| event.created_at.as_str())
+                    .chain(commands.iter().map(|command| command.created_at.as_str()))
+                    .max()
+                    .map(str::to_owned);
+
+                RunParticipantTimeline {
+                    commands,
+                    events,
+                    last_activity_at,
+                    participant_id: participant.id.clone(),
+                    run_id: run.id.clone(),
+                }
+            })
+        })
+        .collect()
 }
 
 impl RunCommandRecord {
@@ -496,8 +550,8 @@ fn validate_identifier(field: &'static str, value: String) -> Result<String, Run
 #[cfg(test)]
 mod tests {
     use super::{
-        runs_snapshot_from_state, RunParticipantExecutionMode, RunParticipantRequest,
-        RunParticipantRole, RunRecord, RunStatus, StartRunRequest,
+        runs_snapshot_from_state, RecordRunCommandRequest, RunParticipantExecutionMode,
+        RunParticipantRequest, RunParticipantRole, RunRecord, RunStatus, StartRunRequest,
     };
     use crate::core::settings::ReasoningEffort;
     use crate::core::state::AgentOsState;
@@ -677,6 +731,88 @@ mod tests {
             vec!["node".to_owned(), "npm".to_owned()]
         );
         assert_eq!(snapshot.runs.len(), 1);
+    }
+
+    #[test]
+    fn runs_snapshot_groups_participant_timelines() {
+        let mut state = AgentOsState::empty();
+        let run = RunRecord::queued(
+            StartRunRequest {
+                agent_template_id: None,
+                harness_profile_id: None,
+                id: "crew-run".to_owned(),
+                model_id: None,
+                provider_id: None,
+                reasoning_effort: None,
+                skill_routes: Vec::new(),
+                participants: vec![
+                    RunParticipantRequest {
+                        agent_template_id: None,
+                        execution_mode: RunParticipantExecutionMode::Write,
+                        harness_profile_id: None,
+                        id: "developer".to_owned(),
+                        model_id: None,
+                        provider_id: None,
+                        reasoning_effort: None,
+                        role: RunParticipantRole::Implementation,
+                        skill_routes: Vec::new(),
+                    },
+                    RunParticipantRequest {
+                        agent_template_id: None,
+                        execution_mode: RunParticipantExecutionMode::ReadOnly,
+                        harness_profile_id: None,
+                        id: "reviewer".to_owned(),
+                        model_id: None,
+                        provider_id: None,
+                        reasoning_effort: None,
+                        role: RunParticipantRole::Review,
+                        skill_routes: Vec::new(),
+                    },
+                ],
+                task: "Task".to_owned(),
+                workspace_id: "fullstack-app".to_owned(),
+            },
+            &state.workspaces[0],
+            None,
+            None,
+            "123".to_owned(),
+        )
+        .expect("run");
+        state.runs.push(run);
+        state
+            .record_run_command(
+                RecordRunCommandRequest {
+                    command: "node --version".to_owned(),
+                    cwd: ".".to_owned(),
+                    exit_code: 0,
+                    participant_id: "developer".to_owned(),
+                    run_id: "crew-run".to_owned(),
+                    stderr: String::new(),
+                    stdout: "v24".to_owned(),
+                },
+                "456".to_owned(),
+            )
+            .expect("command");
+
+        let snapshot = runs_snapshot_from_state(&state, &["node"]);
+        let developer_timeline = snapshot
+            .participant_timelines
+            .iter()
+            .find(|timeline| timeline.participant_id == "developer")
+            .expect("developer timeline");
+        let reviewer_timeline = snapshot
+            .participant_timelines
+            .iter()
+            .find(|timeline| timeline.participant_id == "reviewer")
+            .expect("reviewer timeline");
+
+        assert_eq!(snapshot.participant_timelines.len(), 2);
+        assert_eq!(developer_timeline.commands.len(), 1);
+        assert_eq!(developer_timeline.events.len(), 1);
+        assert_eq!(developer_timeline.last_activity_at, Some("456".to_owned()));
+        assert!(reviewer_timeline.commands.is_empty());
+        assert!(reviewer_timeline.events.is_empty());
+        assert_eq!(reviewer_timeline.last_activity_at, None);
     }
 
     fn normalized_path(path: &str) -> String {

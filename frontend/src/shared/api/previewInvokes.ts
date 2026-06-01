@@ -70,6 +70,7 @@ const previewRunsSnapshot: RunsSnapshot = {
   activeRunId: null,
   commands: [],
   events: [],
+  participantTimelines: [],
   runs: [],
   runtimePolicy: {
     allowedPrograms: previewRuntimeAllowedPrograms
@@ -641,6 +642,7 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
       runs: [...currentPreviewRunsSnapshot.runs, run],
       runtimePolicy: currentPreviewRunsSnapshot.runtimePolicy
     };
+    currentPreviewRunsSnapshot = withPreviewParticipantTimelines(currentPreviewRunsSnapshot);
   }
 
   if (
@@ -659,6 +661,8 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
     } as const;
     const nextStatus = nextStatusByCommand[command];
     const updatedAt = "preview";
+    const transitioningRun = currentPreviewRunsSnapshot.runs.find((run) => run.id === runId);
+    const nextEventIndex = currentPreviewRunsSnapshot.events.length + 1;
 
     currentPreviewRunsSnapshot = {
       activeRunId: runId ?? currentPreviewRunsSnapshot.activeRunId,
@@ -670,12 +674,20 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
           : [
               {
                 createdAt: updatedAt,
-                id: `${runId}-event-${String(currentPreviewRunsSnapshot.events.length + 1)}`,
+                id: `${runId}-event-${String(nextEventIndex)}`,
                 level: "info" as const,
                 message: `Run ${nextStatus}`,
                 runId
               }
-            ])
+            ]),
+        ...(transitioningRun?.participants.map((participant, index) => ({
+          createdAt: updatedAt,
+          id: `${runId ?? transitioningRun.id}-event-${String(nextEventIndex + index + 1)}`,
+          level: "info" as const,
+          message: `Participant ${participant.id} ${nextStatus}`,
+          participantId: participant.id,
+          runId: runId ?? transitioningRun.id
+        })) ?? [])
       ],
       runs: currentPreviewRunsSnapshot.runs.map((run) =>
         run.id === runId
@@ -694,6 +706,7 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
       ),
       runtimePolicy: currentPreviewRunsSnapshot.runtimePolicy
     };
+    currentPreviewRunsSnapshot = withPreviewParticipantTimelines(currentPreviewRunsSnapshot);
   }
 
   if (command === "execute_run_command") {
@@ -770,7 +783,7 @@ function appendPreviewRunCommand(request: {
     stdout: request.stdout
   };
 
-  return {
+  return withPreviewParticipantTimelines({
     ...currentPreviewRunsSnapshot,
     activeRunId: request.runId,
     commands: [...currentPreviewRunsSnapshot.commands, commandRecord],
@@ -785,6 +798,33 @@ function appendPreviewRunCommand(request: {
         runId: request.runId
       }
     ]
+  });
+}
+
+function withPreviewParticipantTimelines(snapshot: RunsSnapshot): RunsSnapshot {
+  return {
+    ...snapshot,
+    participantTimelines: snapshot.runs.flatMap((run) =>
+      run.participants.map((participant) => {
+        const events = snapshot.events.filter(
+          (event) => event.runId === run.id && event.participantId === participant.id
+        );
+        const commands = snapshot.commands.filter(
+          (command) => command.runId === run.id && command.participantId === participant.id
+        );
+        const lastActivityAt = [...events.map((event) => event.createdAt), ...commands.map((command) => command.createdAt)]
+          .sort((left, right) => left.localeCompare(right))
+          .at(-1) ?? null;
+
+        return {
+          commands,
+          events,
+          lastActivityAt,
+          participantId: participant.id,
+          runId: run.id
+        };
+      })
+    )
   };
 }
 

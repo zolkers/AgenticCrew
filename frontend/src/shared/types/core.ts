@@ -305,10 +305,19 @@ export type RuntimeCommandPolicy = {
   allowedPrograms: string[];
 };
 
+export type RunParticipantTimeline = {
+  commands: RunCommandRecord[];
+  events: RunEvent[];
+  lastActivityAt?: string | null;
+  participantId: string;
+  runId: string;
+};
+
 export type RunsSnapshot = {
   activeRunId?: string | null;
   commands: RunCommandRecord[];
   events: RunEvent[];
+  participantTimelines?: RunParticipantTimeline[];
   runs: RunRecord[];
   runtimePolicy?: RuntimeCommandPolicy;
 };

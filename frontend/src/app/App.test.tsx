@@ -572,6 +572,37 @@ describe("App", () => {
             }
           ],
           events: [],
+          participantTimelines: [
+            {
+              commands: [
+                {
+                  command: "node -e console.log('runtime check passed')",
+                  createdAt: "preview",
+                  cwd: "C:\\repo\\.agenticcrew\\runs\\run-control",
+                  exitCode: 0,
+                  id: "run-control-command-1",
+                  participantId: "developer",
+                  runId: "run-control",
+                  status: "succeeded" as const,
+                  stderr: "",
+                  stdout: "runtime check passed"
+                }
+              ],
+              events: [
+                {
+                  createdAt: "preview",
+                  id: "run-control-event-3",
+                  level: "info" as const,
+                  message: "Command 'node -e console.log('runtime check passed')' exited 0",
+                  participantId: "developer",
+                  runId: "run-control"
+                }
+              ],
+              lastActivityAt: "preview",
+              participantId: "developer",
+              runId: "run-control"
+            }
+          ],
           runs: [
             {
               ...queuedRun,
@@ -618,6 +649,9 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Run smoke" }));
     expect(await screen.findByLabelText("Run command evidence")).toHaveTextContent("node -e");
     expect(screen.getByLabelText("Run command evidence")).toHaveTextContent("succeeded");
+    expect(screen.getByLabelText("Crew activity")).toHaveTextContent("developer");
+    expect(screen.getByLabelText("Crew activity")).toHaveTextContent("Commands1");
+    expect(screen.getByLabelText("Crew activity")).toHaveTextContent("node -e console.log('runtime check passed') (succeeded)");
     fireEvent.click(screen.getByRole("button", { name: "Complete" }));
     await waitFor(() => {
       expect(screen.getAllByText("completed").length).toBeGreaterThan(0);

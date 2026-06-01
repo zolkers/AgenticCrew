@@ -358,6 +358,24 @@ describe("previewInvokes", () => {
         stdout: "runtime check passed"
       })
     ]);
+    expect(snapshot.participantTimelines).toEqual([
+      expect.objectContaining({
+        commands: [
+          expect.objectContaining({
+            command: "node -e console.log('ok')",
+            participantId: "developer"
+          })
+        ],
+        events: [
+          expect.objectContaining({
+            message: "Command 'node -e console.log('ok')' exited 0",
+            participantId: "developer"
+          })
+        ],
+        participantId: "developer",
+        runId: "execute-preview"
+      })
+    ]);
   });
 
   it("records blocked preview run commands as failed evidence", async () => {

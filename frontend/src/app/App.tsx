@@ -65,6 +65,10 @@ import type {
   MissionControlSnapshot,
   ExecuteRunCommandRequest,
   ReasoningEffort,
+  RunCommandRecord,
+  RunEvent,
+  RunParticipant,
+  RunParticipantTimeline,
   RunParticipantRequest,
   RunRecord,
   RunsSnapshot,
@@ -1066,6 +1070,9 @@ function Cockpit({
   const activeRunCommands = activeRun === undefined
     ? []
     : runsSnapshot.commands.filter((command) => command.runId === activeRun.id);
+  const activeRunParticipantTimelines = activeRun === undefined
+    ? []
+    : (runsSnapshot.participantTimelines ?? []).filter((timeline) => timeline.runId === activeRun.id);
   const runtimeAllowedPrograms = runsSnapshot.runtimePolicy?.allowedPrograms ?? [];
   const availableMissionSkillRoutes = uniqueSkillManifests([
     ...availableSkillRoutes,
@@ -1310,153 +1317,15 @@ function Cockpit({
           </form>
         </article>
 
-        <article className="run-detail-panel" aria-labelledby="run-detail-title">
-          <header>
-            <div>
-              <p className="eyebrow">Run details</p>
-              <h3 id="run-detail-title">{activeRun === undefined ? "No active run" : activeRun.id}</h3>
-            </div>
-            <span className={`run-state-badge run-state-${activeRun?.status ?? "idle"}`}>
-              {activeRun?.status ?? "idle"}
-            </span>
-          </header>
-          {activeRun === undefined ? null : (
-            <div className="run-control-strip" aria-label="Runtime controls">
-              <button
-                disabled={activeRun.status !== "queued"}
-                onClick={() => {
-                  onRunTransition(activeRun.id, "prepare");
-                }}
-                type="button"
-              >
-                Prepare
-              </button>
-              <button
-                disabled={activeRun.status !== "preparing"}
-                onClick={() => {
-                  onRunTransition(activeRun.id, "start");
-                }}
-                type="button"
-              >
-                Start
-              </button>
-              <button
-                disabled={activeRun.status !== "running"}
-                onClick={() => {
-                  onRunTransition(activeRun.id, "complete");
-                }}
-                type="button"
-              >
-                Complete
-              </button>
-              <button
-                disabled={activeRun.status !== "running" && activeRun.status !== "preparing"}
-                onClick={() => {
-                  onRunTransition(activeRun.id, "fail");
-                }}
-                type="button"
-              >
-                Fail
-              </button>
-              <button
-                disabled={activeRun.status !== "running"}
-                onClick={() => {
-                  const participant = activeRun.participants.find((candidate) => candidate.executionMode === "write")
-                    ?? activeRun.participants.at(0);
-                  if (participant !== undefined) {
-                    onRunCommand({
-                      args: ["-e", "console.log('runtime check passed')"],
-                      cwd: activeRun.worktreePath,
-                      participantId: participant.id,
-                      program: "node",
-                      runId: activeRun.id
-                    });
-                  }
-                }}
-                type="button"
-              >
-                Run smoke
-              </button>
-            </div>
-          )}
-          <section aria-label="Runtime command policy" className="runtime-policy-strip">
-            <span>Allowed runtime commands</span>
-            <ul>
-              {runtimeAllowedPrograms.length === 0 ? (
-                <li>policy unavailable</li>
-              ) : (
-                runtimeAllowedPrograms.map((program) => <li key={program}>{program}</li>)
-              )}
-            </ul>
-          </section>
-
-          <div className="terminal-stream" aria-label="Run event log">
-            {activeRun === undefined ? (
-              <p>
-                <span aria-hidden="true">&gt;</span>
-                <code>Describe a task and start a run to create a durable queue entry.</code>
-              </p>
-            ) : (
-              <>
-                <p>
-                  <span aria-hidden="true">&gt;</span>
-                  <code>{activeRun.task}</code>
-                </p>
-                <p>
-                  <span aria-hidden="true">&gt;</span>
-                  <code>
-                    {activeRun.baseBranch} {"->"} {activeRun.runBranch}
-                  </code>
-                </p>
-                <p>
-                  <span aria-hidden="true">&gt;</span>
-                  <code>{activeRun.worktreePath}</code>
-                </p>
-                <p>
-                  <span aria-hidden="true">&gt;</span>
-                  <code>manifest: {activeRun.manifestPath}</code>
-                </p>
-                {activeRun.participants.length > 0 ? (
-                  <p>
-                    <span aria-hidden="true">&gt;</span>
-                    <code>crew: {formatRunParticipants(activeRun)}</code>
-                  </p>
-                ) : null}
-                {activeRun.skillRoutes.length > 0 ? (
-                  <p>
-                    <span aria-hidden="true">&gt;</span>
-                    <code>skills: {activeRun.skillRoutes.join(", ")}</code>
-                  </p>
-                ) : null}
-                <p>
-                  <span aria-hidden="true">&gt;</span>
-                  <code>thinking: {activeRun.reasoningEffort ?? "medium"}</code>
-                </p>
-                {activeRunCommands.length > 0 ? (
-                  <section aria-label="Run command evidence" className="run-command-evidence">
-                    <h4>Command evidence</h4>
-                    <ul>
-                      {activeRunCommands.map((command) => (
-                        <li key={command.id}>
-                          <span>{command.participantId}</span>
-                          <code>{command.command}</code>
-                          <strong>{command.status}</strong>
-                          <small>exit {command.exitCode}</small>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : null}
-                {activeRunEvents.map((event) => (
-                  <p key={event.id}>
-                    <span aria-hidden="true">&gt;</span>
-                    <code>[{event.level}] {event.message}</code>
-                  </p>
-                ))}
-              </>
-            )}
-          </div>
-        </article>
+        <RunDetailPanel
+          commands={activeRunCommands}
+          events={activeRunEvents}
+          onRunCommand={onRunCommand}
+          onRunTransition={onRunTransition}
+          run={activeRun}
+          runtimeAllowedPrograms={runtimeAllowedPrograms}
+          timelines={activeRunParticipantTimelines}
+        />
         <footer className="run-status-bar" aria-label="Run status">
           <span>AgenticCrew 0.1</span>
           <span>{activeRun?.status ?? "no active run"}</span>
@@ -1466,6 +1335,288 @@ function Cockpit({
         </footer>
       </section>
     </div>
+  );
+}
+
+function RunDetailPanel({
+  commands,
+  events,
+  onRunCommand,
+  onRunTransition,
+  run,
+  runtimeAllowedPrograms,
+  timelines
+}: Readonly<{
+  commands: RunCommandRecord[];
+  events: RunEvent[];
+  onRunCommand: (request: ExecuteRunCommandRequest) => void;
+  onRunTransition: (runId: string, transition: RunLifecycleAction) => void;
+  run?: RunRecord;
+  runtimeAllowedPrograms: string[];
+  timelines: RunParticipantTimeline[];
+}>) {
+  return (
+    <article className="run-detail-panel" aria-labelledby="run-detail-title">
+      <header>
+        <div>
+          <p className="eyebrow">Run details</p>
+          <h3 id="run-detail-title">{run === undefined ? "No active run" : run.id}</h3>
+        </div>
+        <span className={`run-state-badge run-state-${run?.status ?? "idle"}`}>
+          {run?.status ?? "idle"}
+        </span>
+      </header>
+      {run === undefined ? null : (
+        <RunControlStrip
+          onRunCommand={onRunCommand}
+          onRunTransition={onRunTransition}
+          run={run}
+        />
+      )}
+      <RuntimePolicyStrip runtimeAllowedPrograms={runtimeAllowedPrograms} />
+      {run !== undefined && run.participants.length > 0 ? (
+        <CrewActivityPanel participants={run.participants} timelines={timelines} />
+      ) : null}
+      <RunEventLog commands={commands} events={events} run={run} />
+    </article>
+  );
+}
+
+function RunControlStrip({
+  onRunCommand,
+  onRunTransition,
+  run
+}: Readonly<{
+  onRunCommand: (request: ExecuteRunCommandRequest) => void;
+  onRunTransition: (runId: string, transition: RunLifecycleAction) => void;
+  run: RunRecord;
+}>) {
+  const runSmoke = () => {
+    const participant = run.participants.find((candidate) => candidate.executionMode === "write")
+      ?? run.participants.at(0);
+
+    if (participant !== undefined) {
+      onRunCommand({
+        args: ["-e", "console.log('runtime check passed')"],
+        cwd: run.worktreePath,
+        participantId: participant.id,
+        program: "node",
+        runId: run.id
+      });
+    }
+  };
+
+  return (
+    <div className="run-control-strip" aria-label="Runtime controls">
+      <button
+        disabled={run.status !== "queued"}
+        onClick={() => {
+          onRunTransition(run.id, "prepare");
+        }}
+        type="button"
+      >
+        Prepare
+      </button>
+      <button
+        disabled={run.status !== "preparing"}
+        onClick={() => {
+          onRunTransition(run.id, "start");
+        }}
+        type="button"
+      >
+        Start
+      </button>
+      <button
+        disabled={run.status !== "running"}
+        onClick={() => {
+          onRunTransition(run.id, "complete");
+        }}
+        type="button"
+      >
+        Complete
+      </button>
+      <button
+        disabled={run.status !== "running" && run.status !== "preparing"}
+        onClick={() => {
+          onRunTransition(run.id, "fail");
+        }}
+        type="button"
+      >
+        Fail
+      </button>
+      <button disabled={run.status !== "running"} onClick={runSmoke} type="button">
+        Run smoke
+      </button>
+    </div>
+  );
+}
+
+function RuntimePolicyStrip({ runtimeAllowedPrograms }: Readonly<{ runtimeAllowedPrograms: string[] }>) {
+  return (
+    <section aria-label="Runtime command policy" className="runtime-policy-strip">
+      <span>Allowed runtime commands</span>
+      <ul>
+        {runtimeAllowedPrograms.length === 0 ? (
+          <li>policy unavailable</li>
+        ) : (
+          runtimeAllowedPrograms.map((program) => <li key={program}>{program}</li>)
+        )}
+      </ul>
+    </section>
+  );
+}
+
+function RunEventLog({
+  commands,
+  events,
+  run
+}: Readonly<{
+  commands: RunCommandRecord[];
+  events: RunEvent[];
+  run?: RunRecord;
+}>) {
+  return (
+    <div className="terminal-stream" aria-label="Run event log">
+      {run === undefined ? (
+        <p>
+          <span aria-hidden="true">&gt;</span>
+          <code>Describe a task and start a run to create a durable queue entry.</code>
+        </p>
+      ) : (
+        <>
+          <p>
+            <span aria-hidden="true">&gt;</span>
+            <code>{run.task}</code>
+          </p>
+          <p>
+            <span aria-hidden="true">&gt;</span>
+            <code>
+              {run.baseBranch} {"->"} {run.runBranch}
+            </code>
+          </p>
+          <p>
+            <span aria-hidden="true">&gt;</span>
+            <code>{run.worktreePath}</code>
+          </p>
+          <p>
+            <span aria-hidden="true">&gt;</span>
+            <code>manifest: {run.manifestPath}</code>
+          </p>
+          {run.participants.length > 0 ? (
+            <p>
+              <span aria-hidden="true">&gt;</span>
+              <code>crew: {formatRunParticipants(run)}</code>
+            </p>
+          ) : null}
+          {run.skillRoutes.length > 0 ? (
+            <p>
+              <span aria-hidden="true">&gt;</span>
+              <code>skills: {run.skillRoutes.join(", ")}</code>
+            </p>
+          ) : null}
+          <p>
+            <span aria-hidden="true">&gt;</span>
+            <code>thinking: {run.reasoningEffort ?? "medium"}</code>
+          </p>
+          {commands.length > 0 ? (
+            <section aria-label="Run command evidence" className="run-command-evidence">
+              <h4>Command evidence</h4>
+              <ul>
+                {commands.map((command) => (
+                  <li key={command.id}>
+                    <span>{command.participantId}</span>
+                    <code>{command.command}</code>
+                    <strong>{command.status}</strong>
+                    <small>exit {command.exitCode}</small>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+          {events.map((event) => (
+            <p key={event.id}>
+              <span aria-hidden="true">&gt;</span>
+              <code>[{event.level}] {event.message}</code>
+            </p>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+function CrewActivityPanel({
+  participants,
+  timelines
+}: Readonly<{
+  participants: RunParticipant[];
+  timelines: RunParticipantTimeline[];
+}>) {
+  return (
+    <section aria-label="Crew activity" className="crew-activity-panel">
+      <header>
+        <h4>Crew activity</h4>
+        <span>{participants.length} participants</span>
+      </header>
+      <ul>
+        {participants.map((participant) => (
+          <CrewActivityItem
+            key={participant.id}
+            participant={participant}
+            timeline={timelines.find((candidate) => candidate.participantId === participant.id)}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function CrewActivityItem({
+  participant,
+  timeline
+}: Readonly<{
+  participant: RunParticipant;
+  timeline?: RunParticipantTimeline;
+}>) {
+  const eventCount = timeline?.events.length ?? 0;
+  const commandCount = timeline?.commands.length ?? 0;
+  const hasActivity = eventCount + commandCount > 0;
+
+  return (
+    <li>
+      <div>
+        <strong>{participant.id}</strong>
+        <span>{participant.role} / {participant.executionMode}</span>
+      </div>
+      <dl>
+        <div>
+          <dt>Status</dt>
+          <dd>{participant.status}</dd>
+        </div>
+        <div>
+          <dt>Events</dt>
+          <dd>{eventCount}</dd>
+        </div>
+        <div>
+          <dt>Commands</dt>
+          <dd>{commandCount}</dd>
+        </div>
+        <div>
+          <dt>Last</dt>
+          <dd>{timeline?.lastActivityAt ?? "no activity"}</dd>
+        </div>
+      </dl>
+      {hasActivity ? (
+        <ol>
+          {timeline?.events.slice(-2).map((event) => <li key={event.id}>{event.message}</li>)}
+          {timeline?.commands.slice(-2).map((command) => (
+            <li key={command.id}>{command.command} ({command.status})</li>
+          ))}
+        </ol>
+      ) : (
+        <p>No participant activity recorded yet.</p>
+      )}
+    </li>
   );
 }
 
