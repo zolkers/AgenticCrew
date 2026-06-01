@@ -6,6 +6,7 @@ import {
   refreshWorkspaceGitStatus,
   updateWorkspaceGitContext,
   updateWorkspaceLoadout,
+  updateWorkspaceRuntimePolicy,
   type InvokeWorkspace
 } from "./workspaceApi";
 
@@ -39,6 +40,10 @@ describe("workspaceApi", () => {
       harnessProfileId: "pi-execution-discipline",
       workspaceId: "api"
     };
+    const runtimePolicyRequest = {
+      allowedPrograms: ["node", "npm"],
+      workspaceId: "api"
+    };
     const calls: unknown[] = [];
     const invoke: InvokeWorkspace = (command, args) => {
       calls.push([command, args]);
@@ -50,12 +55,14 @@ describe("workspaceApi", () => {
     await updateWorkspaceGitContext(invoke, updateRequest);
     await refreshWorkspaceGitStatus(invoke, { workspaceId: "api" });
     await updateWorkspaceLoadout(invoke, loadoutRequest);
+    await updateWorkspaceRuntimePolicy(invoke, runtimePolicyRequest);
 
     expect(calls).toEqual([
       ["create_workspace", { request: createRequest }],
       ["update_workspace_git_context", { request: updateRequest }],
       ["refresh_workspace_git_status", { request: { workspaceId: "api" } }],
-      ["update_workspace_loadout", { request: loadoutRequest }]
+      ["update_workspace_loadout", { request: loadoutRequest }],
+      ["update_workspace_runtime_policy", { request: runtimePolicyRequest }]
     ]);
   });
 

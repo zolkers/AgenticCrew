@@ -53,6 +53,7 @@ import {
   refreshWorkspaceGitStatus,
   updateWorkspaceGitContext,
   updateWorkspaceLoadout,
+  updateWorkspaceRuntimePolicy,
   type InvokeCommitPreview,
   type InvokeWorkspace
 } from "../shared/api/workspaceApi";
@@ -143,6 +144,7 @@ const viewByRouteSegment: Record<string, AppView> = {
 };
 
 const defaultBranchOptions = ["main", "dev", "staging", "release"];
+const defaultRuntimeAllowedPrograms = ["cargo", "git", "node", "npm", "rustc"];
 
 function formatCompactNumber(value: number) {
   return new Intl.NumberFormat("en", {
@@ -284,10 +286,14 @@ export function App({
     setCommandQuery("");
   };
   const replaceWorkspaceSnapshot = (workspaceSnapshot: WorkspaceSnapshot) => {
-    setLoadState({
-      ...loadState,
-      workspaceSnapshot
-    });
+    setLoadState((previous) =>
+      previous.status === "ready"
+        ? {
+            ...previous,
+            workspaceSnapshot
+          }
+        : previous
+    );
   };
   const createWorkspace = async (request: CreateWorkspaceRequest) => {
     const workspaceSnapshot = await createWorkspaceRecord(workspaceInvoke, request);
@@ -295,10 +301,14 @@ export function App({
     openWorkspace(request.id);
   };
   const replaceRunsSnapshot = (runsSnapshot: RunsSnapshot) => {
-    setLoadState({
-      ...loadState,
-      runsSnapshot
-    });
+    setLoadState((previous) =>
+      previous.status === "ready"
+        ? {
+            ...previous,
+            runsSnapshot
+          }
+        : previous
+    );
   };
 
   if (activeWorkspace === null) {
@@ -412,6 +422,15 @@ export function App({
       workspaceId: activeWorkspace.id
     });
     replaceWorkspaceSnapshot(workspaceSnapshot);
+  };
+  const updateActiveRuntimePolicy = async (allowedPrograms: readonly string[]) => {
+    const workspaceSnapshot = await updateWorkspaceRuntimePolicy(workspaceInvoke, {
+      allowedPrograms: [...allowedPrograms],
+      workspaceId: activeWorkspace.id
+    });
+    const runsSnapshot = await loadRunsSnapshot(runsInvoke);
+    replaceWorkspaceSnapshot(workspaceSnapshot);
+    replaceRunsSnapshot(runsSnapshot);
   };
   const startWorkspaceRun = async (
     task: string,
@@ -654,6 +673,9 @@ export function App({
             harnessStudioSnapshot={loadState.harnessStudioSnapshot}
             onLoadoutChange={(loadout) => {
               void updateActiveLoadout(loadout);
+            }}
+            onRuntimePolicyChange={(allowedPrograms) => {
+              void updateActiveRuntimePolicy(allowedPrograms);
             }}
             onRunStart={(task, skillRoutes, reasoningEffort, runMode) => {
               void startWorkspaceRun(task, skillRoutes, reasoningEffort, runMode);
@@ -1017,6 +1039,7 @@ type CockpitProps = Readonly<{
   defaultReasoningEffort: ReasoningEffort;
   harnessStudioSnapshot: HarnessStudioSnapshot;
   onLoadoutChange: (loadout: WorkspaceLoadout) => void;
+  onRuntimePolicyChange: (allowedPrograms: readonly string[]) => void;
   onRunCommand: (request: ExecuteRunCommandRequest) => void;
   onRunStart: (
     task: string,
@@ -1046,6 +1069,7 @@ function Cockpit({
   defaultReasoningEffort,
   harnessStudioSnapshot,
   onLoadoutChange,
+  onRuntimePolicyChange,
   onRunCommand,
   onRunStart,
   onRunTransition,
@@ -1079,7 +1103,10 @@ function Cockpit({
   const activeRunParticipantTimelines = activeRun === undefined
     ? []
     : (runsSnapshot.participantTimelines ?? []).filter((timeline) => timeline.runId === activeRun.id);
-  const runtimeAllowedPrograms = runsSnapshot.runtimePolicy?.allowedPrograms ?? [];
+  const workspaceRuntimeAllowedPrograms = activeWorkspace.runtimeAllowedPrograms ?? defaultRuntimeAllowedPrograms;
+  const runtimeAllowedPrograms = activeRun === undefined
+    ? workspaceRuntimeAllowedPrograms
+    : (runsSnapshot.runtimePolicy?.allowedPrograms ?? workspaceRuntimeAllowedPrograms);
   const availableMissionSkillRoutes = uniqueSkillManifests([
     ...availableSkillRoutes,
     ...[
@@ -1094,6 +1121,11 @@ function Cockpit({
       harnessProfileId: selectedHarnessProfileId,
       ...next
     });
+  };
+  const updateRuntimePolicy = (value: string) => {
+    onRuntimePolicyChange(
+      uniqueStrings(value.split(",").map((program) => program.trim()).filter(Boolean))
+    );
   };
   const toggleMissionSkillRoute = (route: string) => {
     setSelectedMissionSkillRoutes((routes) =>
@@ -1140,6 +1172,23 @@ function Cockpit({
                 </option>
               ))}
             </select>
+          </label>
+          <label>
+            <span>Runtime commands</span>
+            <input
+              aria-label="Runtime command allowlist"
+              defaultValue={workspaceRuntimeAllowedPrograms.join(", ")}
+              onBlur={(event) => {
+                updateRuntimePolicy(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  updateRuntimePolicy(event.currentTarget.value);
+                }
+              }}
+              placeholder="node, npm"
+            />
           </label>
         </section>
 

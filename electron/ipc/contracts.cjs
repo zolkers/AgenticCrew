@@ -7,6 +7,7 @@ const COMMANDS = new Set([
   "refresh_workspace_git_status",
   "commit_preview",
   "update_workspace_loadout",
+  "update_workspace_runtime_policy",
   "runs_snapshot",
   "start_run",
   "prepare_run",

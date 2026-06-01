@@ -41,12 +41,12 @@ use core::{
     workspaces::{
         read_commit_preview, workspace_snapshot_from_state, CommitPreviewRequest,
         CommitPreviewResponse, CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest,
-        UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest, WorkspaceSnapshot,
+        UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
+        UpdateWorkspaceRuntimePolicyRequest, WorkspaceSnapshot,
     },
 };
 
 pub const STATE_FILE_NAME: &str = "agenticcrew-state.json";
-const ALLOWED_RUNTIME_PROGRAMS: &[&str] = &["cargo", "git", "node", "npm", "rustc"];
 
 pub fn app_name() -> &'static str {
     "AgenticCrew"
@@ -156,7 +156,7 @@ pub fn runs_snapshot_at_path(
 ) -> Result<RunsSnapshot, DesktopCommandError> {
     let state = durable_state_snapshot_at_path(path)?;
 
-    Ok(runs_snapshot_from_state(&state, ALLOWED_RUNTIME_PROGRAMS))
+    Ok(runs_snapshot_from_state(&state))
 }
 
 pub fn create_workspace_at_path(
@@ -217,6 +217,15 @@ pub fn update_workspace_loadout_at_path(
     Ok(workspace_snapshot_from_state(&state))
 }
 
+pub fn update_workspace_runtime_policy_at_path(
+    path: impl AsRef<Path>,
+    request: UpdateWorkspaceRuntimePolicyRequest,
+) -> Result<WorkspaceSnapshot, DesktopCommandError> {
+    let state = mutate_state_at_path(path, |state| state.update_workspace_runtime_policy(request))?;
+
+    Ok(workspace_snapshot_from_state(&state))
+}
+
 pub fn start_run_at_path(
     path: impl AsRef<Path>,
     request: StartRunRequest,
@@ -227,7 +236,7 @@ pub fn start_run_at_path(
         write_run_manifest(run)?;
     }
 
-    Ok(runs_snapshot_from_state(&state, ALLOWED_RUNTIME_PROGRAMS))
+    Ok(runs_snapshot_from_state(&state))
 }
 
 pub fn prepare_run_at_path(
@@ -300,7 +309,7 @@ pub fn record_run_command_at_path(
     let created_at = current_unix_timestamp_string()?;
     let state = mutate_state_at_path(path, |state| state.record_run_command(request, created_at))?;
 
-    Ok(runs_snapshot_from_state(&state, ALLOWED_RUNTIME_PROGRAMS))
+    Ok(runs_snapshot_from_state(&state))
 }
 
 pub fn execute_run_command_at_path(
@@ -342,7 +351,13 @@ pub fn execute_run_command_at_path(
         .filter(|candidate| !candidate.is_empty())
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(&run.worktree_path));
-    if !is_allowed_runtime_program(program) {
+    let allowed_programs = state
+        .workspaces
+        .iter()
+        .find(|workspace| workspace.id == run.workspace_id)
+        .map(|workspace| workspace.runtime_allowed_programs.clone())
+        .unwrap_or_default();
+    if !is_allowed_runtime_program(program, &allowed_programs) {
         let record = RecordRunCommandRequest {
             command: format_command(program, &request.args),
             cwd: cwd.display().to_string(),
@@ -682,7 +697,7 @@ fn transition_run_at_path(
         write_run_manifest(run)?;
     }
 
-    Ok(runs_snapshot_from_state(&state, ALLOWED_RUNTIME_PROGRAMS))
+    Ok(runs_snapshot_from_state(&state))
 }
 
 fn write_run_manifest(run: &RunRecord) -> Result<(), DesktopCommandError> {
@@ -720,7 +735,7 @@ fn format_command(program: &str, args: &[String]) -> String {
         .join(" ")
 }
 
-fn is_allowed_runtime_program(program: &str) -> bool {
+fn is_allowed_runtime_program(program: &str, allowed_programs: &[String]) -> bool {
     let path = Path::new(program);
     let is_plain_program = path
         .parent()
@@ -729,7 +744,7 @@ fn is_allowed_runtime_program(program: &str) -> bool {
         return false;
     };
 
-    is_plain_program && ALLOWED_RUNTIME_PROGRAMS.contains(&stem)
+    is_plain_program && allowed_programs.iter().any(|program| program == stem)
 }
 
 #[cfg(test)]
@@ -755,7 +770,8 @@ mod tests {
         skill_sources_snapshot_at_path, start_prepared_run_at_path, start_run_at_path,
         state_file_path, update_agent_template_at_path, update_harness_profile_at_path,
         update_workspace_git_context_at_path, update_workspace_loadout_at_path,
-        validate_skill_source_at_path, workspace_snapshot_at_path, STATE_FILE_NAME,
+        update_workspace_runtime_policy_at_path, validate_skill_source_at_path,
+        workspace_snapshot_at_path, STATE_FILE_NAME,
     };
     use crate::core::{
         agents::{
@@ -785,6 +801,7 @@ mod tests {
         workspaces::{
             CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest,
             UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
+            UpdateWorkspaceRuntimePolicyRequest,
         },
     };
 
@@ -1154,6 +1171,75 @@ mod tests {
         assert!(blocked_snapshot.commands[2]
             .stderr
             .contains("blocked by runtime command policy"));
+    }
+
+    #[test]
+    fn workspace_runtime_policy_controls_run_command_execution() {
+        let path = test_path(
+            "workspace_runtime_policy_controls_run_command_execution",
+            "state.json",
+        );
+        let workspace_path = test_path(
+            "workspace_runtime_policy_controls_run_command_execution",
+            "workspace",
+        );
+
+        update_workspace_git_context_at_path(
+            &path,
+            UpdateWorkspaceGitContextRequest {
+                branch: "dev".to_owned(),
+                path: workspace_path.display().to_string(),
+                workspace_id: "fullstack-app".to_owned(),
+            },
+        )
+        .expect("workspace path should update");
+        update_workspace_runtime_policy_at_path(
+            &path,
+            UpdateWorkspaceRuntimePolicyRequest {
+                allowed_programs: vec!["node".to_owned()],
+                workspace_id: "fullstack-app".to_owned(),
+            },
+        )
+        .expect("workspace runtime policy should update");
+
+        let snapshot = start_run_at_path(
+            &path,
+            StartRunRequest {
+                agent_template_id: Some("developer-pi".to_owned()),
+                harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                id: "run-policy".to_owned(),
+                model_id: None,
+                participants: Vec::new(),
+                provider_id: None,
+                reasoning_effort: None,
+                skill_routes: Vec::new(),
+                task: "Respect workspace runtime policy".to_owned(),
+                workspace_id: "fullstack-app".to_owned(),
+            },
+        )
+        .expect("run should persist");
+        assert_eq!(
+            snapshot.runtime_policy.allowed_programs,
+            vec!["node".to_owned()]
+        );
+
+        let blocked_snapshot = execute_run_command_at_path(
+            &path,
+            ExecuteRunCommandRequest {
+                args: vec!["--version".to_owned()],
+                cwd: None,
+                participant_id: "developer".to_owned(),
+                program: "rustc".to_owned(),
+                run_id: "run-policy".to_owned(),
+            },
+        )
+        .expect("blocked command should be recorded");
+
+        assert_eq!(
+            blocked_snapshot.commands[0].status,
+            RunCommandStatus::Failed
+        );
+        assert_eq!(blocked_snapshot.commands[0].exit_code, 126);
     }
 
     #[test]

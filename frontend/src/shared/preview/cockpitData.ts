@@ -73,6 +73,7 @@ export const cockpitWorkspaces: readonly WorkspaceRecord[] = [
     ],
     mission: "Build UI shell",
     name: "Fullstack App",
+    runtimeAllowedPrograms: ["cargo", "git", "node", "npm", "rustc"],
     skills: ["superpowers:tdd", "browser:visual-qa", "github:pr-context"],
     status: "running"
   },
@@ -130,6 +131,7 @@ export const cockpitWorkspaces: readonly WorkspaceRecord[] = [
     ],
     mission: "Stabilize device smoke",
     name: "Mobile QA",
+    runtimeAllowedPrograms: ["git", "node", "npm"],
     skills: ["browser:browser", "superpowers:verification", "testing-library"],
     status: "observing"
   }

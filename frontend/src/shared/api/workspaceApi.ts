@@ -5,6 +5,7 @@ import type {
   RefreshWorkspaceGitStatusRequest,
   UpdateWorkspaceGitContextRequest,
   UpdateWorkspaceLoadoutRequest,
+  UpdateWorkspaceRuntimePolicyRequest,
   WorkspaceSnapshot
 } from "../types/core";
 
@@ -13,6 +14,7 @@ export type WorkspaceCommand =
   | "refresh_workspace_git_status"
   | "update_workspace_git_context"
   | "update_workspace_loadout"
+  | "update_workspace_runtime_policy"
   | "workspace_snapshot";
 
 export type InvokeWorkspace = (
@@ -62,4 +64,11 @@ export async function updateWorkspaceLoadout(
   request: UpdateWorkspaceLoadoutRequest
 ): Promise<WorkspaceSnapshot> {
   return invoke("update_workspace_loadout", { request });
+}
+
+export async function updateWorkspaceRuntimePolicy(
+  invoke: InvokeWorkspace,
+  request: UpdateWorkspaceRuntimePolicyRequest
+): Promise<WorkspaceSnapshot> {
+  return invoke("update_workspace_runtime_policy", { request });
 }

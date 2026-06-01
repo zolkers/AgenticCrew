@@ -159,6 +159,7 @@ export type WorkspaceRecord = {
   mission: string;
   name: string;
   path: string;
+  runtimeAllowedPrograms?: string[];
   selectedAgentTemplateId?: string | null;
   selectedHarnessProfileId?: string | null;
   skills: string[];
@@ -199,6 +200,11 @@ export type UpdateWorkspaceGitContextRequest = {
 export type UpdateWorkspaceLoadoutRequest = {
   agentTemplateId?: string | null;
   harnessProfileId?: string | null;
+  workspaceId: string;
+};
+
+export type UpdateWorkspaceRuntimePolicyRequest = {
+  allowedPrograms: string[];
   workspaceId: string;
 };
 
@@ -717,5 +723,6 @@ export type ElectronCommandMap = {
   update_harness_profile: HarnessStudioSnapshot;
   update_workspace_git_context: WorkspaceSnapshot;
   update_workspace_loadout: WorkspaceSnapshot;
+  update_workspace_runtime_policy: WorkspaceSnapshot;
   workspace_snapshot: WorkspaceSnapshot;
 };

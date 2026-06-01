@@ -12,6 +12,7 @@ test("accepts known snapshot commands", () => {
     assertCommand("refresh_workspace_git_status");
     assertCommand("commit_preview");
     assertCommand("update_workspace_loadout");
+    assertCommand("update_workspace_runtime_policy");
     assertCommand("runs_snapshot");
     assertCommand("start_run");
     assertCommand("prepare_run");

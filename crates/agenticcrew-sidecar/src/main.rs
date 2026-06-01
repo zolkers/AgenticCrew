@@ -27,6 +27,7 @@ use agenticcrew_core::{
     core::workspaces::{
         CommitPreviewRequest, CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest,
         UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
+        UpdateWorkspaceRuntimePolicyRequest,
     },
     create_agent_template_at_path, create_harness_profile_at_path, create_workspace_at_path,
     execute_run_command_at_path, fail_run_at_path, harness_studio_snapshot_at_path,
@@ -41,7 +42,7 @@ use agenticcrew_core::{
     sync_provider_models_at_path_with_catalog, update_agent_template_at_path,
     update_ai_provider_settings_at_path, update_harness_profile_at_path,
     update_workspace_git_context_at_path, update_workspace_loadout_at_path,
-    workspace_snapshot_at_path, DesktopCommandError,
+    update_workspace_runtime_policy_at_path, workspace_snapshot_at_path, DesktopCommandError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -261,6 +262,12 @@ struct UpdateWorkspaceLoadoutArgs {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct UpdateWorkspaceRuntimePolicyArgs {
+    request: UpdateWorkspaceRuntimePolicyRequest,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct StartRunArgs {
     request: StartRunRequest,
 }
@@ -374,6 +381,14 @@ fn run() -> Result<(), DesktopCommandError> {
             let args = parse_args::<UpdateWorkspaceLoadoutArgs>(&args_json)?;
 
             print_json(&update_workspace_loadout_at_path(state_path, args.request)?)
+        }
+        "update_workspace_runtime_policy" => {
+            let args = parse_args::<UpdateWorkspaceRuntimePolicyArgs>(&args_json)?;
+
+            print_json(&update_workspace_runtime_policy_at_path(
+                state_path,
+                args.request,
+            )?)
         }
         "runs_snapshot" => print_json(&runs_snapshot_at_path(state_path)?),
         "start_run" => {

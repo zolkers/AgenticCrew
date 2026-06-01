@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { App } from "./App";
 import type { InvokeRuns } from "../shared/api/runsApi";
+import type { InvokeWorkspace } from "../shared/api/workspaceApi";
+import { cockpitWorkspaces } from "../shared/preview/cockpitData";
 import type {
   AgentStudioSnapshot,
   HarnessStudioSnapshot,
@@ -257,6 +259,70 @@ describe("App", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Active branch" })).toHaveTextContent("codex/mobile-smoke");
+    });
+  });
+
+  it("updates the active workspace runtime command policy", async () => {
+    const workspaceSnapshot = { workspaces: [...cockpitWorkspaces] };
+    const updatedWorkspaceSnapshot = {
+      workspaces: workspaceSnapshot.workspaces.map((workspace) =>
+        workspace.id === "fullstack-app"
+          ? { ...workspace, runtimeAllowedPrograms: ["node", "npm"] }
+          : workspace
+      )
+    };
+    const calls: unknown[] = [];
+    const workspaceInvoke: InvokeWorkspace = (command, args) => {
+      calls.push([command, args]);
+
+      if (command === "update_workspace_runtime_policy") {
+        return Promise.resolve(updatedWorkspaceSnapshot);
+      }
+
+      return Promise.resolve(workspaceSnapshot);
+    };
+    const runsInvoke: InvokeRuns = (command) => {
+      expect(command).toBe("runs_snapshot");
+
+      return Promise.resolve({
+        ...runsSnapshot,
+        runtimePolicy: { allowedPrograms: ["node", "npm"] }
+      });
+    };
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        runsInvoke={runsInvoke}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+        workspaceInvoke={workspaceInvoke}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.change(screen.getByLabelText("Runtime command allowlist"), {
+      target: { value: "node, npm, node" }
+    });
+    fireEvent.keyDown(screen.getByLabelText("Runtime command allowlist"), { key: "Enter" });
+    fireEvent.blur(screen.getByLabelText("Runtime command allowlist"));
+
+    await waitFor(() => {
+      expect(calls).toContainEqual([
+        "update_workspace_runtime_policy",
+        {
+          request: {
+            allowedPrograms: ["node", "npm"],
+            workspaceId: "fullstack-app"
+          }
+        }
+      ]);
+    });
+    await waitFor(() => {
+      expect(screen.getByLabelText("Runtime command policy")).toHaveTextContent("node");
+      expect(screen.getByLabelText("Runtime command policy")).not.toHaveTextContent("rustc");
     });
   });
 
@@ -674,6 +740,98 @@ describe("App", () => {
     expect(screen.getByLabelText("Run event log")).toHaveTextContent("Run killed");
     fireEvent.click(screen.getByRole("button", { name: "Complete" }));
     expect(screen.getByRole("button", { name: "Complete" })).toBeDisabled();
+  });
+
+  it("completes a running workspace run", async () => {
+    const runningRun = {
+      agentTemplateId: "developer-pi",
+      baseBranch: "dev",
+      createdAt: "preview",
+      harnessProfileId: "pi-execution-discipline",
+      id: "run-complete-control",
+      manifestPath: "C:\\repo\\.agenticcrew\\runs\\run-complete-control\\run-manifest.json",
+      modelId: "gpt-5",
+      participants: [
+        {
+          agentTemplateId: "developer-pi",
+          executionMode: "write" as const,
+          harnessProfileId: "pi-execution-discipline",
+          id: "developer",
+          modelId: "gpt-5",
+          providerId: "openai",
+          reasoningEffort: "medium" as const,
+          role: "implementation" as const,
+          skillRoutes: [],
+          status: "running" as const
+        }
+      ],
+      providerId: "openai",
+      reasoningEffort: "medium" as const,
+      runBranch: "codex/run-complete-control",
+      skillRoutes: [],
+      startedAt: "preview",
+      status: "running" as const,
+      stoppedAt: null,
+      task: "Complete runtime state",
+      updatedAt: "preview",
+      workspaceId: "fullstack-app",
+      worktreePath: "C:\\repo\\.agenticcrew\\runs\\run-complete-control"
+    };
+    const runsInvoke: InvokeRuns = (command, args) => {
+      if (command === "complete_run") {
+        expect(args).toEqual({ runId: "run-complete-control" });
+
+        return Promise.resolve({
+          activeRunId: "run-complete-control",
+          commands: [],
+          events: [
+            {
+              createdAt: "preview",
+              id: "run-complete-control-event-1",
+              level: "info" as const,
+              message: "Run completed",
+              runId: "run-complete-control"
+            }
+          ],
+          runs: [
+            {
+              ...runningRun,
+              participants: runningRun.participants.map((participant) => ({
+                ...participant,
+                status: "completed" as const
+              })),
+              status: "completed" as const
+            }
+          ]
+        });
+      }
+
+      return Promise.resolve({
+        activeRunId: "run-complete-control",
+        commands: [],
+        events: [],
+        runs: [runningRun]
+      });
+    };
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        runsInvoke={runsInvoke}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("completed").length).toBeGreaterThan(0);
+    });
+    expect(screen.getByLabelText("Run event log")).toHaveTextContent("Run completed");
   });
 
   it("can fail a preparing run from runtime controls", async () => {

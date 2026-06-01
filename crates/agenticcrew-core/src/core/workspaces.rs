@@ -27,6 +27,8 @@ pub struct WorkspaceRecord {
     pub logs: Vec<String>,
     #[serde(default)]
     pub skills: Vec<String>,
+    #[serde(default = "default_runtime_allowed_programs")]
+    pub runtime_allowed_programs: Vec<String>,
     #[serde(default)]
     pub git_history: Vec<WorkspaceGitHistoryEntry>,
     #[serde(default)]
@@ -142,6 +144,14 @@ pub struct UpdateWorkspaceLoadoutRequest {
     pub workspace_id: String,
     pub agent_template_id: Option<String>,
     pub harness_profile_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateWorkspaceRuntimePolicyRequest {
+    pub workspace_id: String,
+    #[serde(default)]
+    pub allowed_programs: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -296,6 +306,7 @@ impl WorkspaceRecord {
                 "superpowers:tdd".to_owned(),
                 "git:workspace-context".to_owned(),
             ],
+            runtime_allowed_programs: default_runtime_allowed_programs(),
             git_history: Vec::new(),
             git_status: WorkspaceGitStatus {
                 branch,
@@ -350,6 +361,20 @@ impl WorkspaceRecord {
             self.selected_harness_profile_id
                 .as_deref()
                 .unwrap_or("default")
+        ));
+
+        Ok(())
+    }
+
+    pub fn update_runtime_policy(
+        &mut self,
+        request: UpdateWorkspaceRuntimePolicyRequest,
+    ) -> Result<(), WorkspaceError> {
+        self.runtime_allowed_programs =
+            normalize_runtime_allowed_programs(request.allowed_programs)?;
+        self.logs.push(format!(
+            "runtime policy updated: {}",
+            self.runtime_allowed_programs.join(", ")
         ));
 
         Ok(())
@@ -418,6 +443,7 @@ impl WorkspaceRecord {
                 "electron".to_owned(),
                 "superpowers:tdd".to_owned(),
             ],
+            runtime_allowed_programs: default_runtime_allowed_programs(),
             git_history: Vec::new(),
             git_status: WorkspaceGitStatus {
                 branch: "dev".to_owned(),
@@ -472,6 +498,7 @@ impl WorkspaceRecord {
             name: "Mobile QA".to_owned(),
             path: "C:\\Users\\vriegert\\IdeaProjects\\AgenticCrew".to_owned(),
             skills: vec!["playwright".to_owned(), "qa".to_owned()],
+            runtime_allowed_programs: default_runtime_allowed_programs(),
             git_history: Vec::new(),
             git_status: WorkspaceGitStatus {
                 branch: "qa/device-smoke".to_owned(),
@@ -855,6 +882,13 @@ fn categorize_commit_file(path: &str) -> String {
     .to_owned()
 }
 
+pub fn default_runtime_allowed_programs() -> Vec<String> {
+    ["cargo", "git", "node", "npm", "rustc"]
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkspaceError {
     EmptyField { field: &'static str },
@@ -876,6 +910,37 @@ impl std::fmt::Display for WorkspaceError {
 }
 
 impl std::error::Error for WorkspaceError {}
+
+fn normalize_runtime_allowed_programs(
+    programs: Vec<String>,
+) -> Result<Vec<String>, WorkspaceError> {
+    let mut normalized = Vec::new();
+    for program in programs {
+        let program = validate_program_name("runtime program", program)?;
+        if !normalized.contains(&program) {
+            normalized.push(program);
+        }
+    }
+
+    Ok(normalized)
+}
+
+fn validate_program_name(field: &'static str, value: String) -> Result<String, WorkspaceError> {
+    let value = validate_required(field, value)?;
+    let is_valid = value.chars().all(|character| {
+        character.is_ascii_lowercase()
+            || character.is_ascii_digit()
+            || character == '-'
+            || character == '_'
+            || character == '.'
+    });
+
+    if !is_valid {
+        return Err(WorkspaceError::InvalidIdentifier { field, value });
+    }
+
+    Ok(value)
+}
 
 fn validate_required(field: &'static str, value: String) -> Result<String, WorkspaceError> {
     let value = value.trim();
@@ -925,8 +990,8 @@ mod tests {
     use super::{
         normalize_numstat_path, parse_commit_preview_show_output, parse_git_history,
         parse_git_status, workspace_snapshot_from_state, CreateWorkspaceRequest,
-        UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest, WorkspaceRecord,
-        WorkspaceStatus,
+        UpdateWorkspaceGitContextRequest, UpdateWorkspaceLoadoutRequest,
+        UpdateWorkspaceRuntimePolicyRequest, WorkspaceRecord, WorkspaceStatus,
     };
     use crate::core::state::AgentOsState;
 
@@ -1022,6 +1087,35 @@ mod tests {
             Some("pi-execution-discipline".to_owned())
         );
         assert!(workspace.logs.last().expect("log").contains("developer-pi"));
+    }
+
+    #[test]
+    fn workspace_runtime_policy_update_normalizes_allowed_programs() {
+        let mut workspace = WorkspaceRecord::local(CreateWorkspaceRequest {
+            branch: "dev".to_owned(),
+            id: "policy-workspace".to_owned(),
+            mission: "Run controlled commands".to_owned(),
+            name: "Policy Workspace".to_owned(),
+            path: "C:\\repo".to_owned(),
+        })
+        .expect("workspace should be valid");
+
+        workspace
+            .update_runtime_policy(UpdateWorkspaceRuntimePolicyRequest {
+                allowed_programs: vec![
+                    " node ".to_owned(),
+                    "npm".to_owned(),
+                    "node".to_owned(),
+                    "python3.12".to_owned(),
+                ],
+                workspace_id: "policy-workspace".to_owned(),
+            })
+            .expect("runtime policy should update");
+
+        assert_eq!(
+            workspace.runtime_allowed_programs,
+            vec!["node".to_owned(), "npm".to_owned(), "python3.12".to_owned()]
+        );
     }
 
     #[test]

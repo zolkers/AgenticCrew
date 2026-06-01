@@ -38,7 +38,8 @@ use super::{
     },
     workspaces::{
         CreateWorkspaceRequest, RefreshWorkspaceGitStatusRequest, UpdateWorkspaceGitContextRequest,
-        UpdateWorkspaceLoadoutRequest, WorkspaceError, WorkspaceRecord,
+        UpdateWorkspaceLoadoutRequest, UpdateWorkspaceRuntimePolicyRequest, WorkspaceError,
+        WorkspaceRecord,
     },
 };
 
@@ -701,6 +702,25 @@ impl AgentOsState {
 
         workspace
             .update_loadout(request)
+            .map_err(StateMutationError::InvalidWorkspace)?;
+
+        Ok(())
+    }
+
+    pub fn update_workspace_runtime_policy(
+        &mut self,
+        request: UpdateWorkspaceRuntimePolicyRequest,
+    ) -> Result<(), StateMutationError> {
+        let workspace = self
+            .workspaces
+            .iter_mut()
+            .find(|workspace| workspace.id == request.workspace_id)
+            .ok_or_else(|| StateMutationError::MissingWorkspace {
+                workspace_id: request.workspace_id.clone(),
+            })?;
+
+        workspace
+            .update_runtime_policy(request)
             .map_err(StateMutationError::InvalidWorkspace)?;
 
         Ok(())

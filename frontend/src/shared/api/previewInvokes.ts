@@ -428,6 +428,7 @@ export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
           mission: request?.mission ?? "Start a new agent mission",
           name: request?.name ?? "Preview Workspace",
           path: request?.path ?? "local",
+          runtimeAllowedPrograms: ["cargo", "git", "node", "npm", "rustc"],
           selectedAgentTemplateId: null,
           selectedHarnessProfileId: null,
           skills: ["superpowers:tdd", "git:workspace-context"],
@@ -494,6 +495,21 @@ export const previewWorkspaceInvoke: InvokeWorkspace = (command, args) => {
               ...workspace,
               selectedAgentTemplateId: request.agentTemplateId ?? null,
               selectedHarnessProfileId: request.harnessProfileId ?? null
+            }
+          : workspace
+      )
+    });
+  }
+
+  if (command === "update_workspace_runtime_policy") {
+    const request = args?.request as { allowedPrograms?: string[]; workspaceId?: string } | undefined;
+
+    return Promise.resolve({
+      workspaces: previewWorkspaceSnapshot.workspaces.map((workspace) =>
+        workspace.id === request?.workspaceId
+          ? {
+              ...workspace,
+              runtimeAllowedPrograms: request.allowedPrograms ?? []
             }
           : workspace
       )

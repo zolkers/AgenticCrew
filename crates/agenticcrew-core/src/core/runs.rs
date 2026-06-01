@@ -3,8 +3,11 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    agents::AgentTemplate, harnesses::HarnessProfile, settings::ReasoningEffort,
-    state::AgentOsState, workspaces::WorkspaceRecord,
+    agents::AgentTemplate,
+    harnesses::HarnessProfile,
+    settings::ReasoningEffort,
+    state::AgentOsState,
+    workspaces::{default_runtime_allowed_programs, WorkspaceRecord},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -242,10 +245,7 @@ pub struct RunsSnapshot {
     pub runtime_policy: RuntimeCommandPolicy,
 }
 
-pub fn runs_snapshot_from_state(
-    state: &AgentOsState,
-    allowed_runtime_programs: &[&str],
-) -> RunsSnapshot {
+pub fn runs_snapshot_from_state(state: &AgentOsState) -> RunsSnapshot {
     RunsSnapshot {
         active_run_id: state.runs.last().map(|run| run.id.clone()),
         commands: state.run_commands.clone(),
@@ -253,12 +253,23 @@ pub fn runs_snapshot_from_state(
         participant_timelines: participant_timelines_from_state(state),
         runs: state.runs.clone(),
         runtime_policy: RuntimeCommandPolicy {
-            allowed_programs: allowed_runtime_programs
-                .iter()
-                .map(|program| (*program).to_owned())
-                .collect(),
+            allowed_programs: runtime_allowed_programs_from_state(state),
         },
     }
+}
+
+pub fn runtime_allowed_programs_from_state(state: &AgentOsState) -> Vec<String> {
+    state
+        .runs
+        .last()
+        .and_then(|run| {
+            state
+                .workspaces
+                .iter()
+                .find(|workspace| workspace.id == run.workspace_id)
+        })
+        .map(|workspace| workspace.runtime_allowed_programs.clone())
+        .unwrap_or_else(default_runtime_allowed_programs)
 }
 
 fn participant_timelines_from_state(state: &AgentOsState) -> Vec<RunParticipantTimeline> {
@@ -726,7 +737,8 @@ mod tests {
         .expect("run");
         state.runs.push(run);
 
-        let snapshot = runs_snapshot_from_state(&state, &["node", "npm"]);
+        state.workspaces[0].runtime_allowed_programs = vec!["node".to_owned(), "npm".to_owned()];
+        let snapshot = runs_snapshot_from_state(&state);
 
         assert_eq!(snapshot.active_run_id, Some("run-1".to_owned()));
         assert_eq!(
@@ -797,7 +809,8 @@ mod tests {
             )
             .expect("command");
 
-        let snapshot = runs_snapshot_from_state(&state, &["node"]);
+        state.workspaces[0].runtime_allowed_programs = vec!["node".to_owned()];
+        let snapshot = runs_snapshot_from_state(&state);
         let developer_timeline = snapshot
             .participant_timelines
             .iter()

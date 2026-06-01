@@ -106,6 +106,18 @@ describe("previewInvokes", () => {
       selectedAgentTemplateId: "developer-pi",
       selectedHarnessProfileId: "pi-execution-discipline"
     });
+
+    const policyUpdated = await previewWorkspaceInvoke("update_workspace_runtime_policy", {
+      request: {
+        allowedPrograms: ["node", "npm"],
+        workspaceId: "fullstack-app"
+      }
+    });
+
+    expect(policyUpdated.workspaces[0]).toMatchObject({
+      id: "fullstack-app",
+      runtimeAllowedPrograms: ["node", "npm"]
+    });
   });
 
   it("uses preview workspace fallbacks when action args are absent", async () => {
