@@ -48,6 +48,7 @@ import type {
   AgentStudioSnapshot,
   AgentTemplate,
   CreateWorkspaceRequest,
+  DiscoveredSkillManifest,
   HarnessStudioSnapshot,
   HarnessProfile,
   MissionCostSummary,
@@ -390,7 +391,7 @@ export function App({
     });
     replaceWorkspaceSnapshot(workspaceSnapshot);
   };
-  const startWorkspaceRun = async (task: string) => {
+  const startWorkspaceRun = async (task: string, skillRoutes: readonly string[]) => {
     runSequenceRef.current += 1;
     const runId = slugify(`run-${activeWorkspace.id}-${runSequenceRef.current.toString()}`);
     const runsSnapshot = await startRun(runsInvoke, {
@@ -399,11 +400,15 @@ export function App({
       id: runId,
       modelId: loadState.settingsSnapshot.aiProvider.selectedModelId,
       providerId: loadState.settingsSnapshot.aiProvider.providerId,
+      skillRoutes: [...skillRoutes],
       task,
       workspaceId: activeWorkspace.id
     });
     replaceRunsSnapshot(runsSnapshot);
   };
+  const activeSkillRoutes = loadState.skillSourcesSnapshot.sources
+    .filter((source) => source.active)
+    .flatMap((source) => source.discoveredSkills ?? []);
 
   return (
     <MantineProvider defaultColorScheme="dark">
@@ -584,12 +589,13 @@ export function App({
           <Cockpit
             activeWorkspace={activeWorkspace}
             agentStudioSnapshot={loadState.agentStudioSnapshot}
+            availableSkillRoutes={activeSkillRoutes}
             harnessStudioSnapshot={loadState.harnessStudioSnapshot}
             onLoadoutChange={(loadout) => {
               void updateActiveLoadout(loadout);
             }}
-            onRunStart={(task) => {
-              void startWorkspaceRun(task);
+            onRunStart={(task, skillRoutes) => {
+              void startWorkspaceRun(task, skillRoutes);
             }}
             runsSnapshot={loadState.runsSnapshot}
             tokenSummary={tokenSummary}
@@ -939,9 +945,10 @@ function WorkspaceLaunchpad({ branchOptions, onWorkspaceCreate, onWorkspaceSelec
 type CockpitProps = Readonly<{
   activeWorkspace: CockpitWorkspace;
   agentStudioSnapshot: AgentStudioSnapshot;
+  availableSkillRoutes: readonly DiscoveredSkillManifest[];
   harnessStudioSnapshot: HarnessStudioSnapshot;
   onLoadoutChange: (loadout: WorkspaceLoadout) => void;
-  onRunStart: (task: string) => void;
+  onRunStart: (task: string, skillRoutes: readonly string[]) => void;
   onWorkspaceChange: (workspaceId: string) => void;
   runsSnapshot: RunsSnapshot;
   tokenSummary: MissionCostSummary;
@@ -956,6 +963,7 @@ type WorkspaceLoadout = Readonly<{
 function Cockpit({
   activeWorkspace,
   agentStudioSnapshot,
+  availableSkillRoutes,
   harnessStudioSnapshot,
   onLoadoutChange,
   onRunStart,
@@ -966,6 +974,7 @@ function Cockpit({
 }: CockpitProps) {
   const [runTask, setRunTask] = useState(activeWorkspace.mission);
   const [selectedRunId, setSelectedRunId] = useState<null | string>(runsSnapshot.activeRunId ?? null);
+  const [selectedMissionSkillRoutes, setSelectedMissionSkillRoutes] = useState<string[]>([]);
   const agentTemplates = preferredActiveItems(agentStudioSnapshot.templates);
   const harnessProfiles = preferredActiveItems(harnessStudioSnapshot.profiles);
   const selectedAgentTemplateId =
@@ -980,12 +989,25 @@ function Cockpit({
   const activeRunEvents = activeRun === undefined
     ? []
     : runsSnapshot.events.filter((event) => event.runId === activeRun.id);
+  const availableMissionSkillRoutes = uniqueSkillManifests([
+    ...availableSkillRoutes,
+    ...[
+      ...(selectedAgentTemplate?.skillRoutes ?? []),
+      ...(selectedHarnessProfile?.skillRoutes ?? [])
+    ].map(skillManifestFromRoute)
+  ]);
+  const availableMissionSkillRouteSet = new Set(availableMissionSkillRoutes.map((skill) => skill.route));
   const updateLoadout = (next: Partial<WorkspaceLoadout>) => {
     onLoadoutChange({
       agentTemplateId: selectedAgentTemplateId,
       harnessProfileId: selectedHarnessProfileId,
       ...next
     });
+  };
+  const toggleMissionSkillRoute = (route: string) => {
+    setSelectedMissionSkillRoutes((routes) =>
+      routes.includes(route) ? routes.filter((selectedRoute) => selectedRoute !== route) : [...routes, route]
+    );
   };
 
   return (
@@ -1121,7 +1143,10 @@ function Cockpit({
                 const task = runTask.trim();
                 if (task.length > 0) {
                   setSelectedRunId(null);
-                  onRunStart(task);
+                  onRunStart(
+                    task,
+                    selectedMissionSkillRoutes.filter((route) => availableMissionSkillRouteSet.has(route))
+                  );
                 }
               }}
             >
@@ -1133,6 +1158,29 @@ function Cockpit({
                 }}
                 value={runTask}
               />
+              <fieldset aria-label="Mission skills" className="mission-skill-picker">
+                <legend>Mission skills</legend>
+                {availableMissionSkillRoutes.length === 0 ? (
+                  <span>No active skills</span>
+                ) : (
+                  availableMissionSkillRoutes.map((skill) => {
+                    const checked = selectedMissionSkillRoutes.includes(skill.route);
+
+                    return (
+                      <label key={skill.route}>
+                        <input
+                          checked={checked}
+                          onChange={() => {
+                            toggleMissionSkillRoute(skill.route);
+                          }}
+                          type="checkbox"
+                        />
+                        <span>Use {skill.name}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </fieldset>
               <button disabled={runTask.trim().length === 0} type="submit">
                 <Play aria-hidden="true" size={15} />
                 <span>Start run</span>
@@ -1165,6 +1213,12 @@ function Cockpit({
                   <span aria-hidden="true">&gt;</span>
                   <code>{activeRun.worktreePath}</code>
                 </p>
+                {activeRun.skillRoutes.length > 0 ? (
+                  <p>
+                    <span aria-hidden="true">&gt;</span>
+                    <code>skills: {activeRun.skillRoutes.join(", ")}</code>
+                  </p>
+                ) : null}
                 {activeRunEvents.map((event) => (
                   <p key={event.id}>
                     <span aria-hidden="true">&gt;</span>
@@ -1239,4 +1293,26 @@ function isSlugCharacter(character: string): boolean {
     character === "_" ||
     character === "-"
   );
+}
+
+function uniqueSkillManifests(skills: readonly DiscoveredSkillManifest[]): DiscoveredSkillManifest[] {
+  return skills.reduce<DiscoveredSkillManifest[]>((uniqueSkills, skill) => {
+    if (!uniqueSkills.some((candidate) => candidate.route === skill.route)) {
+      uniqueSkills.push(skill);
+    }
+
+    return uniqueSkills;
+  }, []);
+}
+
+function skillManifestFromRoute(route: string): DiscoveredSkillManifest {
+  const name = route.split("/").filter(Boolean).at(-1) ?? route;
+
+  return {
+    description: "Bound to the selected workspace loadout.",
+    id: route,
+    name,
+    relativePath: "",
+    route
+  };
 }

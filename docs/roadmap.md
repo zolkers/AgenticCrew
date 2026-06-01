@@ -16,11 +16,12 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - AgenticCrew technical naming across npm, Rust, Python worker, and Sonar project metadata.
 - Workspace launcher, manual Git metadata editing, Rust-owned workspace records, OpenAI provider model sync, model pickers, Skill Sources workflow, Harness Studio PI extensions, Agent Studio evaluation runs, and live Mission Control metrics.
 - Command Palette v1 for workspace navigation, including Ctrl/Cmd+K, filtered actions, accessible close behavior, and Git/Settings/Launchpad routing.
+- Mission-level skill selection in the Workbench: active downloaded skills can be selected per run and are persisted on the durable run record.
 
 **Next focus:**
+- Runtime execution: replace preview-only browser data with sidecar-backed runtime manifests, live agent event streams, pause/resume/kill controls, and audited command execution.
 - Product power features: artifacts, diff review, safety center, notifications, and run replay.
 - Packaging polish: native Electron menus, installer packaging, updater strategy, and first-run onboarding.
-- Runtime execution: live agent event streams and pause/resume/kill controls once execution starts streaming beyond durable snapshots.
 
 ## Product Roadmap From Current Discussions
 
@@ -182,8 +183,9 @@ Completed on `dev`:
 7. Expand Harness Studio modules and PI extension import.
 8. Add Agent Studio versioning/training/evaluation.
 9. Replace Mission Control preview values with live durable/runtime state.
+10. Add mission-level skill selection to queued runs.
 
-Next tranche: product power features, runtime streams, packaging polish, and onboarding.
+Next tranche: backend-real run manifests, controlled command execution, event streaming, and progressive removal of preview-only data from desktop runtime paths.
 
 ## Task Roadmap
 

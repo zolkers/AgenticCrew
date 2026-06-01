@@ -3,6 +3,7 @@ import {
   previewAgentStudioInvoke,
   previewHarnessStudioInvoke,
   previewMissionControlInvoke,
+  previewRunsInvoke,
   resetPreviewInvokesForTests,
   previewSettingsInvoke,
   previewSkillSourcesInvoke,
@@ -159,6 +160,55 @@ describe("previewInvokes", () => {
   it("accepts preview skill source actions without mutating data", async () => {
     await expect(previewSkillSourcesInvoke("sync_github_skill_source", { sourceId: "preview-superpowers" })).resolves
       .toBeUndefined();
+  });
+
+  it("queues preview runs with selected mission skills", async () => {
+    const snapshot = await previewRunsInvoke("start_run", {
+      request: {
+        agentTemplateId: "developer-pi",
+        harnessProfileId: "pi-execution-discipline",
+        id: "run-preview",
+        modelId: "gpt-5",
+        providerId: "openai",
+        skillRoutes: ["agenticcrew://skills/superpowers/subagent-driven-development"],
+        task: " Validate browser preview run ",
+        workspaceId: "fullstack-app"
+      }
+    });
+
+    expect(snapshot).toMatchObject({
+      activeRunId: "run-preview",
+      events: [
+        expect.objectContaining({
+          message: "Run queued for workspace 'fullstack-app'",
+          runId: "run-preview"
+        })
+      ],
+      runs: [
+        expect.objectContaining({
+          baseBranch: "codex/cockpit-prototype",
+          id: "run-preview",
+          skillRoutes: ["agenticcrew://skills/superpowers/subagent-driven-development"],
+          task: "Validate browser preview run",
+          workspaceId: "fullstack-app"
+        })
+      ]
+    });
+  });
+
+  it("uses preview run defaults when action args are absent", async () => {
+    await expect(previewRunsInvoke("start_run")).resolves.toMatchObject({
+      activeRunId: "preview-run-1",
+      runs: [
+        expect.objectContaining({
+          baseBranch: "main",
+          id: "preview-run-1",
+          skillRoutes: [],
+          task: "Preview run",
+          workspaceId: "fullstack-app"
+        })
+      ]
+    });
   });
 
   it("mutates preview skill source workflow state", async () => {

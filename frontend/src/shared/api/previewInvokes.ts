@@ -443,6 +443,7 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
           id?: string;
           modelId?: null | string;
           providerId?: null | string;
+          skillRoutes?: string[];
           task?: string;
           workspaceId?: string;
         }
@@ -461,6 +462,7 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
       modelId: request?.modelId ?? null,
       providerId: request?.providerId ?? null,
       runBranch: `codex/run-${runId}`,
+      skillRoutes: request?.skillRoutes ?? [],
       startedAt: null,
       status: "queued" as const,
       stoppedAt: null,

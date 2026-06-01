@@ -31,6 +31,8 @@ pub struct RunRecord {
     pub harness_profile_id: Option<String>,
     pub provider_id: Option<String>,
     pub model_id: Option<String>,
+    #[serde(default)]
+    pub skill_routes: Vec<String>,
     pub created_at: String,
     pub updated_at: String,
     pub started_at: Option<String>,
@@ -65,6 +67,8 @@ pub struct StartRunRequest {
     pub harness_profile_id: Option<String>,
     pub provider_id: Option<String>,
     pub model_id: Option<String>,
+    #[serde(default)]
+    pub skill_routes: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -93,6 +97,7 @@ impl RunRecord {
     ) -> Result<Self, RunError> {
         let id = validate_identifier("run id", request.id)?;
         let task = validate_required("run task", request.task)?;
+        let skill_routes = normalize_skill_routes(request.skill_routes);
         let run_branch = format!("codex/run-{id}");
         let worktree_path = format!(
             "{}\\.agenticcrew\\runs\\{id}",
@@ -112,6 +117,7 @@ impl RunRecord {
                 .provider_id
                 .or_else(|| agent_template.map(|template| template.provider_id.clone())),
             run_branch,
+            skill_routes,
             started_at: None,
             status: RunStatus::Queued,
             stopped_at: None,
@@ -121,6 +127,19 @@ impl RunRecord {
             worktree_path,
         })
     }
+}
+
+fn normalize_skill_routes(skill_routes: Vec<String>) -> Vec<String> {
+    skill_routes
+        .into_iter()
+        .map(|route| route.trim().to_owned())
+        .filter(|route| !route.is_empty())
+        .fold(Vec::new(), |mut routes, route| {
+            if !routes.contains(&route) {
+                routes.push(route);
+            }
+            routes
+        })
 }
 
 impl RunEvent {
@@ -212,6 +231,10 @@ mod tests {
                 id: "run-1".to_owned(),
                 model_id: None,
                 provider_id: None,
+                skill_routes: vec![
+                    "agenticcrew://skills/superpowers/subagent-driven-development".to_owned(),
+                    " agenticcrew://skills/superpowers/subagent-driven-development ".to_owned(),
+                ],
                 task: " Build the run composer ".to_owned(),
                 workspace_id: "fullstack-app".to_owned(),
             },
@@ -229,6 +252,10 @@ mod tests {
         assert!(run.worktree_path.ends_with("\\.agenticcrew\\runs\\run-1"));
         assert_eq!(run.provider_id, Some("openai".to_owned()));
         assert_eq!(run.model_id, Some("gpt-5.4".to_owned()));
+        assert_eq!(
+            run.skill_routes,
+            vec!["agenticcrew://skills/superpowers/subagent-driven-development".to_owned()]
+        );
     }
 
     #[test]
@@ -241,6 +268,7 @@ mod tests {
                 id: "run-1".to_owned(),
                 model_id: None,
                 provider_id: None,
+                skill_routes: Vec::new(),
                 task: "Task".to_owned(),
                 workspace_id: "fullstack-app".to_owned(),
             },

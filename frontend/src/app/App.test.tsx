@@ -253,9 +253,35 @@ describe("App", () => {
   });
 
   it("starts a durable run from the workbench composer", async () => {
+    const requestedSkillRoutes = ["agenticcrew://skills/superpowers/subagent-driven-development"];
+    const activeSkillSourcesSnapshot: SkillSourcesSnapshot = {
+      activeSourceCount: 1,
+      sources: [
+        {
+          ...skillSourcesSnapshot.sources[0],
+          active: true,
+          discoveredSkills: [
+            {
+              description: "Fresh subagent per task with review gates.",
+              id: "superpowers/subagent-driven-development",
+              name: "subagent-driven-development",
+              relativePath: "skills/subagent-driven-development/SKILL.md",
+              route: requestedSkillRoutes[0]
+            }
+          ],
+          permissionGate: {
+            ...skillSourcesSnapshot.sources[0].permissionGate,
+            approved: true
+          },
+          status: "validated"
+        }
+      ]
+    };
     const runsInvoke = (command: "runs_snapshot" | "start_run", args?: Record<string, unknown>) => {
       if (command === "start_run") {
-        const request = args?.request as { id: string; task: string; workspaceId: string };
+        const request = args?.request as { id: string; skillRoutes: string[]; task: string; workspaceId: string };
+
+        expect(request.skillRoutes).toEqual(requestedSkillRoutes);
 
         return Promise.resolve({
           activeRunId: request.id,
@@ -278,6 +304,7 @@ describe("App", () => {
               modelId: "gpt-5",
               providerId: "openai",
               runBranch: `codex/run-${request.id}`,
+              skillRoutes: request.skillRoutes,
               startedAt: null,
               status: "queued" as const,
               stoppedAt: null,
@@ -300,18 +327,21 @@ describe("App", () => {
         missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
         runsInvoke={runsInvoke}
         settingsInvoke={settingsInvoke}
-        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+        skillSourcesInvoke={() => Promise.resolve(activeSkillSourcesSnapshot)}
       />
     );
 
     await openDefaultWorkspace();
+    expect(screen.getByRole("group", { name: "Mission skills" })).toHaveTextContent("subagent-driven-development");
     fireEvent.change(screen.getByLabelText("Task"), {
       target: { value: "Prioritize layout regressions before handoff." }
     });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Use subagent-driven-development" }));
     fireEvent.click(screen.getByRole("button", { name: "Start run" }));
 
     expect(await screen.findByRole("button", { name: "Open run run-fullstack-app-1" })).toBeInTheDocument();
     expect(screen.getByLabelText("Run event log")).toHaveTextContent("Prioritize layout regressions before handoff.");
+    expect(screen.getByLabelText("Run event log")).toHaveTextContent(requestedSkillRoutes[0]);
     expect(screen.getByText(/Run queued for workspace/u)).toBeInTheDocument();
   });
 

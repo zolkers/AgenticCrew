@@ -777,6 +777,7 @@ mod tests {
                 id: "run-1".to_owned(),
                 model_id: None,
                 provider_id: None,
+                skill_routes: vec!["agenticcrew://skills/superpowers/planning".to_owned()],
                 task: " Build Workbench run queue ".to_owned(),
                 workspace_id: "fullstack-app".to_owned(),
             },
@@ -786,6 +787,10 @@ mod tests {
         assert_eq!(snapshot.active_run_id, Some("run-1".to_owned()));
         assert_eq!(snapshot.runs.len(), 1);
         assert_eq!(snapshot.runs[0].task, "Build Workbench run queue");
+        assert_eq!(
+            snapshot.runs[0].skill_routes,
+            vec!["agenticcrew://skills/superpowers/planning".to_owned()]
+        );
         assert_eq!(snapshot.events.len(), 1);
         assert_eq!(
             snapshot,

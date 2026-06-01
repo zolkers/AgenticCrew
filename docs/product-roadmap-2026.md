@@ -117,6 +117,7 @@ Acceptance:
 - UI shows live status and terminal/events.
 - Stopping a run leaves a recoverable record.
 - No uncontrolled shell mutation happens outside the run workspace.
+- The queued run manifest records workspace, agent profile, execution policy, provider/model, and mission-selected skills before execution starts.
 
 ### Phase 2 — Diff And Review First
 
@@ -317,14 +318,14 @@ The app should pivot from "many studios" to "one workbench with supporting panel
 
 ## Immediate Next Sprint
 
-1. Rename `Cockpit` UX to `Workbench` internally or visually.
-2. Add `Runs` domain in Rust: run id, workspace id, task, status, branch/worktree path, agent profile id, policy id, timestamps.
-3. Add `Start run` UI from cockpit.
-4. Add run event stream placeholder backed by durable event log.
-5. Add controlled command execution contract with audit records.
+1. Materialize a backend run manifest from the Workbench start path, including mission-selected skills.
+2. Create the isolated run branch/worktree from Rust instead of only deriving paths.
+3. Add controlled command execution contract with audit records.
+4. Stream durable run events into the Workbench.
+5. Add stop/resume/retry controls for queued/running runs.
 6. Add basic changed-files detection for a run worktree.
 7. Add diff viewer.
-8. Move Agent/Harness/Skills from top nav into a "Profiles & Policies" section.
+8. Replace desktop runtime preview data with sidecar-backed snapshots while keeping browser preview deterministic for design/testing.
 9. Delete or hide all preview-only runtime metrics.
 10. Add onboarding checklist: workspace, provider, repo context, first run.
 
@@ -337,4 +338,3 @@ The app should pivot from "many studios" to "one workbench with supporting panel
 - Every claim needs evidence.
 - Every risky tool action needs a permission path.
 - Every result should be reviewable as a diff or artifact.
-

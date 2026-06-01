@@ -186,6 +186,7 @@ export type RunRecord = {
   modelId?: string | null;
   providerId?: string | null;
   runBranch: string;
+  skillRoutes: string[];
   startedAt?: string | null;
   status: RunStatus;
   stoppedAt?: string | null;
@@ -217,6 +218,7 @@ export type StartRunRequest = {
   id: string;
   modelId?: string | null;
   providerId?: string | null;
+  skillRoutes: string[];
   task: string;
   workspaceId: string;
 };
