@@ -34,10 +34,10 @@ import { loadMissionControlSnapshot, type InvokeMissionControl } from "../shared
 import { previewCommitPreviewInvoke, previewRunsInvoke, previewWorkspaceInvoke } from "../shared/api/previewInvokes";
 import {
   completeRun,
+  executeRunCommand,
   failRun,
   loadRunsSnapshot,
   prepareRun,
-  recordRunCommand,
   startPreparedRun,
   startRun,
   type InvokeRuns
@@ -63,7 +63,7 @@ import type {
   HarnessProfile,
   MissionCostSummary,
   MissionControlSnapshot,
-  RecordRunCommandRequest,
+  ExecuteRunCommandRequest,
   ReasoningEffort,
   RunParticipantRequest,
   RunRecord,
@@ -452,8 +452,8 @@ export function App({
     const runsSnapshot = await transition(runsInvoke, runId);
     replaceRunsSnapshot(runsSnapshot);
   };
-  const recordWorkspaceRunCommand = async (request: RecordRunCommandRequest) => {
-    const runsSnapshot = await recordRunCommand(runsInvoke, request);
+  const executeWorkspaceRunCommand = async (request: ExecuteRunCommandRequest) => {
+    const runsSnapshot = await executeRunCommand(runsInvoke, request);
     replaceRunsSnapshot(runsSnapshot);
   };
   const activeSkillRoutes = loadState.skillSourcesSnapshot.sources
@@ -652,7 +652,7 @@ export function App({
               void transitionWorkspaceRun(runId, action);
             }}
             onRunCommand={(request) => {
-              void recordWorkspaceRunCommand(request);
+              void executeWorkspaceRunCommand(request);
             }}
             runsSnapshot={loadState.runsSnapshot}
             tokenSummary={tokenSummary}
@@ -1007,7 +1007,7 @@ type CockpitProps = Readonly<{
   defaultReasoningEffort: ReasoningEffort;
   harnessStudioSnapshot: HarnessStudioSnapshot;
   onLoadoutChange: (loadout: WorkspaceLoadout) => void;
-  onRunCommand: (request: RecordRunCommandRequest) => void;
+  onRunCommand: (request: ExecuteRunCommandRequest) => void;
   onRunStart: (
     task: string,
     skillRoutes: readonly string[],
@@ -1364,19 +1364,17 @@ function Cockpit({
                     ?? activeRun.participants.at(0);
                   if (participant !== undefined) {
                     onRunCommand({
-                      command: "agenticcrew runtime check",
+                      args: ["-e", "console.log('runtime check passed')"],
                       cwd: activeRun.worktreePath,
-                      exitCode: 0,
                       participantId: participant.id,
-                      runId: activeRun.id,
-                      stderr: "",
-                      stdout: "runtime check passed"
+                      program: "node",
+                      runId: activeRun.id
                     });
                   }
                 }}
                 type="button"
               >
-                Record check
+                Run smoke
               </button>
             </div>
           )}

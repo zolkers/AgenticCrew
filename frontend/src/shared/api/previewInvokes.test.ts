@@ -330,6 +330,35 @@ describe("previewInvokes", () => {
     ]);
   });
 
+  it("executes preview run commands through the controlled command contract", async () => {
+    await previewRunsInvoke("start_run", {
+      request: {
+        id: "execute-preview",
+        task: "Exercise controlled execution",
+        workspaceId: "fullstack-app"
+      }
+    });
+
+    const snapshot = await previewRunsInvoke("execute_run_command", {
+      request: {
+        args: ["-e", "console.log('ok')"],
+        cwd: null,
+        participantId: "developer",
+        program: "node",
+        runId: "execute-preview"
+      }
+    });
+
+    expect(snapshot.commands).toEqual([
+      expect.objectContaining({
+        command: "node -e console.log('ok')",
+        participantId: "developer",
+        runId: "execute-preview",
+        stdout: "runtime check passed"
+      })
+    ]);
+  });
+
   it("mutates preview skill source workflow state", async () => {
     await previewSkillSourcesInvoke("register_github_skill_source", {
       request: {

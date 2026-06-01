@@ -3,6 +3,7 @@ pub mod core;
 use std::{
     fmt, fs,
     path::{Path, PathBuf},
+    process::Command,
 };
 
 use serde::Serialize;
@@ -21,7 +22,8 @@ use core::{
     permissions::ApprovedPermissionPolicy,
     pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
     runs::{
-        runs_snapshot_from_state, RecordRunCommandRequest, RunRecord, RunsSnapshot, StartRunRequest,
+        runs_snapshot_from_state, ExecuteRunCommandRequest, RecordRunCommandRequest, RunRecord,
+        RunsSnapshot, StartRunRequest,
     },
     settings::{
         settings_snapshot_from_state, sync_provider_models_with_catalog, ProviderModelCatalog,
@@ -271,6 +273,69 @@ pub fn record_run_command_at_path(
     let state = mutate_state_at_path(path, |state| state.record_run_command(request, created_at))?;
 
     Ok(runs_snapshot_from_state(&state))
+}
+
+pub fn execute_run_command_at_path(
+    path: impl AsRef<Path>,
+    request: ExecuteRunCommandRequest,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    let state_path = path.as_ref();
+    let state = durable_state_snapshot_at_path(state_path)?;
+    let run = state
+        .runs
+        .iter()
+        .find(|run| run.id == request.run_id)
+        .ok_or_else(|| StateMutationError::MissingRun {
+            run_id: request.run_id.clone(),
+        })?;
+    if !run
+        .participants
+        .iter()
+        .any(|participant| participant.id == request.participant_id)
+    {
+        return Err(StateMutationError::MissingRunParticipant {
+            run_id: request.run_id,
+            participant_id: request.participant_id,
+        }
+        .into());
+    }
+
+    let program = request.program.trim();
+    if program.is_empty() {
+        return Err(DesktopCommandError::public(
+            "run command program is required",
+        ));
+    }
+
+    let cwd = request
+        .cwd
+        .as_deref()
+        .map(str::trim)
+        .filter(|candidate| !candidate.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(&run.worktree_path));
+    let output = Command::new(program)
+        .args(&request.args)
+        .current_dir(&cwd)
+        .output()
+        .map_err(|error| {
+            DesktopCommandError::public(format!(
+                "failed to execute run command '{}': {error}",
+                format_command(program, &request.args)
+            ))
+        })?;
+    let exit_code = output.status.code().unwrap_or(1);
+    let record = RecordRunCommandRequest {
+        command: format_command(program, &request.args),
+        cwd: cwd.display().to_string(),
+        exit_code,
+        participant_id: request.participant_id,
+        run_id: run.id.clone(),
+        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+    };
+
+    record_run_command_at_path(state_path, record)
 }
 
 pub fn create_agent_template_at_path(
@@ -606,6 +671,13 @@ fn write_run_manifest(run: &RunRecord) -> Result<(), DesktopCommandError> {
     Ok(())
 }
 
+fn format_command(program: &str, args: &[String]) -> String {
+    std::iter::once(program.to_owned())
+        .chain(args.iter().cloned())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -619,15 +691,15 @@ mod tests {
         app_name, approve_skill_source_permissions_at_path, close_feature_session_at_path,
         create_agent_template_at_path, create_feature_session_at_path,
         create_harness_profile_at_path, create_workspace_at_path, durable_state_snapshot_at_path,
-        harness_studio_snapshot_at_path, inspect_cached_skill_source_at_path,
-        mission_control_snapshot_at_path, promote_agent_training_run_at_path,
-        record_command_evidence_at_path, record_model_call_estimate_at_path,
-        record_run_command_at_path, record_skill_source_sync_success_at_path,
-        refresh_workspace_git_status_at_path, register_github_skill_source_at_path,
-        runs_snapshot_at_path, set_agent_template_active_at_path,
-        set_harness_profile_active_at_path, skill_sources_snapshot_at_path,
-        start_prepared_run_at_path, start_run_at_path, state_file_path,
-        update_agent_template_at_path, update_harness_profile_at_path,
+        execute_run_command_at_path, harness_studio_snapshot_at_path,
+        inspect_cached_skill_source_at_path, mission_control_snapshot_at_path,
+        promote_agent_training_run_at_path, record_command_evidence_at_path,
+        record_model_call_estimate_at_path, record_run_command_at_path,
+        record_skill_source_sync_success_at_path, refresh_workspace_git_status_at_path,
+        register_github_skill_source_at_path, runs_snapshot_at_path,
+        set_agent_template_active_at_path, set_harness_profile_active_at_path,
+        skill_sources_snapshot_at_path, start_prepared_run_at_path, start_run_at_path,
+        state_file_path, update_agent_template_at_path, update_harness_profile_at_path,
         update_workspace_git_context_at_path, update_workspace_loadout_at_path,
         validate_skill_source_at_path, workspace_snapshot_at_path, STATE_FILE_NAME,
     };
@@ -646,7 +718,9 @@ mod tests {
             ApprovedPermissionPolicy, CommandPermissionScope, FileSystemPermissionScope,
             NetworkPermissionScope,
         },
-        runs::{RecordRunCommandRequest, RunCommandStatus, StartRunRequest},
+        runs::{
+            ExecuteRunCommandRequest, RecordRunCommandRequest, RunCommandStatus, StartRunRequest,
+        },
         sessions::GoalObject,
         settings::ReasoningEffort,
         skills::RegisterGitHubSkillSourceRequest,
@@ -982,6 +1056,28 @@ mod tests {
             command_snapshot,
             runs_snapshot_at_path(&path).expect("runs snapshot should include commands")
         );
+
+        let executed_snapshot = execute_run_command_at_path(
+            &path,
+            ExecuteRunCommandRequest {
+                args: vec!["--version".to_owned()],
+                cwd: None,
+                participant_id: "developer".to_owned(),
+                program: "rustc".to_owned(),
+                run_id: "run-1".to_owned(),
+            },
+        )
+        .expect("run command should execute");
+
+        assert_eq!(executed_snapshot.commands.len(), 2);
+        assert_eq!(
+            executed_snapshot.commands[1].status,
+            RunCommandStatus::Succeeded
+        );
+        assert!(executed_snapshot.commands[1]
+            .command
+            .starts_with("rustc --version"));
+        assert!(executed_snapshot.commands[1].stdout.contains("rustc"));
     }
 
     #[test]

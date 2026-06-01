@@ -688,6 +688,31 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
     };
   }
 
+  if (command === "execute_run_command") {
+    const request = args?.request as
+      | {
+          args?: string[];
+          cwd?: null | string;
+          participantId?: string;
+          program?: string;
+          runId?: string;
+        }
+      | undefined;
+    const program = request?.program ?? "node";
+    const commandText = [program, ...(request?.args ?? [])].join(" ");
+    const runId = request?.runId ?? currentPreviewRunsSnapshot.activeRunId ?? "preview-run";
+
+    currentPreviewRunsSnapshot = appendPreviewRunCommand({
+      command: commandText,
+      cwd: request?.cwd ?? "preview",
+      exitCode: 0,
+      participantId: request?.participantId ?? "developer",
+      runId,
+      stderr: "",
+      stdout: "runtime check passed"
+    });
+  }
+
   if (command === "record_run_command") {
     const request = args?.request as
       | {
@@ -700,42 +725,59 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
           stdout?: string;
         }
       | undefined;
-    const runId = request?.runId ?? currentPreviewRunsSnapshot.activeRunId ?? "preview-run";
-    const command = request?.command ?? "agenticcrew runtime check";
-    const exitCode = request?.exitCode ?? 0;
-    const commandRecord = {
-      command,
-      createdAt: "preview",
+    currentPreviewRunsSnapshot = appendPreviewRunCommand({
+      command: request?.command ?? "agenticcrew runtime check",
       cwd: request?.cwd ?? "preview",
-      exitCode,
-      id: `${runId}-command-${String(currentPreviewRunsSnapshot.commands.length + 1)}`,
+      exitCode: request?.exitCode ?? 0,
       participantId: request?.participantId ?? "developer",
-      runId,
-      status: exitCode === 0 ? "succeeded" as const : "failed" as const,
+      runId: request?.runId ?? currentPreviewRunsSnapshot.activeRunId ?? "preview-run",
       stderr: request?.stderr ?? "",
       stdout: request?.stdout ?? ""
-    };
-
-    currentPreviewRunsSnapshot = {
-      ...currentPreviewRunsSnapshot,
-      activeRunId: runId,
-      commands: [...currentPreviewRunsSnapshot.commands, commandRecord],
-      events: [
-        ...currentPreviewRunsSnapshot.events,
-        {
-          createdAt: "preview",
-          id: `${runId}-event-${String(currentPreviewRunsSnapshot.events.length + 1)}`,
-          level: "info",
-          message: `Command '${command}' exited ${String(exitCode)}`,
-          participantId: commandRecord.participantId,
-          runId
-        }
-      ]
-    };
+    });
   }
 
   return Promise.resolve(currentPreviewRunsSnapshot);
 };
+
+function appendPreviewRunCommand(request: {
+  command: string;
+  cwd: string;
+  exitCode: number;
+  participantId: string;
+  runId: string;
+  stderr: string;
+  stdout: string;
+}): RunsSnapshot {
+  const commandRecord = {
+    command: request.command,
+    createdAt: "preview",
+    cwd: request.cwd,
+    exitCode: request.exitCode,
+    id: `${request.runId}-command-${String(currentPreviewRunsSnapshot.commands.length + 1)}`,
+    participantId: request.participantId,
+    runId: request.runId,
+    status: request.exitCode === 0 ? "succeeded" as const : "failed" as const,
+    stderr: request.stderr,
+    stdout: request.stdout
+  };
+
+  return {
+    ...currentPreviewRunsSnapshot,
+    activeRunId: request.runId,
+    commands: [...currentPreviewRunsSnapshot.commands, commandRecord],
+    events: [
+      ...currentPreviewRunsSnapshot.events,
+      {
+        createdAt: "preview",
+        id: `${request.runId}-event-${String(currentPreviewRunsSnapshot.events.length + 1)}`,
+        level: "info",
+        message: `Command '${request.command}' exited ${String(request.exitCode)}`,
+        participantId: commandRecord.participantId,
+        runId: request.runId
+      }
+    ]
+  };
+}
 
 export const previewHarnessStudioInvoke: InvokeHarnessStudio = (command, args) => {
   if (command === "create_harness_profile") {

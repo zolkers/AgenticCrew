@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   completeRun,
+  executeRunCommand,
   failRun,
   loadRunsSnapshot,
   prepareRun,
@@ -109,6 +110,33 @@ describe("runsApi", () => {
         runId: "run-1",
         stderr: "",
         stdout: "ok"
+      }
+    });
+  });
+
+  it("executes a controlled run command payload", async () => {
+    const invoke = vi.fn<InvokeRuns>().mockResolvedValue({
+      activeRunId: "run-1",
+      commands: [],
+      events: [],
+      runs: []
+    });
+
+    await executeRunCommand(invoke, {
+      args: ["--version"],
+      cwd: null,
+      participantId: "developer",
+      program: "node",
+      runId: "run-1"
+    });
+
+    expect(invoke).toHaveBeenCalledWith("execute_run_command", {
+      request: {
+        args: ["--version"],
+        cwd: null,
+        participantId: "developer",
+        program: "node",
+        runId: "run-1"
       }
     });
   });

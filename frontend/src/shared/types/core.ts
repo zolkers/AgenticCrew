@@ -260,6 +260,14 @@ export type RecordRunCommandRequest = {
   stdout: string;
 };
 
+export type ExecuteRunCommandRequest = {
+  args: string[];
+  cwd?: string | null;
+  participantId: string;
+  program: string;
+  runId: string;
+};
+
 export type RunRecord = {
   agentTemplateId?: string | null;
   baseBranch: string;
@@ -654,6 +662,7 @@ export type ElectronCommandMap = {
   create_harness_profile: HarnessStudioSnapshot;
   create_workspace: WorkspaceSnapshot;
   commit_preview: CommitPreviewResponse;
+  execute_run_command: RunsSnapshot;
   harness_studio_snapshot: HarnessStudioSnapshot;
   import_pi_extension: HarnessStudioSnapshot;
   inspect_cached_skill_source: unknown;

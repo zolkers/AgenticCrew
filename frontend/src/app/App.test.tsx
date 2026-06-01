@@ -538,16 +538,14 @@ describe("App", () => {
         });
       }
 
-      if (command === "record_run_command") {
+      if (command === "execute_run_command") {
         expect(args).toEqual({
           request: {
-            command: "agenticcrew runtime check",
+            args: ["-e", "console.log('runtime check passed')"],
             cwd: "C:\\repo\\.agenticcrew\\runs\\run-control",
-            exitCode: 0,
             participantId: "developer",
-            runId: "run-control",
-            stderr: "",
-            stdout: "runtime check passed"
+            program: "node",
+            runId: "run-control"
           }
         });
 
@@ -555,7 +553,7 @@ describe("App", () => {
           activeRunId: "run-control",
           commands: [
             {
-              command: "agenticcrew runtime check",
+              command: "node -e console.log('runtime check passed')",
               createdAt: "preview",
               cwd: "C:\\repo\\.agenticcrew\\runs\\run-control",
               exitCode: 0,
@@ -611,8 +609,8 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getAllByText("running").length).toBeGreaterThan(0);
     });
-    fireEvent.click(screen.getByRole("button", { name: "Record check" }));
-    expect(await screen.findByLabelText("Run command evidence")).toHaveTextContent("agenticcrew runtime check");
+    fireEvent.click(screen.getByRole("button", { name: "Run smoke" }));
+    expect(await screen.findByLabelText("Run command evidence")).toHaveTextContent("node -e");
     expect(screen.getByLabelText("Run command evidence")).toHaveTextContent("succeeded");
     fireEvent.click(screen.getByRole("button", { name: "Complete" }));
     await waitFor(() => {
