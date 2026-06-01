@@ -355,7 +355,12 @@ describe("App", () => {
       if (command === "start_run") {
         const request = args?.request as {
           id: string;
-          participants: Array<{ executionMode: "read_only" | "write"; id: string; role: "implementation" | "review" }>;
+          participants: Array<{
+            executionMode: "read_only" | "write";
+            id: string;
+            role: "implementation" | "review";
+            runtimeAllowedPrograms: string[];
+          }>;
           reasoningEffort: "high" | "low" | "medium";
           skillRoutes: string[];
           task: string;
@@ -365,8 +370,18 @@ describe("App", () => {
         expect(request.skillRoutes).toEqual(requestedSkillRoutes);
         expect(request.reasoningEffort).toBe("high");
         expect(request.participants).toEqual([
-          expect.objectContaining({ executionMode: "write", id: "developer", role: "implementation" }),
-          expect.objectContaining({ executionMode: "read_only", id: "reviewer", role: "review" })
+          expect.objectContaining({
+            executionMode: "write",
+            id: "developer",
+            role: "implementation",
+            runtimeAllowedPrograms: ["cargo", "git", "node", "npm", "rustc"]
+          }),
+          expect.objectContaining({
+            executionMode: "read_only",
+            id: "reviewer",
+            role: "review",
+            runtimeAllowedPrograms: ["git"]
+          })
         ]);
 
         return Promise.resolve({
@@ -399,6 +414,7 @@ describe("App", () => {
                 providerId: "openai",
                 reasoningEffort: participant.id === "developer" ? request.reasoningEffort : "medium",
                 role: participant.role,
+                runtimeAllowedPrograms: participant.runtimeAllowedPrograms,
                 skillRoutes: participant.id === "developer" ? request.skillRoutes : [],
                 status: "queued" as const
               })),
@@ -448,6 +464,8 @@ describe("App", () => {
     expect(screen.getByLabelText("Run event log")).toHaveTextContent("crew: developer implementation write, reviewer review read only");
     expect(screen.getByLabelText("Run event log")).toHaveTextContent("thinking: high");
     expect(screen.getByLabelText("Run event log")).toHaveTextContent(requestedSkillRoutes[0]);
+    expect(screen.getByLabelText("Crew activity")).toHaveTextContent("cargo, git, node, npm, rustc");
+    expect(screen.getByLabelText("Crew activity")).toHaveTextContent("git");
     expect(screen.getByText(/Run queued for workspace/u)).toBeInTheDocument();
   });
 

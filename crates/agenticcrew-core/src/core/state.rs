@@ -2018,6 +2018,7 @@ mod tests {
                         provider_id: None,
                         reasoning_effort: None,
                         role: RunParticipantRole::Implementation,
+                        runtime_allowed_programs: Vec::new(),
                         skill_routes: Vec::new(),
                     }],
                     provider_id: None,

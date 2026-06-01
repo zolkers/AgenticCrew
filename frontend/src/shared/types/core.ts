@@ -244,6 +244,7 @@ export type RunParticipant = {
   providerId?: string | null;
   reasoningEffort?: ReasoningEffort;
   role: RunParticipantRole;
+  runtimeAllowedPrograms?: string[];
   skillRoutes: string[];
   status: RunParticipantStatus;
 };

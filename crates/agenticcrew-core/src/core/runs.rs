@@ -143,6 +143,8 @@ pub struct RunParticipant {
     pub reasoning_effort: ReasoningEffort,
     #[serde(default)]
     pub skill_routes: Vec<String>,
+    #[serde(default)]
+    pub runtime_allowed_programs: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -216,6 +218,8 @@ pub struct RunParticipantRequest {
     pub reasoning_effort: Option<ReasoningEffort>,
     #[serde(default)]
     pub skill_routes: Vec<String>,
+    #[serde(default)]
+    pub runtime_allowed_programs: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -454,6 +458,7 @@ fn build_run_participants(
             provider_id: provider_id.clone(),
             reasoning_effort,
             role: RunParticipantRole::Implementation,
+            runtime_allowed_programs: Vec::new(),
             skill_routes: skill_routes.to_vec(),
             status: RunParticipantStatus::Queued,
         }]);
@@ -471,11 +476,43 @@ fn build_run_participants(
                 provider_id: normalize_optional_identifier(participant.provider_id),
                 reasoning_effort: participant.reasoning_effort.unwrap_or(reasoning_effort),
                 role: participant.role,
+                runtime_allowed_programs: normalize_runtime_allowed_programs(
+                    participant.runtime_allowed_programs,
+                )?,
                 skill_routes: normalize_skill_routes(participant.skill_routes),
                 status: RunParticipantStatus::Queued,
             })
         })
         .collect()
+}
+
+fn normalize_runtime_allowed_programs(programs: Vec<String>) -> Result<Vec<String>, RunError> {
+    programs
+        .into_iter()
+        .try_fold(Vec::new(), |mut normalized, program| {
+            let program = validate_program_name("runtime program", program)?;
+            if !normalized.contains(&program) {
+                normalized.push(program);
+            }
+            Ok(normalized)
+        })
+}
+
+fn validate_program_name(field: &'static str, value: String) -> Result<String, RunError> {
+    let value = validate_required(field, value)?;
+    let is_valid = value.chars().all(|character| {
+        character.is_ascii_lowercase()
+            || character.is_ascii_digit()
+            || character == '-'
+            || character == '_'
+            || character == '.'
+    });
+
+    if !is_valid {
+        return Err(RunError::InvalidIdentifier { field, value });
+    }
+
+    Ok(value)
 }
 
 fn normalize_optional_identifier(value: Option<String>) -> Option<String> {
@@ -674,6 +711,7 @@ mod tests {
                         provider_id: Some("openai".to_owned()),
                         reasoning_effort: Some(ReasoningEffort::High),
                         role: RunParticipantRole::Implementation,
+                        runtime_allowed_programs: Vec::new(),
                         skill_routes: vec!["agenticcrew://skills/superpowers/planning".to_owned()],
                     },
                     RunParticipantRequest {
@@ -685,6 +723,7 @@ mod tests {
                         provider_id: Some("openai".to_owned()),
                         reasoning_effort: Some(ReasoningEffort::Medium),
                         role: RunParticipantRole::Review,
+                        runtime_allowed_programs: vec!["git".to_owned()],
                         skill_routes: Vec::new(),
                     },
                 ],
@@ -770,6 +809,7 @@ mod tests {
                         provider_id: None,
                         reasoning_effort: None,
                         role: RunParticipantRole::Implementation,
+                        runtime_allowed_programs: Vec::new(),
                         skill_routes: Vec::new(),
                     },
                     RunParticipantRequest {
@@ -781,6 +821,7 @@ mod tests {
                         provider_id: None,
                         reasoning_effort: None,
                         role: RunParticipantRole::Review,
+                        runtime_allowed_programs: Vec::new(),
                         skill_routes: Vec::new(),
                     },
                 ],

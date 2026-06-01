@@ -325,17 +325,14 @@ pub fn execute_run_command_at_path(
         .ok_or_else(|| StateMutationError::MissingRun {
             run_id: request.run_id.clone(),
         })?;
-    if !run
+    let participant = run
         .participants
         .iter()
-        .any(|participant| participant.id == request.participant_id)
-    {
-        return Err(StateMutationError::MissingRunParticipant {
-            run_id: request.run_id,
-            participant_id: request.participant_id,
-        }
-        .into());
-    }
+        .find(|participant| participant.id == request.participant_id)
+        .ok_or_else(|| StateMutationError::MissingRunParticipant {
+            run_id: request.run_id.clone(),
+            participant_id: request.participant_id.clone(),
+        })?;
 
     let program = request.program.trim();
     if program.is_empty() {
@@ -357,7 +354,12 @@ pub fn execute_run_command_at_path(
         .find(|workspace| workspace.id == run.workspace_id)
         .map(|workspace| workspace.runtime_allowed_programs.clone())
         .unwrap_or_default();
-    if !is_allowed_runtime_program(program, &allowed_programs) {
+    let effective_allowed_programs = if participant.runtime_allowed_programs.is_empty() {
+        &allowed_programs
+    } else {
+        &participant.runtime_allowed_programs
+    };
+    if !is_allowed_runtime_program(program, effective_allowed_programs) {
         let record = RecordRunCommandRequest {
             command: format_command(program, &request.args),
             cwd: cwd.display().to_string(),
@@ -1240,6 +1242,84 @@ mod tests {
             RunCommandStatus::Failed
         );
         assert_eq!(blocked_snapshot.commands[0].exit_code, 126);
+    }
+
+    #[test]
+    fn participant_runtime_policy_overrides_workspace_policy() {
+        let path = test_path(
+            "participant_runtime_policy_overrides_workspace_policy",
+            "state.json",
+        );
+        let workspace_path = test_path(
+            "participant_runtime_policy_overrides_workspace_policy",
+            "workspace",
+        );
+        update_workspace_git_context_at_path(
+            &path,
+            UpdateWorkspaceGitContextRequest {
+                branch: "dev".to_owned(),
+                path: workspace_path.display().to_string(),
+                workspace_id: "fullstack-app".to_owned(),
+            },
+        )
+        .expect("workspace path should update");
+        update_workspace_runtime_policy_at_path(
+            &path,
+            UpdateWorkspaceRuntimePolicyRequest {
+                allowed_programs: vec!["node".to_owned(), "npm".to_owned()],
+                workspace_id: "fullstack-app".to_owned(),
+            },
+        )
+        .expect("workspace runtime policy should update");
+        start_run_at_path(
+            &path,
+            StartRunRequest {
+                agent_template_id: Some("developer-pi".to_owned()),
+                harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                id: "run-participant-policy".to_owned(),
+                model_id: None,
+                participants: vec![crate::core::runs::RunParticipantRequest {
+                    agent_template_id: Some("developer-pi".to_owned()),
+                    execution_mode: crate::core::runs::RunParticipantExecutionMode::ReadOnly,
+                    harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                    id: "reviewer".to_owned(),
+                    model_id: None,
+                    provider_id: None,
+                    reasoning_effort: None,
+                    role: crate::core::runs::RunParticipantRole::Review,
+                    runtime_allowed_programs: vec!["git".to_owned()],
+                    skill_routes: Vec::new(),
+                }],
+                provider_id: None,
+                reasoning_effort: None,
+                skill_routes: Vec::new(),
+                task: "Respect participant runtime policy".to_owned(),
+                workspace_id: "fullstack-app".to_owned(),
+            },
+        )
+        .expect("run should persist");
+
+        let blocked_snapshot = execute_run_command_at_path(
+            &path,
+            ExecuteRunCommandRequest {
+                args: vec!["--version".to_owned()],
+                cwd: None,
+                participant_id: "reviewer".to_owned(),
+                program: "node".to_owned(),
+                run_id: "run-participant-policy".to_owned(),
+            },
+        )
+        .expect("blocked command should be recorded");
+
+        assert_eq!(
+            blocked_snapshot.commands[0].status,
+            RunCommandStatus::Failed
+        );
+        assert_eq!(blocked_snapshot.commands[0].exit_code, 126);
+        assert_eq!(
+            blocked_snapshot.runs[0].participants[0].runtime_allowed_programs,
+            vec!["git".to_owned()]
+        );
     }
 
     #[test]

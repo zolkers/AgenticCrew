@@ -452,6 +452,7 @@ export function App({
       providerId,
       reasoningEffort,
       runMode,
+      runtimeAllowedPrograms: activeWorkspace.runtimeAllowedPrograms ?? defaultRuntimeAllowedPrograms,
       skillRoutes
     });
     const runsSnapshot = await startRun(runsInvoke, {
@@ -1684,6 +1685,14 @@ function CrewActivityItem({
           <dd>{commandCount}</dd>
         </div>
         <div>
+          <dt>Policy</dt>
+          <dd>
+            {participant.runtimeAllowedPrograms?.length
+              ? participant.runtimeAllowedPrograms.join(", ")
+              : "Inherited"}
+          </dd>
+        </div>
+        <div>
           <dt>Last</dt>
           <dd>{timeline?.lastActivityAt ?? "no activity"}</dd>
         </div>
@@ -1785,6 +1794,7 @@ function buildRunParticipants({
   providerId,
   reasoningEffort,
   runMode,
+  runtimeAllowedPrograms,
   skillRoutes
 }: Readonly<{
   agentTemplateId: null | string;
@@ -1793,6 +1803,7 @@ function buildRunParticipants({
   providerId?: null | string;
   reasoningEffort: ReasoningEffort;
   runMode: RunLaunchMode;
+  runtimeAllowedPrograms: readonly string[];
   skillRoutes: readonly string[];
 }>): RunParticipantRequest[] {
   const developer: RunParticipantRequest = {
@@ -1804,6 +1815,7 @@ function buildRunParticipants({
     providerId,
     reasoningEffort,
     role: "implementation",
+    runtimeAllowedPrograms: [...runtimeAllowedPrograms],
     skillRoutes: [...skillRoutes]
   };
 
@@ -1822,6 +1834,7 @@ function buildRunParticipants({
       providerId,
       reasoningEffort: "medium",
       role: "review",
+      runtimeAllowedPrograms: ["git"],
       skillRoutes: []
     }
   ];
