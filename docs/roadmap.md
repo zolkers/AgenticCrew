@@ -19,9 +19,10 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - Mission-level skill selection in the Workbench: active downloaded skills can be selected per run and are persisted on the durable run record.
 - Backend-backed Git commit previews: the Git panel now loads selected commit metadata, changed files, stats, and patch lines through the Electron/Rust sidecar instead of generating UI-only diffs.
 - Multi-provider AI configuration: OpenAI and Gemini are exposed through a shared provider registry, model pickers are provider-aware, and settings/agents/runs persist `low`, `medium`, or `high` thinking effort.
+- Crew-oriented run records: queued runs now persist participants in the Rust-owned run manifest, and the cockpit can launch Solo or Crew mode with developer/reviewer participant scopes.
 
 **Next focus:**
-- Runtime execution: replace preview-only browser data with sidecar-backed runtime manifests, live agent event streams, pause/resume/kill controls, and audited command execution.
+- Multi-agent runtime execution: replace preview-only browser data with sidecar-backed crew manifests, isolated participant worktrees, live per-agent event streams, pause/resume/kill controls, and audited command execution.
 - Product power features: artifacts, diff review, safety center, notifications, and run replay.
 - Packaging polish: native Electron menus, installer packaging, updater strategy, and first-run onboarding.
 
@@ -190,7 +191,7 @@ Completed on `dev`:
 10. Add mission-level skill selection to queued runs.
 11. Add OpenAI/Gemini provider selection and persisted thinking effort across settings, agents, and run launch.
 
-Next tranche: backend-real run manifests, controlled command execution, event streaming, and progressive removal of preview-only data from desktop runtime paths. Git commit preview is the first completed slice of this runtime-backed replacement work.
+Next tranche: crew-aware runtime execution, controlled command execution, per-agent event streaming, and progressive removal of preview-only data from desktop runtime paths. Git commit preview and durable run manifests are the first completed slices of this runtime-backed replacement work.
 
 ## Task Roadmap
 

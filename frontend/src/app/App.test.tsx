@@ -281,6 +281,7 @@ describe("App", () => {
       if (command === "start_run") {
         const request = args?.request as {
           id: string;
+          participants: Array<{ executionMode: "read_only" | "write"; id: string; role: "implementation" | "review" }>;
           reasoningEffort: "high" | "low" | "medium";
           skillRoutes: string[];
           task: string;
@@ -289,6 +290,10 @@ describe("App", () => {
 
         expect(request.skillRoutes).toEqual(requestedSkillRoutes);
         expect(request.reasoningEffort).toBe("high");
+        expect(request.participants).toEqual([
+          expect.objectContaining({ executionMode: "write", id: "developer", role: "implementation" }),
+          expect.objectContaining({ executionMode: "read_only", id: "reviewer", role: "review" })
+        ]);
 
         return Promise.resolve({
           activeRunId: request.id,
@@ -310,6 +315,18 @@ describe("App", () => {
               id: request.id,
               modelId: "gpt-5",
               providerId: "openai",
+              participants: request.participants.map((participant) => ({
+                agentTemplateId: "developer-pi",
+                executionMode: participant.executionMode,
+                harnessProfileId: "pi-execution-discipline",
+                id: participant.id,
+                modelId: "gpt-5",
+                providerId: "openai",
+                reasoningEffort: participant.id === "developer" ? request.reasoningEffort : "medium",
+                role: participant.role,
+                skillRoutes: participant.id === "developer" ? request.skillRoutes : [],
+                status: "queued" as const
+              })),
               reasoningEffort: request.reasoningEffort,
               runBranch: `codex/run-${request.id}`,
               skillRoutes: request.skillRoutes,
@@ -342,6 +359,7 @@ describe("App", () => {
 
     await openDefaultWorkspace();
     expect(screen.getByRole("group", { name: "Mission skills" })).toHaveTextContent("subagent-driven-development");
+    fireEvent.change(screen.getByLabelText("Run mode"), { target: { value: "crew" } });
     fireEvent.change(screen.getByLabelText("Task"), {
       target: { value: "Prioritize layout regressions before handoff." }
     });
@@ -352,9 +370,90 @@ describe("App", () => {
     expect(await screen.findByRole("button", { name: "Open run run-fullstack-app-1" })).toBeInTheDocument();
     expect(screen.getByLabelText("Run event log")).toHaveTextContent("Prioritize layout regressions before handoff.");
     expect(screen.getByLabelText("Run event log")).toHaveTextContent("manifest: C:\\repo\\.agenticcrew\\runs\\run-fullstack-app-1\\run-manifest.json");
+    expect(screen.getByLabelText("Run event log")).toHaveTextContent("crew: developer implementation write, reviewer review read only");
     expect(screen.getByLabelText("Run event log")).toHaveTextContent("thinking: high");
     expect(screen.getByLabelText("Run event log")).toHaveTextContent(requestedSkillRoutes[0]);
     expect(screen.getByText(/Run queued for workspace/u)).toBeInTheDocument();
+  });
+
+  it("keeps solo runs to one write participant", async () => {
+    const runsInvoke = (command: "runs_snapshot" | "start_run", args?: Record<string, unknown>) => {
+      if (command === "start_run") {
+        const request = args?.request as {
+          id: string;
+          participants: Array<{ executionMode: "read_only" | "write"; id: string; role: "implementation" | "review" }>;
+          reasoningEffort: "high" | "low" | "medium";
+          skillRoutes: string[];
+          task: string;
+          workspaceId: string;
+        };
+
+        expect(request.participants).toEqual([
+          expect.objectContaining({ executionMode: "write", id: "developer", role: "implementation" })
+        ]);
+
+        return Promise.resolve({
+          activeRunId: request.id,
+          events: [],
+          runs: [
+            {
+              agentTemplateId: "developer-pi",
+              baseBranch: "dev",
+              createdAt: "preview",
+              harnessProfileId: "pi-execution-discipline",
+              id: request.id,
+              manifestPath: `C:\\repo\\.agenticcrew\\runs\\${request.id}\\run-manifest.json`,
+              modelId: "gpt-5",
+              participants: request.participants.map((participant) => ({
+                agentTemplateId: "developer-pi",
+                executionMode: participant.executionMode,
+                harnessProfileId: "pi-execution-discipline",
+                id: participant.id,
+                modelId: "gpt-5",
+                providerId: "openai",
+                reasoningEffort: request.reasoningEffort,
+                role: participant.role,
+                skillRoutes: request.skillRoutes,
+                status: "queued" as const
+              })),
+              providerId: "openai",
+              reasoningEffort: request.reasoningEffort,
+              runBranch: `codex/run-${request.id}`,
+              skillRoutes: request.skillRoutes,
+              startedAt: null,
+              status: "queued" as const,
+              stoppedAt: null,
+              task: request.task,
+              updatedAt: "preview",
+              workspaceId: request.workspaceId,
+              worktreePath: `C:\\repo\\.agenticcrew\\runs\\${request.id}`
+            }
+          ]
+        });
+      }
+
+      return Promise.resolve(runsSnapshot);
+    };
+
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        runsInvoke={runsInvoke}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.change(screen.getByLabelText("Run mode"), { target: { value: "solo" } });
+    fireEvent.change(screen.getByLabelText("Task"), {
+      target: { value: "Run a focused solo implementation." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Start run" }));
+
+    expect(await screen.findByLabelText("Run event log")).toHaveTextContent("crew: developer implementation write");
   });
 
   it("switches workspace from the cockpit dropdown and updates visible agent context", async () => {

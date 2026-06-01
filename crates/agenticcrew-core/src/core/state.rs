@@ -747,6 +747,42 @@ impl AgentOsState {
             })
             .transpose()?;
 
+        for participant in &request.participants {
+            if let Some(agent_template_id) = participant
+                .agent_template_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|agent_template_id| !agent_template_id.is_empty())
+            {
+                if !self
+                    .agent_templates
+                    .iter()
+                    .any(|template| template.id == agent_template_id)
+                {
+                    return Err(StateMutationError::MissingAgentTemplate {
+                        template_id: agent_template_id.to_owned(),
+                    });
+                }
+            }
+
+            if let Some(harness_profile_id) = participant
+                .harness_profile_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|harness_profile_id| !harness_profile_id.is_empty())
+            {
+                if !self
+                    .harness_profiles
+                    .iter()
+                    .any(|profile| profile.id == harness_profile_id)
+                {
+                    return Err(StateMutationError::MissingHarnessProfile {
+                        profile_id: harness_profile_id.to_owned(),
+                    });
+                }
+            }
+        }
+
         let run = RunRecord::queued(
             request,
             workspace,
@@ -1152,6 +1188,9 @@ mod tests {
             NetworkPermissionScope,
         },
         pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
+        runs::{
+            RunParticipantExecutionMode, RunParticipantRequest, RunParticipantRole, StartRunRequest,
+        },
         sessions::{
             Checkpoint, CheckpointStatus, DesignSession, FeatureSession, GoalObject,
             SessionTransitionError,
@@ -1699,6 +1738,46 @@ mod tests {
             missing_harness_error,
             StateMutationError::MissingHarnessProfile {
                 profile_id: "missing-harness".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn start_run_rejects_missing_participant_bindings() {
+        let mut state = AgentOsState::empty();
+
+        let missing_agent_error = state
+            .start_run(
+                StartRunRequest {
+                    agent_template_id: Some("developer-pi".to_owned()),
+                    harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                    id: "crew-run".to_owned(),
+                    model_id: None,
+                    participants: vec![RunParticipantRequest {
+                        agent_template_id: Some("missing-agent".to_owned()),
+                        execution_mode: RunParticipantExecutionMode::Write,
+                        harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                        id: "developer".to_owned(),
+                        model_id: None,
+                        provider_id: None,
+                        reasoning_effort: None,
+                        role: RunParticipantRole::Implementation,
+                        skill_routes: Vec::new(),
+                    }],
+                    provider_id: None,
+                    reasoning_effort: None,
+                    skill_routes: Vec::new(),
+                    task: "Build with a crew".to_owned(),
+                    workspace_id: "fullstack-app".to_owned(),
+                },
+                "123".to_owned(),
+            )
+            .expect_err("missing participant agent should fail");
+
+        assert_eq!(
+            missing_agent_error,
+            StateMutationError::MissingAgentTemplate {
+                template_id: "missing-agent".to_owned()
             }
         );
     }

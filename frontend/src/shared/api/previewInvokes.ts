@@ -145,6 +145,17 @@ type PreviewStartRunRequest = {
   harnessProfileId?: null | string;
   id?: string;
   modelId?: null | string;
+  participants?: Array<{
+    agentTemplateId?: null | string;
+    executionMode: "read_only" | "write";
+    harnessProfileId?: null | string;
+    id: string;
+    modelId?: null | string;
+    providerId?: null | string;
+    reasoningEffort?: "high" | "low" | "medium";
+    role: "documentation" | "implementation" | "orchestration" | "qa" | "review" | "security";
+    skillRoutes: string[];
+  }>;
   providerId?: null | string;
   reasoningEffort?: "high" | "low" | "medium";
   skillRoutes?: string[];
@@ -573,6 +584,26 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
       harnessProfileId: request?.harnessProfileId ?? null,
       id: runId,
       modelId: request?.modelId ?? null,
+      participants: (request?.participants?.length ?? 0) > 0
+        ? (request?.participants ?? []).map((participant) => ({
+          ...participant,
+          reasoningEffort: participant.reasoningEffort ?? request?.reasoningEffort ?? "medium",
+          status: "queued" as const
+        }))
+        : [
+          {
+            agentTemplateId: request?.agentTemplateId ?? null,
+            executionMode: "write" as const,
+            harnessProfileId: request?.harnessProfileId ?? null,
+            id: "developer",
+            modelId: request?.modelId ?? null,
+            providerId: request?.providerId ?? null,
+            reasoningEffort: request?.reasoningEffort ?? "medium",
+            role: "implementation" as const,
+            skillRoutes: request?.skillRoutes ?? [],
+            status: "queued" as const
+          }
+        ],
       providerId: request?.providerId ?? null,
       reasoningEffort: request?.reasoningEffort ?? "medium",
       runBranch: `codex/run-${runId}`,

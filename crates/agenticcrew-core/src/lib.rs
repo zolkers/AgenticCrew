@@ -1,8 +1,7 @@
 pub mod core;
 
 use std::{
-    fs,
-    fmt,
+    fmt, fs,
     path::{Path, PathBuf},
 };
 
@@ -843,6 +842,7 @@ mod tests {
                 provider_id: None,
                 reasoning_effort: None,
                 skill_routes: vec!["agenticcrew://skills/superpowers/planning".to_owned()],
+                participants: Vec::new(),
                 task: " Build Workbench run queue ".to_owned(),
                 workspace_id: "fullstack-app".to_owned(),
             },
@@ -856,7 +856,9 @@ mod tests {
             snapshot.runs[0].skill_routes,
             vec!["agenticcrew://skills/superpowers/planning".to_owned()]
         );
-        assert!(snapshot.runs[0].manifest_path.ends_with("run-manifest.json"));
+        assert!(snapshot.runs[0]
+            .manifest_path
+            .ends_with("run-manifest.json"));
         let manifest_json =
             fs::read_to_string(&snapshot.runs[0].manifest_path).expect("run manifest should exist");
         let manifest: serde_json::Value =
@@ -866,6 +868,8 @@ mod tests {
         assert_eq!(manifest["providerId"], "openai");
         assert_eq!(manifest["modelId"], "gpt-5.4");
         assert_eq!(manifest["reasoningEffort"], "medium");
+        assert_eq!(manifest["participants"][0]["id"], "developer");
+        assert_eq!(manifest["participants"][0]["role"], "implementation");
         assert_eq!(
             manifest["skillRoutes"][0],
             "agenticcrew://skills/superpowers/planning"

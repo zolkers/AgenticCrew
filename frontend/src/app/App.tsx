@@ -55,6 +55,7 @@ import type {
   MissionCostSummary,
   MissionControlSnapshot,
   ReasoningEffort,
+  RunParticipantRequest,
   RunRecord,
   RunsSnapshot,
   SettingsSnapshot,
@@ -395,18 +396,35 @@ export function App({
     });
     replaceWorkspaceSnapshot(workspaceSnapshot);
   };
-  const startWorkspaceRun = async (task: string, skillRoutes: readonly string[], reasoningEffort: ReasoningEffort) => {
+  const startWorkspaceRun = async (
+    task: string,
+    skillRoutes: readonly string[],
+    reasoningEffort: ReasoningEffort,
+    runMode: RunLaunchMode
+  ) => {
     runSequenceRef.current += 1;
     const runId = slugify(`run-${activeWorkspace.id}-${runSequenceRef.current.toString()}`);
     const selectedAgentTemplate = loadState.agentStudioSnapshot.templates.find(
       (template) => template.id === activeWorkspace.selectedAgentTemplateId
     );
+    const providerId = selectedAgentTemplate?.providerId ?? loadState.settingsSnapshot.aiProvider.providerId;
+    const modelId = selectedAgentTemplate?.modelId ?? loadState.settingsSnapshot.aiProvider.selectedModelId;
+    const participants = buildRunParticipants({
+      agentTemplateId: activeWorkspace.selectedAgentTemplateId ?? null,
+      harnessProfileId: activeWorkspace.selectedHarnessProfileId ?? null,
+      modelId,
+      providerId,
+      reasoningEffort,
+      runMode,
+      skillRoutes
+    });
     const runsSnapshot = await startRun(runsInvoke, {
       agentTemplateId: activeWorkspace.selectedAgentTemplateId ?? null,
       harnessProfileId: activeWorkspace.selectedHarnessProfileId ?? null,
       id: runId,
-      modelId: selectedAgentTemplate?.modelId ?? loadState.settingsSnapshot.aiProvider.selectedModelId,
-      providerId: selectedAgentTemplate?.providerId ?? loadState.settingsSnapshot.aiProvider.providerId,
+      modelId,
+      participants,
+      providerId,
       reasoningEffort,
       skillRoutes: [...skillRoutes],
       task,
@@ -603,8 +621,8 @@ export function App({
             onLoadoutChange={(loadout) => {
               void updateActiveLoadout(loadout);
             }}
-            onRunStart={(task, skillRoutes, reasoningEffort) => {
-              void startWorkspaceRun(task, skillRoutes, reasoningEffort);
+            onRunStart={(task, skillRoutes, reasoningEffort, runMode) => {
+              void startWorkspaceRun(task, skillRoutes, reasoningEffort, runMode);
             }}
             runsSnapshot={loadState.runsSnapshot}
             tokenSummary={tokenSummary}
@@ -959,7 +977,12 @@ type CockpitProps = Readonly<{
   defaultReasoningEffort: ReasoningEffort;
   harnessStudioSnapshot: HarnessStudioSnapshot;
   onLoadoutChange: (loadout: WorkspaceLoadout) => void;
-  onRunStart: (task: string, skillRoutes: readonly string[], reasoningEffort: ReasoningEffort) => void;
+  onRunStart: (
+    task: string,
+    skillRoutes: readonly string[],
+    reasoningEffort: ReasoningEffort,
+    runMode: RunLaunchMode
+  ) => void;
   onWorkspaceChange: (workspaceId: string) => void;
   runsSnapshot: RunsSnapshot;
   tokenSummary: MissionCostSummary;
@@ -970,6 +993,8 @@ type WorkspaceLoadout = Readonly<{
   agentTemplateId: string;
   harnessProfileId: string;
 }>;
+
+type RunLaunchMode = "crew" | "solo";
 
 function Cockpit({
   activeWorkspace,
@@ -985,6 +1010,7 @@ function Cockpit({
   workspaces
 }: CockpitProps) {
   const [runTask, setRunTask] = useState(activeWorkspace.mission);
+  const [runMode, setRunMode] = useState<RunLaunchMode>("crew");
   const [runReasoningEffort, setRunReasoningEffort] = useState<ReasoningEffort>(defaultReasoningEffort);
   const [selectedRunId, setSelectedRunId] = useState<null | string>(runsSnapshot.activeRunId ?? null);
   const [selectedMissionSkillRoutes, setSelectedMissionSkillRoutes] = useState<string[]>([]);
@@ -1169,7 +1195,8 @@ function Cockpit({
                 onRunStart(
                   task,
                   selectedMissionSkillRoutes.filter((route) => availableMissionSkillRouteSet.has(route)),
-                  runReasoningEffort
+                  runReasoningEffort,
+                  runMode
                 );
               }
             }}
@@ -1186,6 +1213,19 @@ function Cockpit({
               />
             </label>
             <div className="run-composer-controls">
+              <label>
+                <span>Run mode</span>
+                <select
+                  aria-label="Run mode"
+                  onChange={(event) => {
+                    setRunMode(event.target.value as RunLaunchMode);
+                  }}
+                  value={runMode}
+                >
+                  <option value="solo">Solo</option>
+                  <option value="crew">Crew</option>
+                </select>
+              </label>
               <label>
                 <span>Thinking</span>
                 <select
@@ -1268,6 +1308,12 @@ function Cockpit({
                   <span aria-hidden="true">&gt;</span>
                   <code>manifest: {activeRun.manifestPath}</code>
                 </p>
+                {activeRun.participants.length > 0 ? (
+                  <p>
+                    <span aria-hidden="true">&gt;</span>
+                    <code>crew: {formatRunParticipants(activeRun)}</code>
+                  </p>
+                ) : null}
                 {activeRun.skillRoutes.length > 0 ? (
                   <p>
                     <span aria-hidden="true">&gt;</span>
@@ -1374,4 +1420,65 @@ function skillManifestFromRoute(route: string): DiscoveredSkillManifest {
     relativePath: "",
     route
   };
+}
+
+function buildRunParticipants({
+  agentTemplateId,
+  harnessProfileId,
+  modelId,
+  providerId,
+  reasoningEffort,
+  runMode,
+  skillRoutes
+}: Readonly<{
+  agentTemplateId: null | string;
+  harnessProfileId: null | string;
+  modelId?: null | string;
+  providerId?: null | string;
+  reasoningEffort: ReasoningEffort;
+  runMode: RunLaunchMode;
+  skillRoutes: readonly string[];
+}>): RunParticipantRequest[] {
+  const developer: RunParticipantRequest = {
+    agentTemplateId,
+    executionMode: "write",
+    harnessProfileId,
+    id: "developer",
+    modelId,
+    providerId,
+    reasoningEffort,
+    role: "implementation",
+    skillRoutes: [...skillRoutes]
+  };
+
+  if (runMode === "solo") {
+    return [developer];
+  }
+
+  return [
+    developer,
+    {
+      agentTemplateId,
+      executionMode: "read_only",
+      harnessProfileId,
+      id: "reviewer",
+      modelId,
+      providerId,
+      reasoningEffort: "medium",
+      role: "review",
+      skillRoutes: []
+    }
+  ];
+}
+
+function formatRunParticipants(run: RunRecord): string {
+  return run.participants
+    .map((participant) =>
+      [
+        participant.id,
+        participant.role,
+        participant.executionMode === "read_only" ? "read only" : participant.executionMode
+      ].join(" ")
+    )
+    .join(", ");
 }

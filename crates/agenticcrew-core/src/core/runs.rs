@@ -39,10 +39,58 @@ pub struct RunRecord {
     pub reasoning_effort: ReasoningEffort,
     #[serde(default)]
     pub skill_routes: Vec<String>,
+    #[serde(default)]
+    pub participants: Vec<RunParticipant>,
     pub created_at: String,
     pub updated_at: String,
     pub started_at: Option<String>,
     pub stopped_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RunParticipantExecutionMode {
+    ReadOnly,
+    Write,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RunParticipantRole {
+    Implementation,
+    Review,
+    Qa,
+    Security,
+    Documentation,
+    Orchestration,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RunParticipantStatus {
+    Queued,
+    Preparing,
+    Running,
+    Blocked,
+    Failed,
+    Completed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunParticipant {
+    pub id: String,
+    pub role: RunParticipantRole,
+    pub execution_mode: RunParticipantExecutionMode,
+    pub status: RunParticipantStatus,
+    pub agent_template_id: Option<String>,
+    pub harness_profile_id: Option<String>,
+    pub provider_id: Option<String>,
+    pub model_id: Option<String>,
+    #[serde(default = "default_reasoning_effort")]
+    pub reasoning_effort: ReasoningEffort,
+    #[serde(default)]
+    pub skill_routes: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -61,6 +109,7 @@ pub struct RunManifest {
     pub run_branch: String,
     pub worktree_path: String,
     pub manifest_path: String,
+    pub participants: Vec<RunParticipant>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -87,6 +136,24 @@ pub struct StartRunRequest {
     pub id: String,
     pub workspace_id: String,
     pub task: String,
+    pub agent_template_id: Option<String>,
+    pub harness_profile_id: Option<String>,
+    pub provider_id: Option<String>,
+    pub model_id: Option<String>,
+    #[serde(default)]
+    pub reasoning_effort: Option<ReasoningEffort>,
+    #[serde(default)]
+    pub skill_routes: Vec<String>,
+    #[serde(default)]
+    pub participants: Vec<RunParticipantRequest>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunParticipantRequest {
+    pub id: String,
+    pub role: RunParticipantRole,
+    pub execution_mode: RunParticipantExecutionMode,
     pub agent_template_id: Option<String>,
     pub harness_profile_id: Option<String>,
     pub provider_id: Option<String>,
@@ -127,24 +194,39 @@ impl RunRecord {
         let run_branch = format!("codex/run-{id}");
         let worktree_path = run_worktree_path(&workspace.path, &id);
         let manifest_path = run_manifest_path(&worktree_path);
+        let agent_template_id = agent_template.map(|template| template.id.clone());
+        let harness_profile_id = harness_profile.map(|profile| profile.id.clone());
+        let model_id = request
+            .model_id
+            .or_else(|| agent_template.map(|template| template.model_id.clone()));
+        let provider_id = request
+            .provider_id
+            .or_else(|| agent_template.map(|template| template.provider_id.clone()));
+        let reasoning_effort = request
+            .reasoning_effort
+            .or_else(|| agent_template.map(|template| template.reasoning_effort))
+            .unwrap_or(ReasoningEffort::Medium);
+        let participants = build_run_participants(
+            request.participants,
+            &agent_template_id,
+            &harness_profile_id,
+            &provider_id,
+            &model_id,
+            reasoning_effort,
+            &skill_routes,
+        )?;
 
         Ok(Self {
-            agent_template_id: agent_template.map(|template| template.id.clone()),
+            agent_template_id,
             base_branch: workspace.branch.clone(),
             created_at: created_at.clone(),
-            harness_profile_id: harness_profile.map(|profile| profile.id.clone()),
+            harness_profile_id,
             id,
-            model_id: request
-                .model_id
-                .or_else(|| agent_template.map(|template| template.model_id.clone())),
-            provider_id: request
-                .provider_id
-                .or_else(|| agent_template.map(|template| template.provider_id.clone())),
-            reasoning_effort: request
-                .reasoning_effort
-                .or_else(|| agent_template.map(|template| template.reasoning_effort))
-                .unwrap_or(ReasoningEffort::Medium),
+            model_id,
+            provider_id,
+            reasoning_effort,
             manifest_path,
+            participants,
             run_branch,
             skill_routes,
             started_at: None,
@@ -166,6 +248,7 @@ impl RunRecord {
             model_id: self.model_id.clone(),
             provider_id: self.provider_id.clone(),
             reasoning_effort: self.reasoning_effort,
+            participants: self.participants.clone(),
             run_branch: self.run_branch.clone(),
             run_id: self.id.clone(),
             skill_routes: self.skill_routes.clone(),
@@ -191,6 +274,55 @@ fn normalize_skill_routes(skill_routes: Vec<String>) -> Vec<String> {
             }
             routes
         })
+}
+
+fn build_run_participants(
+    participant_requests: Vec<RunParticipantRequest>,
+    agent_template_id: &Option<String>,
+    harness_profile_id: &Option<String>,
+    provider_id: &Option<String>,
+    model_id: &Option<String>,
+    reasoning_effort: ReasoningEffort,
+    skill_routes: &[String],
+) -> Result<Vec<RunParticipant>, RunError> {
+    if participant_requests.is_empty() {
+        return Ok(vec![RunParticipant {
+            agent_template_id: agent_template_id.clone(),
+            execution_mode: RunParticipantExecutionMode::Write,
+            harness_profile_id: harness_profile_id.clone(),
+            id: "developer".to_owned(),
+            model_id: model_id.clone(),
+            provider_id: provider_id.clone(),
+            reasoning_effort,
+            role: RunParticipantRole::Implementation,
+            skill_routes: skill_routes.to_vec(),
+            status: RunParticipantStatus::Queued,
+        }]);
+    }
+
+    participant_requests
+        .into_iter()
+        .map(|participant| {
+            Ok(RunParticipant {
+                agent_template_id: normalize_optional_identifier(participant.agent_template_id),
+                execution_mode: participant.execution_mode,
+                harness_profile_id: normalize_optional_identifier(participant.harness_profile_id),
+                id: validate_identifier("run participant id", participant.id)?,
+                model_id: normalize_optional_identifier(participant.model_id),
+                provider_id: normalize_optional_identifier(participant.provider_id),
+                reasoning_effort: participant.reasoning_effort.unwrap_or(reasoning_effort),
+                role: participant.role,
+                skill_routes: normalize_skill_routes(participant.skill_routes),
+                status: RunParticipantStatus::Queued,
+            })
+        })
+        .collect()
+}
+
+fn normalize_optional_identifier(value: Option<String>) -> Option<String> {
+    value
+        .map(|candidate| candidate.trim().to_owned())
+        .filter(|candidate| !candidate.is_empty())
 }
 
 fn run_worktree_path(workspace_path: &str, run_id: &str) -> String {
@@ -271,7 +403,10 @@ fn validate_identifier(field: &'static str, value: String) -> Result<String, Run
 
 #[cfg(test)]
 mod tests {
-    use super::{runs_snapshot_from_state, RunRecord, RunStatus, StartRunRequest};
+    use super::{
+        runs_snapshot_from_state, RunParticipantExecutionMode, RunParticipantRequest,
+        RunParticipantRole, RunRecord, RunStatus, StartRunRequest,
+    };
     use crate::core::settings::ReasoningEffort;
     use crate::core::state::AgentOsState;
 
@@ -304,6 +439,7 @@ mod tests {
                     "agenticcrew://skills/superpowers/subagent-driven-development".to_owned(),
                     " agenticcrew://skills/superpowers/subagent-driven-development ".to_owned(),
                 ],
+                participants: Vec::new(),
                 task: " Build the run composer ".to_owned(),
                 workspace_id: "fullstack-app".to_owned(),
             },
@@ -319,13 +455,18 @@ mod tests {
         assert_eq!(run.base_branch, "dev");
         assert_eq!(run.run_branch, "codex/run-run-1");
         assert!(normalized_path(&run.worktree_path).ends_with("/.agenticcrew/runs/run-1"));
-        assert!(
-            normalized_path(&run.manifest_path)
-                .ends_with("/.agenticcrew/runs/run-1/run-manifest.json")
-        );
+        assert!(normalized_path(&run.manifest_path)
+            .ends_with("/.agenticcrew/runs/run-1/run-manifest.json"));
         assert_eq!(run.provider_id, Some("openai".to_owned()));
         assert_eq!(run.model_id, Some("gpt-5.4".to_owned()));
         assert_eq!(run.reasoning_effort, ReasoningEffort::High);
+        assert_eq!(run.participants.len(), 1);
+        assert_eq!(run.participants[0].id, "developer");
+        assert_eq!(run.participants[0].role, RunParticipantRole::Implementation);
+        assert_eq!(
+            run.participants[0].execution_mode,
+            RunParticipantExecutionMode::Write
+        );
         assert_eq!(
             run.skill_routes,
             vec!["agenticcrew://skills/superpowers/subagent-driven-development".to_owned()]
@@ -338,6 +479,78 @@ mod tests {
         assert_eq!(manifest.model_id, Some("gpt-5.4".to_owned()));
         assert_eq!(manifest.reasoning_effort, ReasoningEffort::High);
         assert_eq!(manifest.manifest_path, run.manifest_path);
+        assert_eq!(manifest.participants[0].id, "developer");
+        assert_eq!(
+            manifest.participants[0].skill_routes,
+            vec!["agenticcrew://skills/superpowers/subagent-driven-development".to_owned()]
+        );
+    }
+
+    #[test]
+    fn queued_crew_run_records_multiple_participants() {
+        let state = AgentOsState::empty();
+        let workspace = state
+            .workspaces
+            .iter()
+            .find(|workspace| workspace.id == "fullstack-app")
+            .expect("workspace");
+
+        let run = RunRecord::queued(
+            StartRunRequest {
+                agent_template_id: Some("developer-pi".to_owned()),
+                harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                id: "crew-run".to_owned(),
+                model_id: Some("gpt-5.4".to_owned()),
+                provider_id: Some("openai".to_owned()),
+                reasoning_effort: Some(ReasoningEffort::Medium),
+                skill_routes: vec!["agenticcrew://skills/superpowers/planning".to_owned()],
+                participants: vec![
+                    RunParticipantRequest {
+                        agent_template_id: Some("developer-pi".to_owned()),
+                        execution_mode: RunParticipantExecutionMode::Write,
+                        harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                        id: "developer".to_owned(),
+                        model_id: Some("gpt-5.4".to_owned()),
+                        provider_id: Some("openai".to_owned()),
+                        reasoning_effort: Some(ReasoningEffort::High),
+                        role: RunParticipantRole::Implementation,
+                        skill_routes: vec!["agenticcrew://skills/superpowers/planning".to_owned()],
+                    },
+                    RunParticipantRequest {
+                        agent_template_id: Some("developer-pi".to_owned()),
+                        execution_mode: RunParticipantExecutionMode::ReadOnly,
+                        harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                        id: "reviewer".to_owned(),
+                        model_id: Some("gpt-5.4".to_owned()),
+                        provider_id: Some("openai".to_owned()),
+                        reasoning_effort: Some(ReasoningEffort::Medium),
+                        role: RunParticipantRole::Review,
+                        skill_routes: Vec::new(),
+                    },
+                ],
+                task: "Coordinate a crew".to_owned(),
+                workspace_id: "fullstack-app".to_owned(),
+            },
+            workspace,
+            state.agent_templates.first(),
+            state.harness_profiles.first(),
+            "123".to_owned(),
+        )
+        .expect("crew run");
+
+        assert_eq!(run.participants.len(), 2);
+        assert_eq!(run.participants[0].id, "developer");
+        assert_eq!(run.participants[0].reasoning_effort, ReasoningEffort::High);
+        assert_eq!(run.participants[1].id, "reviewer");
+        assert_eq!(run.participants[1].role, RunParticipantRole::Review);
+        assert_eq!(
+            run.participants[1].execution_mode,
+            RunParticipantExecutionMode::ReadOnly
+        );
+
+        let manifest = run.to_manifest();
+        assert_eq!(manifest.participants.len(), 2);
+        assert_eq!(manifest.participants[1].id, "reviewer");
     }
 
     #[test]
@@ -352,6 +565,7 @@ mod tests {
                 provider_id: None,
                 reasoning_effort: None,
                 skill_routes: Vec::new(),
+                participants: Vec::new(),
                 task: "Task".to_owned(),
                 workspace_id: "fullstack-app".to_owned(),
             },

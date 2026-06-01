@@ -216,6 +216,24 @@ export type RunStatus =
   | "stopping";
 
 export type ReasoningEffort = "high" | "low" | "medium";
+export type RunParticipantExecutionMode = "read_only" | "write";
+export type RunParticipantRole = "documentation" | "implementation" | "orchestration" | "qa" | "review" | "security";
+export type RunParticipantStatus = "blocked" | "completed" | "failed" | "preparing" | "queued" | "running";
+
+export type RunParticipant = {
+  agentTemplateId?: string | null;
+  executionMode: RunParticipantExecutionMode;
+  harnessProfileId?: string | null;
+  id: string;
+  modelId?: string | null;
+  providerId?: string | null;
+  reasoningEffort?: ReasoningEffort;
+  role: RunParticipantRole;
+  skillRoutes: string[];
+  status: RunParticipantStatus;
+};
+
+export type RunParticipantRequest = Omit<RunParticipant, "status">;
 
 export type RunRecord = {
   agentTemplateId?: string | null;
@@ -225,6 +243,7 @@ export type RunRecord = {
   id: string;
   manifestPath: string;
   modelId?: string | null;
+  participants: RunParticipant[];
   providerId?: string | null;
   reasoningEffort?: ReasoningEffort;
   runBranch: string;
@@ -260,6 +279,7 @@ export type StartRunRequest = {
   id: string;
   modelId?: string | null;
   providerId?: string | null;
+  participants?: RunParticipantRequest[];
   reasoningEffort?: ReasoningEffort;
   skillRoutes: string[];
   task: string;

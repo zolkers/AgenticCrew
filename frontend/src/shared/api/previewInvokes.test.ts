@@ -198,6 +198,50 @@ describe("previewInvokes", () => {
     });
   });
 
+  it("queues preview runs with explicit crew participants", async () => {
+    const snapshot = await previewRunsInvoke("start_run", {
+      request: {
+        agentTemplateId: "developer-pi",
+        harnessProfileId: "pi-execution-discipline",
+        id: "crew-preview",
+        modelId: "gpt-5",
+        participants: [
+          {
+            agentTemplateId: "developer-pi",
+            executionMode: "write",
+            harnessProfileId: "pi-execution-discipline",
+            id: "developer",
+            modelId: "gpt-5",
+            providerId: "openai",
+            reasoningEffort: "high",
+            role: "implementation",
+            skillRoutes: ["agenticcrew://skills/superpowers/planning"]
+          },
+          {
+            agentTemplateId: "developer-pi",
+            executionMode: "read_only",
+            harnessProfileId: "pi-execution-discipline",
+            id: "reviewer",
+            modelId: "gpt-5",
+            providerId: "openai",
+            role: "review",
+            skillRoutes: []
+          }
+        ],
+        providerId: "openai",
+        reasoningEffort: "medium",
+        skillRoutes: ["agenticcrew://skills/superpowers/planning"],
+        task: "Coordinate preview crew",
+        workspaceId: "fullstack-app"
+      }
+    });
+
+    expect(snapshot.runs[0]?.participants).toEqual([
+      expect.objectContaining({ id: "developer", reasoningEffort: "high", status: "queued" }),
+      expect.objectContaining({ id: "reviewer", reasoningEffort: "medium", status: "queued" })
+    ]);
+  });
+
   it("uses preview run defaults when action args are absent", async () => {
     await expect(previewRunsInvoke("start_run")).resolves.toMatchObject({
       activeRunId: "preview-run-1",
