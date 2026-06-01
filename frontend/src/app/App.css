@@ -853,26 +853,46 @@ button {
 
 .empty-run,
 .run-list-item {
-  display: grid;
-  gap: 0.18rem;
   min-width: 0;
-  padding: 0.5rem 0.55rem;
-  border: 1px solid var(--color-border-soft);
-  border-radius: 4px;
-  background: #202428;
 }
 
 .empty-run {
+  padding: 0.5rem 0.55rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
   color: var(--color-muted);
+  background: #202428;
 }
 
-.run-list-item strong,
-.run-list-item small {
-  overflow-wrap: anywhere;
+.run-list-item button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.05rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
+  color: var(--color-text);
+  text-align: left;
+  background: #202428;
+}
+
+.run-list-item button:hover,
+.run-list-item button[aria-current="true"] {
+  border-color: rgba(125, 211, 199, 0.45);
+  background: #283035;
+}
+
+.run-list-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .run-list-item span {
-  width: max-content;
   padding: 0.1rem 0.38rem;
   border: 1px solid rgba(125, 211, 199, 0.28);
   border-radius: 999px;

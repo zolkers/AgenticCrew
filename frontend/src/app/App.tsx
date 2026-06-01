@@ -965,6 +965,7 @@ function Cockpit({
   workspaces
 }: CockpitProps) {
   const [runTask, setRunTask] = useState(activeWorkspace.mission);
+  const [selectedRunId, setSelectedRunId] = useState<null | string>(runsSnapshot.activeRunId ?? null);
   const agentTemplates = preferredActiveItems(agentStudioSnapshot.templates);
   const harnessProfiles = preferredActiveItems(harnessStudioSnapshot.profiles);
   const selectedAgentTemplateId =
@@ -974,7 +975,8 @@ function Cockpit({
   const selectedAgentTemplate = agentTemplates.find((template) => template.id === selectedAgentTemplateId);
   const selectedHarnessProfile = harnessProfiles.find((profile) => profile.id === selectedHarnessProfileId);
   const workspaceRuns = runsSnapshot.runs.filter((run) => run.workspaceId === activeWorkspace.id);
-  const activeRun = workspaceRuns.find((run) => run.id === runsSnapshot.activeRunId) ?? workspaceRuns.at(-1);
+  const selectedRun = workspaceRuns.find((run) => run.id === selectedRunId);
+  const activeRun = selectedRun ?? workspaceRuns.find((run) => run.id === runsSnapshot.activeRunId) ?? workspaceRuns.at(-1);
   const activeRunEvents = activeRun === undefined
     ? []
     : runsSnapshot.events.filter((event) => event.runId === activeRun.id);
@@ -1034,7 +1036,16 @@ function Cockpit({
             {workspaceRuns.length === 0 ? (
               <li className="empty-run">No runs queued</li>
             ) : (
-              workspaceRuns.map((run) => <RunListItem key={run.id} run={run} />)
+              workspaceRuns.map((run) => (
+                <RunListItem
+                  active={run.id === activeRun?.id}
+                  key={run.id}
+                  onSelect={() => {
+                    setSelectedRunId(run.id);
+                  }}
+                  run={run}
+                />
+              ))
             )}
           </ol>
         </section>
@@ -1109,6 +1120,7 @@ function Cockpit({
                 event.preventDefault();
                 const task = runTask.trim();
                 if (task.length > 0) {
+                  setSelectedRunId(null);
                   onRunStart(task);
                 }
               }}
@@ -1175,12 +1187,27 @@ function Cockpit({
   );
 }
 
-function RunListItem({ run }: Readonly<{ run: RunRecord }>) {
+function RunListItem({
+  active,
+  onSelect,
+  run
+}: Readonly<{
+  active: boolean;
+  onSelect: () => void;
+  run: RunRecord;
+}>) {
   return (
     <li className={`run-list-item run-list-item-${run.status}`}>
-      <strong>{run.id}</strong>
-      <span>{run.status}</span>
-      <small>{run.task}</small>
+      <button
+        aria-current={active ? "true" : undefined}
+        aria-label={`Open run ${run.id}`}
+        onClick={onSelect}
+        title={run.task}
+        type="button"
+      >
+        <strong>{run.id}</strong>
+        <span>{run.status}</span>
+      </button>
     </li>
   );
 }

@@ -310,7 +310,8 @@ describe("App", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Start run" }));
 
-    expect(await screen.findByText("Prioritize layout regressions before handoff.")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Open run run-fullstack-app-1" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Run event log")).toHaveTextContent("Prioritize layout regressions before handoff.");
     expect(screen.getByText(/Run queued for workspace/u)).toBeInTheDocument();
   });
 
