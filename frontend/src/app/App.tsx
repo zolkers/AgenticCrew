@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   Plus,
   RefreshCw,
+  Search,
   Upload
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -140,6 +141,8 @@ export function App({
 }: AppProps) {
   const [loadState, setLoadState] = useState<AppLoadState>({ status: "loading" });
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
   const runSequenceRef = useRef(0);
   const [routeState, setRouteState] = useState<AppRouteState>(() => resolveInitialRoute());
   const { t } = useTranslation();
@@ -200,6 +203,26 @@ export function App({
     workspaceInvoke
   ]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        if (isTextEntryElement(event.target)) {
+          return;
+        }
+
+        event.preventDefault();
+        setCommandQuery("");
+        setCommandPaletteOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   if (loadState.status === "error") {
     return <p role="alert">{t("missionControl.loadError", { defaultValue: "Mission Control unavailable" })}</p>;
   }
@@ -232,6 +255,10 @@ export function App({
   const openLaunchpad = () => {
     setRouteState({ view: "cockpit", workspaceId: null });
     window.history.pushState(null, "", "/workspaces");
+  };
+  const closeCommandPalette = () => {
+    setCommandPaletteOpen(false);
+    setCommandQuery("");
   };
   const replaceWorkspaceSnapshot = (workspaceSnapshot: WorkspaceSnapshot) => {
     setLoadState({
@@ -271,6 +298,77 @@ export function App({
   const openView = (view: AppView) => {
     openWorkspace(activeWorkspace.id, view);
   };
+  const openViewFromCommand = (view: AppView) => {
+    openView(view);
+    closeCommandPalette();
+  };
+  const commandItems: CommandItem[] = [
+    {
+      description: activeWorkspace.name,
+      keywords: ["workspace", "cockpit", activeWorkspace.id, activeWorkspace.name],
+      label: "Open Cockpit",
+      run: () => {
+        openViewFromCommand("cockpit");
+      }
+    },
+    {
+      description: "Sessions, checkpoints, gates, costs",
+      keywords: ["mission", "dashboard", "runtime", "metrics"],
+      label: "Open Mission Control",
+      run: () => {
+        openViewFromCommand("missionControl");
+      }
+    },
+    {
+      description: "Source browser, trust, permissions",
+      keywords: ["skills", "marketplace", "sources", "routes"],
+      label: "Open Skill Sources",
+      run: () => {
+        openViewFromCommand("skillSources");
+      }
+    },
+    {
+      description: "Execution policies and PI extensions",
+      keywords: ["harness", "policy", "pi", "runtime"],
+      label: "Open Execution Policies",
+      run: () => {
+        openViewFromCommand("harnessStudio");
+      }
+    },
+    {
+      description: "Agent profiles, versions, evaluations",
+      keywords: ["agents", "studio", "training", "evaluations"],
+      label: "Open Agent Profiles",
+      run: () => {
+        openViewFromCommand("agentStudio");
+      }
+    },
+    {
+      description: `${activeWorkspace.branch} / ${activeWorkspace.gitStatus?.remoteBranch ?? "no upstream"}`,
+      keywords: ["git", "branch", "commit", "history", activeWorkspace.branch],
+      label: "Open Git",
+      run: () => {
+        openViewFromCommand("gitPanel");
+      }
+    },
+    {
+      description: "Provider credentials and model sync",
+      keywords: ["settings", "provider", "openai", "models"],
+      label: "Open Settings",
+      run: () => {
+        openViewFromCommand("settings");
+      }
+    },
+    {
+      description: "Choose or create another workspace",
+      keywords: ["launchpad", "workspace", "create", "switch"],
+      label: "Open Workspace Launchpad",
+      run: () => {
+        openLaunchpad();
+        closeCommandPalette();
+      }
+    }
+  ];
   const updateActiveWorkspace = async (changes: Pick<CockpitWorkspace, "branch" | "path">) => {
     const workspaceSnapshot = await updateWorkspaceGitContext(workspaceInvoke, {
       ...changes,
@@ -412,6 +510,18 @@ export function App({
             {formatCompactNumber(tokenSummary.totalTokens)} / {formatCompactNumber(tokenSummary.tokenLimit)}
           </strong>
         </div>
+        <button
+          aria-label="Open command palette"
+          className="topbar-icon"
+          onClick={() => {
+            setCommandQuery("");
+            setCommandPaletteOpen(true);
+          }}
+          title="Command palette"
+          type="button"
+        >
+          <Search aria-hidden="true" size={18} />
+        </button>
         <button
           aria-label="Choose workspace"
           className="topbar-icon"
@@ -562,8 +672,113 @@ export function App({
         ) : null}
       </main>
       </div>
+      {commandPaletteOpen ? (
+        <CommandPalette
+          items={commandItems}
+          onClose={closeCommandPalette}
+          query={commandQuery}
+          setQuery={setCommandQuery}
+        />
+      ) : null}
       </div>
     </MantineProvider>
+  );
+}
+
+type CommandItem = Readonly<{
+  description: string;
+  keywords: readonly string[];
+  label: string;
+  run: () => void;
+}>;
+
+type CommandPaletteProps = Readonly<{
+  items: readonly CommandItem[];
+  onClose: () => void;
+  query: string;
+  setQuery: (query: string) => void;
+}>;
+
+function CommandPalette({ items, onClose, query, setQuery }: CommandPaletteProps) {
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredItems =
+    normalizedQuery.length === 0
+      ? items
+      : items.filter((item) =>
+          [item.label, item.description, ...item.keywords]
+            .join(" ")
+            .toLowerCase()
+            .includes(normalizedQuery)
+        );
+
+  return (
+    <div className="command-palette-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        aria-labelledby="command-palette-title"
+        aria-modal="true"
+        className="command-palette"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            onClose();
+          }
+        }}
+        onMouseDown={(event) => {
+          event.stopPropagation();
+        }}
+        role="dialog"
+      >
+        <header>
+          <div>
+            <p className="eyebrow">Quick actions</p>
+            <h2 id="command-palette-title">Command palette</h2>
+          </div>
+          <button aria-label="Close command palette" onClick={onClose} type="button">
+            Esc
+          </button>
+        </header>
+        <label>
+          <Search aria-hidden="true" size={16} />
+          <span>Search commands</span>
+          <input
+            autoFocus
+            onChange={(event) => {
+              setQuery(event.target.value);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                onClose();
+              }
+            }}
+            value={query}
+          />
+        </label>
+        <div className="command-palette-list">
+          {filteredItems.length === 0 ? (
+            <p>No commands found</p>
+          ) : (
+            filteredItems.map((item) => (
+              <button aria-label={item.label} key={item.label} onClick={item.run} type="button">
+                <strong>{item.label}</strong>
+                <span>{item.description}</span>
+              </button>
+            ))
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function isTextEntryElement(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return (
+    target.isContentEditable ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
   );
 }
 

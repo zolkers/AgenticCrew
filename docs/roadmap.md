@@ -15,9 +15,10 @@ AgenticCrew is a local-first desktop product with an Electron shell, a Rust-owne
 - Restrained workspace navigation shell between Mission Control and Skill Sources.
 - AgenticCrew technical naming across npm, Rust, Python worker, and Sonar project metadata.
 - Workspace launcher, manual Git metadata editing, Rust-owned workspace records, OpenAI provider model sync, model pickers, Skill Sources workflow, Harness Studio PI extensions, Agent Studio evaluation runs, and live Mission Control metrics.
+- Command Palette v1 for workspace navigation, including Ctrl/Cmd+K, filtered actions, accessible close behavior, and Git/Settings/Launchpad routing.
 
 **Next focus:**
-- Product power features: command palette, artifacts, diff review, safety center, notifications, and run replay.
+- Product power features: artifacts, diff review, safety center, notifications, and run replay.
 - Packaging polish: native Electron menus, installer packaging, updater strategy, and first-run onboarding.
 - Runtime execution: live agent event streams and pause/resume/kill controls once execution starts streaming beyond durable snapshots.
 

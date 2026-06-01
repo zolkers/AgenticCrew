@@ -393,6 +393,146 @@ describe("App", () => {
     expect(screen.getByRole("navigation", { name: "Workspace navigation" })).not.toHaveTextContent("Mission Control");
   });
 
+  it("opens the command palette with Ctrl+K and navigates to Git", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.keyDown(window, { ctrlKey: true, key: "k" });
+
+    expect(await screen.findByRole("dialog", { name: "Command palette" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Search commands"), { target: { value: "git" } });
+    fireEvent.click(screen.getByRole("button", { name: "Open Git" }));
+
+    expect(await screen.findByRole("heading", { name: "Git Panel" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/fullstack-app/git");
+    expect(screen.queryByRole("dialog", { name: "Command palette" })).not.toBeInTheDocument();
+  });
+
+  it("opens the command palette from the topbar button and shows an empty filtered state", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
+    fireEvent.change(await screen.findByLabelText("Search commands"), { target: { value: "nope" } });
+
+    expect(screen.getByText("No commands found")).toBeInTheDocument();
+  });
+
+  it("closes the command palette with Escape and backdrop interactions", async () => {
+    const { container } = render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Command palette" });
+    fireEvent.mouseDown(dialog);
+    expect(dialog).toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByLabelText("Search commands"), { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Command palette" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
+    fireEvent.mouseDown(container.querySelector(".command-palette-backdrop") as HTMLElement);
+    expect(screen.queryByRole("dialog", { name: "Command palette" })).not.toBeInTheDocument();
+  });
+
+  it("keeps Ctrl+K available for text entry inside workspace forms", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.keyDown(screen.getByLabelText("Task"), { ctrlKey: true, key: "k" });
+
+    expect(screen.queryByRole("dialog", { name: "Command palette" })).not.toBeInTheDocument();
+  });
+
+  it("runs additional command palette destinations", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open Settings" }));
+
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/fullstack-app/settings");
+
+    fireEvent.click(screen.getByRole("button", { name: "Open command palette" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open Workspace Launchpad" }));
+
+    expect(await screen.findByRole("heading", { name: "Choose a workspace" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspaces");
+  });
+
+  it("routes topbar branch actions through the Git panel", async () => {
+    render(
+      <App
+        agentStudioInvoke={() => Promise.resolve(agentStudioSnapshot)}
+        harnessStudioInvoke={() => Promise.resolve(harnessStudioSnapshot)}
+        missionControlInvoke={() => Promise.resolve(missionControlSnapshot)}
+        settingsInvoke={settingsInvoke}
+        skillSourcesInvoke={() => Promise.resolve(skillSourcesSnapshot)}
+      />
+    );
+
+    await openDefaultWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Active branch" }));
+    fireEvent.click(screen.getByRole("button", { name: "Commit" }));
+
+    expect(await screen.findByRole("heading", { name: "Git Panel" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/fullstack-app/git");
+
+    fireEvent.click(screen.getByRole("button", { name: "Active branch" }));
+    fireEvent.click(screen.getByRole("button", { name: "Push" }));
+
+    expect(await screen.findByRole("heading", { name: "Git Panel" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Active branch" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Active branch" })).toHaveAttribute("aria-expanded", "false");
+    });
+  });
+
   it("selects the active agent and harness loadout from saved templates", async () => {
     const multiHarnessSnapshot: HarnessStudioSnapshot = {
       ...harnessStudioSnapshot,

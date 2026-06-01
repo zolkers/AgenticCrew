@@ -68,7 +68,7 @@ button {
 .topbar {
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(180px, 0.9fr) minmax(160px, 0.8fr) minmax(140px, 0.7fr) auto;
+  grid-template-columns: minmax(180px, 0.9fr) minmax(160px, 0.8fr) minmax(140px, 0.7fr) auto auto;
   gap: 0;
   align-items: center;
   min-height: 3.25rem;
@@ -305,6 +305,124 @@ button {
   min-height: 0;
   padding: 0.75rem;
   overflow: auto;
+}
+
+.command-palette-backdrop {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  padding: clamp(1rem, 9vh, 5rem) 1rem 1rem;
+  background: rgba(12, 15, 18, 0.62);
+}
+
+.command-palette {
+  display: grid;
+  gap: 0.7rem;
+  width: min(40rem, 100%);
+  max-height: min(34rem, calc(100dvh - 2rem));
+  padding: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.48);
+  background: var(--color-panel-strong);
+}
+
+.command-palette header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.command-palette h2 {
+  margin: 0.1rem 0 0;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.command-palette header button {
+  min-width: 2.4rem;
+  min-height: 1.8rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 3px;
+  color: var(--color-muted);
+  background: var(--color-panel);
+}
+
+.command-palette label {
+  display: grid;
+  grid-template-columns: auto minmax(0, auto) minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: center;
+  min-height: 2.6rem;
+  padding: 0 0.65rem;
+  border: 1px solid rgba(106, 169, 255, 0.34);
+  border-radius: 4px;
+  background: var(--color-terminal-deep);
+}
+
+.command-palette label span {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.command-palette input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--color-text);
+  background: transparent;
+}
+
+.command-palette-list {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 0;
+  overflow: auto;
+}
+
+.command-palette-list button {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.8fr) minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: center;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--color-text);
+  text-align: left;
+  background: var(--color-panel);
+}
+
+.command-palette-list button:hover,
+.command-palette-list button:focus-visible {
+  border-color: rgba(106, 169, 255, 0.42);
+  outline: 0;
+  background: #303746;
+}
+
+.command-palette-list button span {
+  overflow: hidden;
+  color: var(--color-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette-list p {
+  margin: 0;
+  padding: 0.85rem;
+  border: 1px dashed var(--color-border-soft);
+  border-radius: 4px;
+  color: var(--color-muted);
+  text-align: center;
 }
 
 .workspace-layout {
@@ -2723,6 +2841,28 @@ section[aria-label="Settings"] {
   .topbar-tokens {
     border-left: 0;
     border-top: 1px solid var(--color-border-soft);
+  }
+
+  .topbar-icon {
+    width: 100%;
+    min-height: 2.8rem;
+  }
+
+  .command-palette {
+    max-height: calc(100dvh - 2rem);
+  }
+
+  .command-palette label,
+  .command-palette-list button {
+    grid-template-columns: 1fr;
+  }
+
+  .command-palette label svg {
+    display: none;
+  }
+
+  .command-palette-list button span {
+    white-space: normal;
   }
 
   .terminal-panel {

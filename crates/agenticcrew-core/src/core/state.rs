@@ -2392,6 +2392,8 @@ mod tests {
             agent_evaluation_runs: Vec::new(),
             desktop_settings: DesktopSettings::default(),
             workspaces: WorkspaceRecord::built_in_workspaces(),
+            runs: Vec::new(),
+            run_events: Vec::new(),
         }
     }
 

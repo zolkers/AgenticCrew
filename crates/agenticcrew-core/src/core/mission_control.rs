@@ -188,6 +188,15 @@ pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionContr
     } else {
         HumanGateStatus::Open
     };
+    let current_cost_usd = if state.model_call_estimates.is_empty() {
+        0.0
+    } else {
+        state
+            .model_call_estimates
+            .iter()
+            .map(|estimate| estimate.estimated_cost_usd)
+            .sum()
+    };
 
     MissionControlSnapshot {
         active_workspace: active_workspace_from_state(state),
@@ -195,11 +204,7 @@ pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionContr
         active_model,
         active_session_count: active_sessions.len() as u64,
         active_agent_count: agent_ids.len() as u64,
-        current_cost_usd: state
-            .model_call_estimates
-            .iter()
-            .map(|estimate| estimate.estimated_cost_usd)
-            .sum(),
+        current_cost_usd,
         current_checkpoint,
         human_gate_status,
         sessions: active_sessions
@@ -232,11 +237,7 @@ pub fn mission_control_snapshot_from_state(state: &AgentOsState) -> MissionContr
             })
             .collect(),
         cost_summary: MissionCostSummary {
-            total_usd: state
-                .model_call_estimates
-                .iter()
-                .map(|estimate| estimate.estimated_cost_usd)
-                .sum(),
+            total_usd: current_cost_usd,
             model_call_count: state.model_call_estimates.len() as u64,
             total_tokens: state
                 .model_call_estimates
@@ -406,7 +407,9 @@ mod tests {
                 "checkpoints": [],
                 "costSummary": {
                     "totalUsd": 0.0,
-                    "modelCallCount": 0
+                    "modelCallCount": 0,
+                    "totalTokens": 0,
+                    "tokenLimit": super::DEFAULT_TOKEN_LIMIT
                 },
                 "gitSummary": {
                     "workspaceCount": 2,
@@ -536,6 +539,8 @@ mod tests {
             agent_evaluation_runs: Vec::new(),
             desktop_settings: Default::default(),
             workspaces: Vec::new(),
+            runs: Vec::new(),
+            run_events: Vec::new(),
         }
     }
 
