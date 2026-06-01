@@ -278,6 +278,47 @@ describe("previewInvokes", () => {
     );
   });
 
+  it("updates preview runtime control statuses", async () => {
+    await previewRunsInvoke("start_run", {
+      request: {
+        id: "runtime-control-preview",
+        task: "Exercise runtime controls",
+        workspaceId: "fullstack-app"
+      }
+    });
+    await previewRunsInvoke("start_prepared_run", { runId: "runtime-control-preview" });
+
+    const paused = await previewRunsInvoke("pause_run", { runId: "runtime-control-preview" });
+
+    expect(paused.runs.find((run) => run.id === "runtime-control-preview")).toMatchObject({
+      participants: [expect.objectContaining({ status: "paused" })],
+      status: "paused",
+      stoppedAt: null
+    });
+
+    const resumed = await previewRunsInvoke("resume_run", { runId: "runtime-control-preview" });
+
+    expect(resumed.runs.find((run) => run.id === "runtime-control-preview")).toMatchObject({
+      participants: [expect.objectContaining({ status: "running" })],
+      status: "running"
+    });
+
+    const killed = await previewRunsInvoke("kill_run", { runId: "runtime-control-preview" });
+
+    expect(killed.runs.find((run) => run.id === "runtime-control-preview")).toMatchObject({
+      participants: [expect.objectContaining({ status: "stopped" })],
+      status: "stopped",
+      stoppedAt: "preview"
+    });
+    expect(killed.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: "Run paused" }),
+        expect.objectContaining({ message: "Run resumed" }),
+        expect.objectContaining({ message: "Run killed" })
+      ])
+    );
+  });
+
   it("records preview run command evidence", async () => {
     await previewRunsInvoke("start_run", {
       request: {

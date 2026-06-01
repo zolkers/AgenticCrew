@@ -209,6 +209,7 @@ export type RefreshWorkspaceGitStatusRequest = {
 export type RunStatus =
   | "completed"
   | "failed"
+  | "paused"
   | "preparing"
   | "queued"
   | "running"
@@ -218,7 +219,15 @@ export type RunStatus =
 export type ReasoningEffort = "high" | "low" | "medium";
 export type RunParticipantExecutionMode = "read_only" | "write";
 export type RunParticipantRole = "documentation" | "implementation" | "orchestration" | "qa" | "review" | "security";
-export type RunParticipantStatus = "blocked" | "completed" | "failed" | "preparing" | "queued" | "running";
+export type RunParticipantStatus =
+  | "blocked"
+  | "completed"
+  | "failed"
+  | "paused"
+  | "preparing"
+  | "queued"
+  | "running"
+  | "stopped";
 
 export type RunParticipant = {
   agentTemplateId?: string | null;
@@ -677,17 +686,20 @@ export type ElectronCommandMap = {
   create_workspace: WorkspaceSnapshot;
   commit_preview: CommitPreviewResponse;
   execute_run_command: RunsSnapshot;
+  kill_run: RunsSnapshot;
   harness_studio_snapshot: HarnessStudioSnapshot;
   import_pi_extension: HarnessStudioSnapshot;
   inspect_cached_skill_source: unknown;
   mission_control_snapshot: MissionControlSnapshot;
   promote_agent_training_run: AgentStudioSnapshot;
   record_run_command: RunsSnapshot;
+  pause_run: RunsSnapshot;
   record_model_call_estimate: MissionControlSnapshot;
   refresh_workspace_git_status: WorkspaceSnapshot;
   register_github_skill_source: unknown;
   runs_snapshot: RunsSnapshot;
   prepare_run: RunsSnapshot;
+  resume_run: RunsSnapshot;
   settings_snapshot: SettingsSnapshot;
   set_agent_template_active: AgentStudioSnapshot;
   set_harness_profile_active: HarnessStudioSnapshot;

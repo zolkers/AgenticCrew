@@ -649,6 +649,9 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
     command === "prepare_run" ||
     command === "start_prepared_run" ||
     command === "complete_run" ||
+    command === "pause_run" ||
+    command === "resume_run" ||
+    command === "kill_run" ||
     command === "fail_run"
   ) {
     const request = args as { runId?: string } | undefined;
@@ -656,7 +659,28 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
     const nextStatusByCommand = {
       complete_run: "completed",
       fail_run: "failed",
+      kill_run: "stopped",
+      pause_run: "paused",
       prepare_run: "preparing",
+      resume_run: "running",
+      start_prepared_run: "running"
+    } as const;
+    const runMessageByCommand = {
+      complete_run: "Run completed",
+      fail_run: "Run failed",
+      kill_run: "Run killed",
+      pause_run: "Run paused",
+      prepare_run: "Run preparing",
+      resume_run: "Run resumed",
+      start_prepared_run: "Run running"
+    } as const;
+    const participantMessageByCommand = {
+      complete_run: "completed",
+      fail_run: "failed",
+      kill_run: "killed",
+      pause_run: "paused",
+      prepare_run: "preparing",
+      resume_run: "resumed",
       start_prepared_run: "running"
     } as const;
     const nextStatus = nextStatusByCommand[command];
@@ -676,7 +700,7 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
                 createdAt: updatedAt,
                 id: `${runId}-event-${String(nextEventIndex)}`,
                 level: "info" as const,
-                message: `Run ${nextStatus}`,
+                message: runMessageByCommand[command],
                 runId
               }
             ]),
@@ -684,7 +708,7 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
           createdAt: updatedAt,
           id: `${runId ?? transitioningRun.id}-event-${String(nextEventIndex + index + 1)}`,
           level: "info" as const,
-          message: `Participant ${participant.id} ${nextStatus}`,
+          message: `Participant ${participant.id} ${participantMessageByCommand[command]}`,
           participantId: participant.id,
           runId: runId ?? transitioningRun.id
         })) ?? [])
@@ -697,9 +721,11 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
                 ...participant,
                 status: nextStatus
               })),
-              startedAt: command === "start_prepared_run" ? updatedAt : run.startedAt,
+              startedAt: command === "start_prepared_run" || command === "resume_run" ? updatedAt : run.startedAt,
               status: nextStatus,
-              stoppedAt: command === "complete_run" || command === "fail_run" ? updatedAt : run.stoppedAt,
+              stoppedAt: command === "complete_run" || command === "fail_run" || command === "kill_run"
+                ? updatedAt
+                : run.stoppedAt,
               updatedAt
             }
           : run

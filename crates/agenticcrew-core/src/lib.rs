@@ -257,6 +257,33 @@ pub fn complete_run_at_path(
     })
 }
 
+pub fn pause_run_at_path(
+    path: impl AsRef<Path>,
+    run_id: &str,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    transition_run_at_path(path, run_id, |state, updated_at| {
+        state.pause_run(run_id, updated_at)
+    })
+}
+
+pub fn resume_run_at_path(
+    path: impl AsRef<Path>,
+    run_id: &str,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    transition_run_at_path(path, run_id, |state, updated_at| {
+        state.resume_run(run_id, updated_at)
+    })
+}
+
+pub fn kill_run_at_path(
+    path: impl AsRef<Path>,
+    run_id: &str,
+) -> Result<RunsSnapshot, DesktopCommandError> {
+    transition_run_at_path(path, run_id, |state, updated_at| {
+        state.kill_run(run_id, updated_at)
+    })
+}
+
 pub fn fail_run_at_path(
     path: impl AsRef<Path>,
     run_id: &str,

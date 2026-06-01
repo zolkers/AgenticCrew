@@ -504,13 +504,19 @@ describe("App", () => {
     const transitionStatus = {
       complete_run: "completed",
       fail_run: "failed",
+      kill_run: "stopped",
+      pause_run: "paused",
       prepare_run: "preparing",
+      resume_run: "running",
       start_prepared_run: "running"
     } as const;
     const eventsByCommand = {
       complete_run: "Run completed",
       fail_run: "Run failed",
+      kill_run: "Run killed",
+      pause_run: "Run paused",
       prepare_run: "Run preparing",
+      resume_run: "Run resumed",
       start_prepared_run: "Run running"
     } as const;
     const runsInvoke: InvokeRuns = (command, args) => {
@@ -652,10 +658,22 @@ describe("App", () => {
     expect(screen.getByLabelText("Crew activity")).toHaveTextContent("developer");
     expect(screen.getByLabelText("Crew activity")).toHaveTextContent("Commands1");
     expect(screen.getByLabelText("Crew activity")).toHaveTextContent("node -e console.log('runtime check passed') (succeeded)");
-    fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }));
     await waitFor(() => {
-      expect(screen.getAllByText("completed").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("paused").length).toBeGreaterThan(0);
     });
+    expect(screen.getByLabelText("Run event log")).toHaveTextContent("Run paused");
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    await waitFor(() => {
+      expect(screen.getAllByText("running").length).toBeGreaterThan(0);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Kill" }));
+    await waitFor(() => {
+      expect(screen.getAllByText("stopped").length).toBeGreaterThan(0);
+    });
+    expect(screen.getByLabelText("Run event log")).toHaveTextContent("Run killed");
+    fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+    expect(screen.getByRole("button", { name: "Complete" })).toBeDisabled();
   });
 
   it("can fail a preparing run from runtime controls", async () => {

@@ -3,9 +3,12 @@ import {
   completeRun,
   executeRunCommand,
   failRun,
+  killRun,
   loadRunsSnapshot,
+  pauseRun,
   prepareRun,
   recordRunCommand,
+  resumeRun,
   startPreparedRun,
   startRun,
   type InvokeRuns
@@ -74,13 +77,19 @@ describe("runsApi", () => {
 
     await prepareRun(invoke, "run-1");
     await startPreparedRun(invoke, "run-1");
+    await pauseRun(invoke, "run-1");
+    await resumeRun(invoke, "run-1");
+    await killRun(invoke, "run-1");
     await completeRun(invoke, "run-1");
     await failRun(invoke, "run-1");
 
     expect(invoke).toHaveBeenNthCalledWith(1, "prepare_run", { runId: "run-1" });
     expect(invoke).toHaveBeenNthCalledWith(2, "start_prepared_run", { runId: "run-1" });
-    expect(invoke).toHaveBeenNthCalledWith(3, "complete_run", { runId: "run-1" });
-    expect(invoke).toHaveBeenNthCalledWith(4, "fail_run", { runId: "run-1" });
+    expect(invoke).toHaveBeenNthCalledWith(3, "pause_run", { runId: "run-1" });
+    expect(invoke).toHaveBeenNthCalledWith(4, "resume_run", { runId: "run-1" });
+    expect(invoke).toHaveBeenNthCalledWith(5, "kill_run", { runId: "run-1" });
+    expect(invoke).toHaveBeenNthCalledWith(6, "complete_run", { runId: "run-1" });
+    expect(invoke).toHaveBeenNthCalledWith(7, "fail_run", { runId: "run-1" });
   });
 
   it("records audited run command evidence", async () => {

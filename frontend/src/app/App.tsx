@@ -36,8 +36,11 @@ import {
   completeRun,
   executeRunCommand,
   failRun,
+  killRun,
   loadRunsSnapshot,
+  pauseRun,
   prepareRun,
+  resumeRun,
   startPreparedRun,
   startRun,
   type InvokeRuns
@@ -450,7 +453,10 @@ export function App({
     const transition = {
       complete: completeRun,
       fail: failRun,
+      kill: killRun,
+      pause: pauseRun,
       prepare: prepareRun,
+      resume: resumeRun,
       start: startPreparedRun
     }[action];
     const runsSnapshot = await transition(runsInvoke, runId);
@@ -1031,7 +1037,7 @@ type WorkspaceLoadout = Readonly<{
 }>;
 
 type RunLaunchMode = "crew" | "solo";
-type RunLifecycleAction = "complete" | "fail" | "prepare" | "start";
+type RunLifecycleAction = "complete" | "fail" | "kill" | "pause" | "prepare" | "resume" | "start";
 
 function Cockpit({
   activeWorkspace,
@@ -1436,13 +1442,40 @@ function RunControlStrip({
         Complete
       </button>
       <button
-        disabled={run.status !== "running" && run.status !== "preparing"}
+        disabled={run.status !== "running"}
+        onClick={() => {
+          onRunTransition(run.id, "pause");
+        }}
+        type="button"
+      >
+        Pause
+      </button>
+      <button
+        disabled={run.status !== "paused"}
+        onClick={() => {
+          onRunTransition(run.id, "resume");
+        }}
+        type="button"
+      >
+        Resume
+      </button>
+      <button
+        disabled={run.status !== "running" && run.status !== "preparing" && run.status !== "paused"}
         onClick={() => {
           onRunTransition(run.id, "fail");
         }}
         type="button"
       >
         Fail
+      </button>
+      <button
+        disabled={run.status !== "running" && run.status !== "preparing" && run.status !== "paused"}
+        onClick={() => {
+          onRunTransition(run.id, "kill");
+        }}
+        type="button"
+      >
+        Kill
       </button>
       <button disabled={run.status !== "running"} onClick={runSmoke} type="button">
         Run smoke

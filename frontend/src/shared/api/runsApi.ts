@@ -9,8 +9,11 @@ export type RunsCommand =
   | "complete_run"
   | "execute_run_command"
   | "fail_run"
+  | "kill_run"
+  | "pause_run"
   | "prepare_run"
   | "record_run_command"
+  | "resume_run"
   | "runs_snapshot"
   | "start_prepared_run"
   | "start_run";
@@ -41,6 +44,18 @@ export async function startPreparedRun(invoke: InvokeRuns, runId: string): Promi
 
 export async function completeRun(invoke: InvokeRuns, runId: string): Promise<RunsSnapshot> {
   return invoke("complete_run", { runId });
+}
+
+export async function pauseRun(invoke: InvokeRuns, runId: string): Promise<RunsSnapshot> {
+  return invoke("pause_run", { runId });
+}
+
+export async function resumeRun(invoke: InvokeRuns, runId: string): Promise<RunsSnapshot> {
+  return invoke("resume_run", { runId });
+}
+
+export async function killRun(invoke: InvokeRuns, runId: string): Promise<RunsSnapshot> {
+  return invoke("kill_run", { runId });
 }
 
 export async function failRun(invoke: InvokeRuns, runId: string): Promise<RunsSnapshot> {

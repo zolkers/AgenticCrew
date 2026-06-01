@@ -853,6 +853,47 @@ impl AgentOsState {
         )
     }
 
+    pub fn pause_run(
+        &mut self,
+        run_id: &str,
+        updated_at: String,
+    ) -> Result<(), StateMutationError> {
+        self.transition_run(
+            run_id,
+            RunStatus::Paused,
+            RunParticipantStatus::Paused,
+            "Run paused",
+            "paused",
+            updated_at,
+        )
+    }
+
+    pub fn resume_run(
+        &mut self,
+        run_id: &str,
+        updated_at: String,
+    ) -> Result<(), StateMutationError> {
+        self.transition_run(
+            run_id,
+            RunStatus::Running,
+            RunParticipantStatus::Running,
+            "Run resumed",
+            "resumed",
+            updated_at,
+        )
+    }
+
+    pub fn kill_run(&mut self, run_id: &str, updated_at: String) -> Result<(), StateMutationError> {
+        self.transition_run(
+            run_id,
+            RunStatus::Stopped,
+            RunParticipantStatus::Stopped,
+            "Run killed",
+            "killed",
+            updated_at,
+        )
+    }
+
     pub fn fail_run(&mut self, run_id: &str, updated_at: String) -> Result<(), StateMutationError> {
         self.transition_run(
             run_id,
@@ -2023,6 +2064,65 @@ mod tests {
             .iter()
             .any(|event| event.participant_id.as_deref() == Some("developer")
                 && event.message == "Participant developer completed"));
+    }
+
+    #[test]
+    fn runtime_controls_pause_resume_and_kill_runs() {
+        let mut state = AgentOsState::empty();
+        state
+            .start_run(
+                StartRunRequest {
+                    agent_template_id: Some("developer-pi".to_owned()),
+                    harness_profile_id: Some("pi-execution-discipline".to_owned()),
+                    id: "crew-run".to_owned(),
+                    model_id: None,
+                    participants: Vec::new(),
+                    provider_id: None,
+                    reasoning_effort: None,
+                    skill_routes: Vec::new(),
+                    task: "Control the crew runtime".to_owned(),
+                    workspace_id: "fullstack-app".to_owned(),
+                },
+                "123".to_owned(),
+            )
+            .expect("run should queue");
+        state
+            .start_prepared_run("crew-run", "124".to_owned())
+            .expect("run should start");
+
+        state
+            .pause_run("crew-run", "125".to_owned())
+            .expect("run should pause");
+        assert_eq!(state.runs[0].status, RunStatus::Paused);
+        assert_eq!(
+            state.runs[0].participants[0].status,
+            RunParticipantStatus::Paused
+        );
+        assert_eq!(state.runs[0].stopped_at, None);
+
+        state
+            .resume_run("crew-run", "126".to_owned())
+            .expect("run should resume");
+        assert_eq!(state.runs[0].status, RunStatus::Running);
+        assert_eq!(
+            state.runs[0].participants[0].status,
+            RunParticipantStatus::Running
+        );
+
+        state
+            .kill_run("crew-run", "127".to_owned())
+            .expect("run should stop");
+        assert_eq!(state.runs[0].status, RunStatus::Stopped);
+        assert_eq!(
+            state.runs[0].participants[0].status,
+            RunParticipantStatus::Stopped
+        );
+        assert_eq!(state.runs[0].stopped_at, Some("127".to_owned()));
+        assert!(state
+            .run_events
+            .iter()
+            .any(|event| event.participant_id.as_deref() == Some("developer")
+                && event.message == "Participant developer killed"));
     }
 
     #[test]

@@ -17,6 +17,9 @@ test("accepts known snapshot commands", () => {
     assertCommand("prepare_run");
     assertCommand("start_prepared_run");
     assertCommand("complete_run");
+    assertCommand("pause_run");
+    assertCommand("resume_run");
+    assertCommand("kill_run");
     assertCommand("fail_run");
     assertCommand("execute_run_command");
     assertCommand("record_run_command");

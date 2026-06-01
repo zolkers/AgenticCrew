@@ -13,6 +13,7 @@ pub enum RunStatus {
     Queued,
     Preparing,
     Running,
+    Paused,
     Stopping,
     Stopped,
     Failed,
@@ -117,7 +118,9 @@ pub enum RunParticipantStatus {
     Queued,
     Preparing,
     Running,
+    Paused,
     Blocked,
+    Stopped,
     Failed,
     Completed,
 }
