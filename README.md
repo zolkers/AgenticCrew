@@ -58,15 +58,32 @@ npm run docker:frontend
 
 Docker Desktop or a Docker-compatible daemon must be running. Then open `http://localhost:5173`. This launches the React frontend preview. Electron is the desktop shell and calls Rust through the sidecar bridge.
 
+Run the Docker frontend in the background and inspect it:
+
+```bash
+npm run docker:up
+npm run docker:ps
+npm run docker:logs
+npm run docker:down
+```
+
 Use the convenience scripts from the repository root:
 
 ```bash
 scripts/test-app.sh
+scripts/test-app.sh --detach
+scripts/test-app.sh --ps
+scripts/test-app.sh --logs
+scripts/test-app.sh --down
 scripts/test-app.sh --quality
 ```
 
 ```bat
 scripts\test-app.bat
+scripts\test-app.bat --detach
+scripts\test-app.bat --ps
+scripts\test-app.bat --logs
+scripts\test-app.bat --down
 scripts\test-app.bat --quality
 ```
 

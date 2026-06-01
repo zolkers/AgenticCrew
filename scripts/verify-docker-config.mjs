@@ -5,8 +5,13 @@ const compose = readFileSync("docker-compose.yml", "utf8");
 
 const expectedScripts = {
   "docker:desktop:test": "docker compose run --rm desktop-test",
+  "docker:down": "docker compose down",
   "docker:frontend": "docker compose up --build frontend",
-  "docker:quality": "docker compose run --rm quality"
+  "docker:logs": "docker compose logs -f frontend",
+  "docker:ps": "docker compose ps",
+  "docker:quality": "docker compose run --rm quality",
+  "docker:up": "docker compose up --build -d frontend",
+  "docker:verify": "node scripts/verify-docker-config.mjs"
 };
 
 for (const [name, command] of Object.entries(expectedScripts)) {
@@ -24,6 +29,7 @@ for (const requiredFragment of [
   "/workspace/target",
   "desktop-test:",
   "find node_modules frontend/node_modules",
+  "healthcheck:",
   "npm ci",
   "npm run desktop:test",
   "quality:"

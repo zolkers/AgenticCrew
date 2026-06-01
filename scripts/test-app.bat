@@ -24,6 +24,14 @@ if errorlevel 1 (
   exit /b 1
 )
 
+if "%~1"=="--detach" goto :detach
+if "%~1"=="detach" goto :detach
+if "%~1"=="--down" goto :down
+if "%~1"=="down" goto :down
+if "%~1"=="--logs" goto :logs
+if "%~1"=="logs" goto :logs
+if "%~1"=="--ps" goto :ps
+if "%~1"=="ps" goto :ps
 if "%~1"=="--quality" goto :quality
 if "%~1"=="quality" goto :quality
 if not "%~1"=="" (
@@ -35,6 +43,24 @@ echo Starting AgenticCrew frontend at http://localhost:5173
 call docker compose up --build frontend
 exit /b %errorlevel%
 
+:detach
+echo Starting AgenticCrew frontend in Docker at http://localhost:5173
+call docker compose up --build -d frontend || exit /b 1
+call docker compose ps
+exit /b %errorlevel%
+
+:down
+call docker compose down
+exit /b %errorlevel%
+
+:logs
+call docker compose logs -f frontend
+exit /b %errorlevel%
+
+:ps
+call docker compose ps
+exit /b %errorlevel%
+
 :quality
 echo Running quality gates...
 call docker compose run --build --rm quality || exit /b 1
@@ -43,6 +69,10 @@ exit /b %errorlevel%
 
 :help
 echo Usage:
-echo   scripts\test-app.bat            Start the Docker frontend preview
+echo   scripts\test-app.bat            Start the Docker frontend preview in the foreground
+echo   scripts\test-app.bat --detach   Start the Docker frontend preview in the background
+echo   scripts\test-app.bat --ps       Show Docker service status
+echo   scripts\test-app.bat --logs     Follow Docker frontend logs
+echo   scripts\test-app.bat --down     Stop Docker services
 echo   scripts\test-app.bat --quality  Run quality gates and Docker desktop tests
 exit /b 0

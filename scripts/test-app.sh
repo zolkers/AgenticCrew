@@ -7,12 +7,16 @@ case "${1:-}" in
   --help|-h)
     cat <<'EOF'
 Usage:
-  scripts/test-app.sh            Start the Docker frontend preview
+  scripts/test-app.sh            Start the Docker frontend preview in the foreground
+  scripts/test-app.sh --detach   Start the Docker frontend preview in the background
+  scripts/test-app.sh --ps       Show Docker service status
+  scripts/test-app.sh --logs     Follow Docker frontend logs
+  scripts/test-app.sh --down     Stop Docker services
   scripts/test-app.sh --quality  Run quality gates and Docker desktop tests
 EOF
     exit 0
     ;;
-  ""|--quality|quality)
+  ""|--detach|detach|--down|down|--logs|logs|--ps|ps|--quality|quality)
     ;;
   *)
     echo "Unknown option: $1" >&2
@@ -31,6 +35,20 @@ require_command() {
 require_command docker
 
 case "${1:-}" in
+  --detach|detach)
+    echo "Starting AgenticCrew frontend in Docker at http://localhost:5173"
+    docker compose up --build -d frontend
+    docker compose ps
+    ;;
+  --down|down)
+    docker compose down
+    ;;
+  --logs|logs)
+    docker compose logs -f frontend
+    ;;
+  --ps|ps)
+    docker compose ps
+    ;;
   --quality|quality)
     echo "Running quality gates..."
     docker compose run --build --rm quality

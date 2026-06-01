@@ -3,6 +3,11 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    watch: {
+      ignored: ["**/coverage/**", "**/test-results/**", "**/target/**"]
+    }
+  },
   test: {
     coverage: {
       exclude: ["src/test/setup.ts", "src/shared/api/electronBridge.d.ts", "src/shared/types/core.ts"],
