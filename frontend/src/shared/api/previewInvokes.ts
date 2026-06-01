@@ -583,6 +583,7 @@ export const previewRunsInvoke: InvokeRuns = (command, args) => {
       task: request?.task?.trim() ?? "Preview run",
       updatedAt: createdAt,
       workspaceId: request?.workspaceId ?? "fullstack-app",
+      manifestPath: `${workspace?.path ?? "local"}\\.agenticcrew\\runs\\${runId}\\run-manifest.json`,
       worktreePath: `${workspace?.path ?? "local"}\\.agenticcrew\\runs\\${runId}`
     };
 

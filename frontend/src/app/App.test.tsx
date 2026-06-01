@@ -319,6 +319,7 @@ describe("App", () => {
               task: request.task,
               updatedAt: "preview",
               workspaceId: request.workspaceId,
+              manifestPath: `C:\\repo\\.agenticcrew\\runs\\${request.id}\\run-manifest.json`,
               worktreePath: `C:\\repo\\.agenticcrew\\runs\\${request.id}`
             }
           ]
@@ -350,6 +351,7 @@ describe("App", () => {
 
     expect(await screen.findByRole("button", { name: "Open run run-fullstack-app-1" })).toBeInTheDocument();
     expect(screen.getByLabelText("Run event log")).toHaveTextContent("Prioritize layout regressions before handoff.");
+    expect(screen.getByLabelText("Run event log")).toHaveTextContent("manifest: C:\\repo\\.agenticcrew\\runs\\run-fullstack-app-1\\run-manifest.json");
     expect(screen.getByLabelText("Run event log")).toHaveTextContent("thinking: high");
     expect(screen.getByLabelText("Run event log")).toHaveTextContent(requestedSkillRoutes[0]);
     expect(screen.getByText(/Run queued for workspace/u)).toBeInTheDocument();

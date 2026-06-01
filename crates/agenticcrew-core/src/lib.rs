@@ -1,6 +1,7 @@
 pub mod core;
 
 use std::{
+    fs,
     fmt,
     path::{Path, PathBuf},
 };
@@ -20,7 +21,7 @@ use core::{
     mission_control::{mission_control_snapshot_from_state, MissionControlSnapshot},
     permissions::ApprovedPermissionPolicy,
     pi_extensions::{ImportPiExtensionRequest, SetPiExtensionActiveRequest},
-    runs::{runs_snapshot_from_state, RunsSnapshot, StartRunRequest},
+    runs::{runs_snapshot_from_state, RunRecord, RunsSnapshot, StartRunRequest},
     settings::{
         settings_snapshot_from_state, sync_provider_models_with_catalog, ProviderModelCatalog,
         SettingsSnapshot, SyncProviderModelsRequest, UpdateAiProviderSettingsRequest,
@@ -218,6 +219,9 @@ pub fn start_run_at_path(
 ) -> Result<RunsSnapshot, DesktopCommandError> {
     let created_at = current_unix_timestamp_string()?;
     let state = mutate_state_at_path(path, |state| state.start_run(request, created_at))?;
+    if let Some(run) = state.runs.last() {
+        write_run_manifest(run)?;
+    }
 
     Ok(runs_snapshot_from_state(&state))
 }
@@ -513,6 +517,34 @@ fn mutate_state_at_path(
     Ok(state)
 }
 
+fn write_run_manifest(run: &RunRecord) -> Result<(), DesktopCommandError> {
+    let manifest_path = PathBuf::from(&run.manifest_path);
+    let parent = manifest_path.parent().ok_or_else(|| {
+        DesktopCommandError::public(format!(
+            "run manifest path '{}' has no parent directory",
+            run.manifest_path
+        ))
+    })?;
+    fs::create_dir_all(parent).map_err(|error| {
+        DesktopCommandError::public(format!(
+            "failed to create run manifest directory '{}': {error}",
+            parent.display()
+        ))
+    })?;
+
+    let content = serde_json::to_string_pretty(&run.to_manifest()).map_err(|error| {
+        DesktopCommandError::public(format!("failed to serialize run manifest: {error}"))
+    })?;
+    fs::write(&manifest_path, content).map_err(|error| {
+        DesktopCommandError::public(format!(
+            "failed to write run manifest '{}': {error}",
+            manifest_path.display()
+        ))
+    })?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -789,6 +821,17 @@ mod tests {
     #[test]
     fn run_commands_persist_queued_run_and_events() {
         let path = test_path("run_commands_persist_queued_run_and_events", "state.json");
+        let workspace_path = test_path("run_commands_persist_queued_run_and_events", "workspace");
+
+        update_workspace_git_context_at_path(
+            &path,
+            UpdateWorkspaceGitContextRequest {
+                branch: "dev".to_owned(),
+                path: workspace_path.display().to_string(),
+                workspace_id: "fullstack-app".to_owned(),
+            },
+        )
+        .expect("workspace path should update");
 
         let snapshot = start_run_at_path(
             &path,
@@ -812,6 +855,20 @@ mod tests {
         assert_eq!(
             snapshot.runs[0].skill_routes,
             vec!["agenticcrew://skills/superpowers/planning".to_owned()]
+        );
+        assert!(snapshot.runs[0].manifest_path.ends_with("run-manifest.json"));
+        let manifest_json =
+            fs::read_to_string(&snapshot.runs[0].manifest_path).expect("run manifest should exist");
+        let manifest: serde_json::Value =
+            serde_json::from_str(&manifest_json).expect("manifest should be valid json");
+        assert_eq!(manifest["runId"], "run-1");
+        assert_eq!(manifest["workspaceId"], "fullstack-app");
+        assert_eq!(manifest["providerId"], "openai");
+        assert_eq!(manifest["modelId"], "gpt-5.4");
+        assert_eq!(manifest["reasoningEffort"], "medium");
+        assert_eq!(
+            manifest["skillRoutes"][0],
+            "agenticcrew://skills/superpowers/planning"
         );
         assert_eq!(snapshot.events.len(), 1);
         assert_eq!(

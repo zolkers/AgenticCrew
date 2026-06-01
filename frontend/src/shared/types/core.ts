@@ -223,6 +223,7 @@ export type RunRecord = {
   createdAt: string;
   harnessProfileId?: string | null;
   id: string;
+  manifestPath: string;
   modelId?: string | null;
   providerId?: string | null;
   reasoningEffort?: ReasoningEffort;

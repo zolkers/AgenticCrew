@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -27,6 +29,8 @@ pub struct RunRecord {
     pub base_branch: String,
     pub run_branch: String,
     pub worktree_path: String,
+    #[serde(default)]
+    pub manifest_path: String,
     pub agent_template_id: Option<String>,
     pub harness_profile_id: Option<String>,
     pub provider_id: Option<String>,
@@ -39,6 +43,24 @@ pub struct RunRecord {
     pub updated_at: String,
     pub started_at: Option<String>,
     pub stopped_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunManifest {
+    pub run_id: String,
+    pub workspace_id: String,
+    pub task: String,
+    pub agent_template_id: Option<String>,
+    pub harness_profile_id: Option<String>,
+    pub provider_id: Option<String>,
+    pub model_id: Option<String>,
+    pub reasoning_effort: ReasoningEffort,
+    pub skill_routes: Vec<String>,
+    pub base_branch: String,
+    pub run_branch: String,
+    pub worktree_path: String,
+    pub manifest_path: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -103,10 +125,8 @@ impl RunRecord {
         let task = validate_required("run task", request.task)?;
         let skill_routes = normalize_skill_routes(request.skill_routes);
         let run_branch = format!("codex/run-{id}");
-        let worktree_path = format!(
-            "{}\\.agenticcrew\\runs\\{id}",
-            workspace.path.trim_end_matches(['\\', '/'])
-        );
+        let worktree_path = run_worktree_path(&workspace.path, &id);
+        let manifest_path = run_manifest_path(&worktree_path);
 
         Ok(Self {
             agent_template_id: agent_template.map(|template| template.id.clone()),
@@ -124,6 +144,7 @@ impl RunRecord {
                 .reasoning_effort
                 .or_else(|| agent_template.map(|template| template.reasoning_effort))
                 .unwrap_or(ReasoningEffort::Medium),
+            manifest_path,
             run_branch,
             skill_routes,
             started_at: None,
@@ -134,6 +155,24 @@ impl RunRecord {
             workspace_id: workspace.id.clone(),
             worktree_path,
         })
+    }
+
+    pub fn to_manifest(&self) -> RunManifest {
+        RunManifest {
+            agent_template_id: self.agent_template_id.clone(),
+            base_branch: self.base_branch.clone(),
+            harness_profile_id: self.harness_profile_id.clone(),
+            manifest_path: self.manifest_path.clone(),
+            model_id: self.model_id.clone(),
+            provider_id: self.provider_id.clone(),
+            reasoning_effort: self.reasoning_effort,
+            run_branch: self.run_branch.clone(),
+            run_id: self.id.clone(),
+            skill_routes: self.skill_routes.clone(),
+            task: self.task.clone(),
+            workspace_id: self.workspace_id.clone(),
+            worktree_path: self.worktree_path.clone(),
+        }
     }
 }
 
@@ -152,6 +191,22 @@ fn normalize_skill_routes(skill_routes: Vec<String>) -> Vec<String> {
             }
             routes
         })
+}
+
+fn run_worktree_path(workspace_path: &str, run_id: &str) -> String {
+    PathBuf::from(workspace_path.trim_end_matches(['\\', '/']))
+        .join(".agenticcrew")
+        .join("runs")
+        .join(run_id)
+        .display()
+        .to_string()
+}
+
+fn run_manifest_path(worktree_path: &str) -> String {
+    PathBuf::from(worktree_path)
+        .join("run-manifest.json")
+        .display()
+        .to_string()
 }
 
 impl RunEvent {
@@ -263,7 +318,11 @@ mod tests {
         assert_eq!(run.status, RunStatus::Queued);
         assert_eq!(run.base_branch, "dev");
         assert_eq!(run.run_branch, "codex/run-run-1");
-        assert!(run.worktree_path.ends_with("\\.agenticcrew\\runs\\run-1"));
+        assert!(normalized_path(&run.worktree_path).ends_with("/.agenticcrew/runs/run-1"));
+        assert!(
+            normalized_path(&run.manifest_path)
+                .ends_with("/.agenticcrew/runs/run-1/run-manifest.json")
+        );
         assert_eq!(run.provider_id, Some("openai".to_owned()));
         assert_eq!(run.model_id, Some("gpt-5.4".to_owned()));
         assert_eq!(run.reasoning_effort, ReasoningEffort::High);
@@ -271,6 +330,14 @@ mod tests {
             run.skill_routes,
             vec!["agenticcrew://skills/superpowers/subagent-driven-development".to_owned()]
         );
+
+        let manifest = run.to_manifest();
+        assert_eq!(manifest.run_id, "run-1");
+        assert_eq!(manifest.workspace_id, "fullstack-app");
+        assert_eq!(manifest.provider_id, Some("openai".to_owned()));
+        assert_eq!(manifest.model_id, Some("gpt-5.4".to_owned()));
+        assert_eq!(manifest.reasoning_effort, ReasoningEffort::High);
+        assert_eq!(manifest.manifest_path, run.manifest_path);
     }
 
     #[test]
@@ -300,5 +367,9 @@ mod tests {
 
         assert_eq!(snapshot.active_run_id, Some("run-1".to_owned()));
         assert_eq!(snapshot.runs.len(), 1);
+    }
+
+    fn normalized_path(path: &str) -> String {
+        path.replace('\\', "/")
     }
 }

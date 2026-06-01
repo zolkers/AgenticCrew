@@ -1264,6 +1264,10 @@ function Cockpit({
                   <span aria-hidden="true">&gt;</span>
                   <code>{activeRun.worktreePath}</code>
                 </p>
+                <p>
+                  <span aria-hidden="true">&gt;</span>
+                  <code>manifest: {activeRun.manifestPath}</code>
+                </p>
                 {activeRun.skillRoutes.length > 0 ? (
                   <p>
                     <span aria-hidden="true">&gt;</span>
